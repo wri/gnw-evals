@@ -5,20 +5,21 @@ description = "Global Nature Watch Evaluation Framework"
 readme = "README.md"
 requires-python = ">=3.13.0"
 dependencies = [
-    "httpx",
-    "langchain-anthropic",
-    "langchain-core",
-    "pandas",
-    "pydantic",
-    "pydantic-settings",
-    "python-dotenv",
-    "pytest",
+    "httpx==0.28.1",
+    "langchain-anthropic==1.3.1",
+    "langchain-core==1.2.6",
+    "pandas==2.3.3",
+    "pydantic==2.12.5",
+    "pydantic-settings==2.12.0",
+    "python-dotenv==1.2.1",
+    "pytest==9.0.2",
+    "pytest-asyncio==1.3.0",
 ]
 
 [dependency-groups]
 dev = [
-    "ruff",
-    "pre-commit",
+    "ruff==0.14.10",
+    "pre-commit==4.5.1",
 ]
 
 
@@ -37,9 +38,14 @@ ignore = [
 ]
 
 
-
 [tool.ruff.format]
 quote-style = "double"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = [
+    "asyncio: marks tests as async (deselect with '-m \"not asyncio\"')",
+]
 
 [build-system]
 requires = ["hatchling"]

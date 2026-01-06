@@ -116,5 +116,4 @@ class APITestRunner(BaseTestRunner):
                 query,
                 expected_data,
                 str(e),
-                "api",
             )
