@@ -1,8 +1,6 @@
 import asyncio
 import time
 
-import pytest
-
 from gnw_evals.data_handlers import CSVLoader, ResultExporter
 from gnw_evals.runners import APITestRunner
 from gnw_evals.utils.config import get_test_config
@@ -172,7 +170,6 @@ def _print_csv_summary(results: list[TestResult]) -> None:
     print(f"Final Answer: {answer_avg} ({answer_nones} None)")
 
 
-@pytest.mark.asyncio
 async def run_evals():
     """Run main E2E test function for CSV based evaluation."""
     config = get_test_config()
