@@ -2,10 +2,13 @@ import asyncio
 import time
 
 import click
+import dotenv
 
 from gnw_evals.data_handlers import CSVLoader, ResultExporter
 from gnw_evals.runners import APITestRunner
 from gnw_evals.utils.eval_types import ExpectedData, TestResult
+
+dotenv.load_dotenv()
 
 
 async def run_single_test(

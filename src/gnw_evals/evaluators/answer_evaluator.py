@@ -1,5 +1,3 @@
-"""Final answer evaluator."""
-
 from typing import Any
 
 from gnw_evals.evaluators.llm_judges import llm_judge
@@ -55,7 +53,6 @@ def evaluate_final_answer(
             "error": "No insight generated",
         }
 
-    # LLM as judge
     score = llm_judge(expected_answer, insight)
 
     return {

@@ -1,5 +1,3 @@
-"""LLM-based judge functions for evaluating agent responses."""
-
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel
 
