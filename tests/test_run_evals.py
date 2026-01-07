@@ -179,45 +179,44 @@ async def test_run_csv_tests_with_mocked_data(
         mock_client.get = AsyncMock(return_value=mock_state_response)
 
         with patch("gnw_evals.runners.api.httpx.AsyncClient", return_value=mock_client):
-            with patch("gnw_evals.core.get_test_config", return_value=mock_config):
-                with patch("gnw_evals.core.ResultExporter") as mock_exporter_class:
+            with patch("gnw_evals.core.ResultExporter") as mock_exporter_class:
+                with patch(
+                    "gnw_evals.evaluators.llm_judges.llm_judge",
+                    return_value=1.0,
+                ):
                     with patch(
-                        "gnw_evals.evaluators.llm_judges.llm_judge",
-                        return_value=1.0,
+                        "gnw_evals.evaluators.llm_judges.llm_judge_clarification",
+                        return_value={"is_clarification": False, "explanation": ""},
                     ):
-                        with patch(
-                            "gnw_evals.evaluators.llm_judges.llm_judge_clarification",
-                            return_value={"is_clarification": False, "explanation": ""},
-                        ):
-                            mock_exporter = MagicMock()
-                            mock_exporter_class.return_value = mock_exporter
+                        mock_exporter = MagicMock()
+                        mock_exporter_class.return_value = mock_exporter
 
-                            # Run the tests
-                            results = await run_csv_tests(mock_config)
+                        # Run the tests
+                        results = await run_csv_tests(mock_config)
 
-                            # Assertions
-                            assert len(results) == 3, "Should return 3 test results"
-                            assert all(r.overall_score >= 0 for r in results), (
-                                "All scores should be non-negative"
-                            )
-                            assert all(r.query for r in results), (
-                                "All results should have a query"
-                            )
+                        # Assertions
+                        assert len(results) == 3, "Should return 3 test results"
+                        assert all(r.overall_score >= 0 for r in results), (
+                            "All scores should be non-negative"
+                        )
+                        assert all(r.query for r in results), (
+                            "All results should have a query"
+                        )
 
-                            # Check that CSVLoader was called correctly
-                            mock_loader.load_test_data.assert_called_once_with(
-                                mock_config.test_file,
-                                mock_config.sample_size,
-                                mock_config.test_group_filter,
-                                mock_config.status_filter,
-                                mock_config.random_seed,
-                                mock_config.offset,
-                            )
+                        # Check that CSVLoader was called correctly
+                        mock_loader.load_test_data.assert_called_once_with(
+                            mock_config.test_file,
+                            mock_config.sample_size,
+                            mock_config.test_group_filter,
+                            mock_config.status_filter,
+                            mock_config.random_seed,
+                            mock_config.offset,
+                        )
 
-                            # Check that results were saved
-                            mock_exporter.save_results_to_csv.assert_called_once()
-                            call_args = mock_exporter.save_results_to_csv.call_args
-                            assert len(call_args[0][0]) == 3, "Should save 3 results"
+                        # Check that results were saved
+                        mock_exporter.save_results_to_csv.assert_called_once()
+                        call_args = mock_exporter.save_results_to_csv.call_args
+                        assert len(call_args[0][0]) == 3, "Should save 3 results"
 
 
 @pytest.mark.asyncio
@@ -264,27 +263,26 @@ async def test_run_csv_tests_with_multiple_workers(
         mock_client.get = AsyncMock(return_value=mock_state_response)
 
         with patch("gnw_evals.runners.api.httpx.AsyncClient", return_value=mock_client):
-            with patch("gnw_evals.core.get_test_config", return_value=mock_config):
-                with patch("gnw_evals.core.ResultExporter") as mock_exporter_class:
+            with patch("gnw_evals.core.ResultExporter") as mock_exporter_class:
+                with patch(
+                    "gnw_evals.evaluators.llm_judges.llm_judge",
+                    return_value=1.0,
+                ):
                     with patch(
-                        "gnw_evals.evaluators.llm_judges.llm_judge",
-                        return_value=1.0,
+                        "gnw_evals.evaluators.llm_judges.llm_judge_clarification",
+                        return_value={"is_clarification": False, "explanation": ""},
                     ):
-                        with patch(
-                            "gnw_evals.evaluators.llm_judges.llm_judge_clarification",
-                            return_value={"is_clarification": False, "explanation": ""},
-                        ):
-                            mock_exporter = MagicMock()
-                            mock_exporter_class.return_value = mock_exporter
+                        mock_exporter = MagicMock()
+                        mock_exporter_class.return_value = mock_exporter
 
-                            # Run the tests
-                            results = await run_csv_tests(mock_config)
+                        # Run the tests
+                        results = await run_csv_tests(mock_config)
 
-                            # Assertions
-                            assert len(results) == 3, "Should return 3 test results"
-                            assert all(r.overall_score >= 0 for r in results), (
-                                "All scores should be non-negative"
-                            )
+                        # Assertions
+                        assert len(results) == 3, "Should return 3 test results"
+                        assert all(r.overall_score >= 0 for r in results), (
+                            "All scores should be non-negative"
+                        )
 
 
 @pytest.mark.asyncio
@@ -308,32 +306,29 @@ async def test_run_csv_tests_with_api_error(mock_test_cases, mock_config):
         )
 
         with patch("gnw_evals.runners.api.httpx.AsyncClient", return_value=mock_client):
-            with patch("gnw_evals.core.get_test_config", return_value=mock_config):
-                with patch("gnw_evals.core.ResultExporter") as mock_exporter_class:
+            with patch("gnw_evals.core.ResultExporter") as mock_exporter_class:
+                with patch(
+                    "gnw_evals.evaluators.llm_judges.llm_judge",
+                    return_value=1.0,
+                ):
                     with patch(
-                        "gnw_evals.evaluators.llm_judges.llm_judge",
-                        return_value=1.0,
+                        "gnw_evals.evaluators.llm_judges.llm_judge_clarification",
+                        return_value={"is_clarification": False, "explanation": ""},
                     ):
-                        with patch(
-                            "gnw_evals.evaluators.llm_judges.llm_judge_clarification",
-                            return_value={"is_clarification": False, "explanation": ""},
-                        ):
-                            mock_exporter = MagicMock()
-                            mock_exporter_class.return_value = mock_exporter
+                        mock_exporter = MagicMock()
+                        mock_exporter_class.return_value = mock_exporter
 
-                            # Run the tests - should handle error gracefully
-                            results = await run_csv_tests(mock_config)
+                        # Run the tests - should handle error gracefully
+                        results = await run_csv_tests(mock_config)
 
-                            # Should still return a result, but with error
-                            assert len(results) == 1, (
-                                "Should return 1 test result even on error"
-                            )
-                            assert results[0].overall_score == 0.0, (
-                                "Error should result in 0 score"
-                            )
-                            assert results[0].error is not None, (
-                                "Error should be recorded"
-                            )
+                        # Should still return a result, but with error
+                        assert len(results) == 1, (
+                            "Should return 1 test result even on error"
+                        )
+                        assert results[0].overall_score == 0.0, (
+                            "Error should result in 0 score"
+                        )
+                        assert results[0].error is not None, "Error should be recorded"
 
 
 @pytest.mark.asyncio
@@ -344,17 +339,16 @@ async def test_run_csv_tests_with_empty_data(mock_config):
         mock_loader.load_test_data.return_value = []  # Empty list
         mock_loader_class.return_value = mock_loader
 
-        with patch("gnw_evals.core.get_test_config", return_value=mock_config):
-            with patch("gnw_evals.core.ResultExporter") as mock_exporter_class:
-                mock_exporter = MagicMock()
-                mock_exporter_class.return_value = mock_exporter
+        with patch("gnw_evals.core.ResultExporter") as mock_exporter_class:
+            mock_exporter = MagicMock()
+            mock_exporter_class.return_value = mock_exporter
 
-                # Run the tests
-                results = await run_csv_tests(mock_config)
+            # Run the tests
+            results = await run_csv_tests(mock_config)
 
-                # Assertions
-                assert len(results) == 0, "Should return empty results"
-                mock_exporter.save_results_to_csv.assert_called_once_with(
-                    [],
-                    mock_config.output_filename,
-                )
+            # Assertions
+            assert len(results) == 0, "Should return empty results"
+            mock_exporter.save_results_to_csv.assert_called_once_with(
+                [],
+                mock_config.output_filename,
+            )

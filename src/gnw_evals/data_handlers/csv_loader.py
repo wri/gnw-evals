@@ -1,4 +1,4 @@
-"""CSV data loading for E2E testing framework."""
+from pathlib import Path
 
 import pandas as pd
 
@@ -34,7 +34,8 @@ class CSVLoader:
 
         """
         # Read CSV as strings and clean up
-        df = pd.read_csv(csv_file, dtype=str, keep_default_na=False)
+        project_root = Path(__file__).parent.parent.parent.parent
+        df = pd.read_csv(project_root / csv_file, dtype=str, keep_default_na=False)
 
         for field in ExpectedData.model_fields.keys():
             if (

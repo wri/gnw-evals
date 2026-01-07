@@ -191,69 +191,83 @@ Simple end-to-end agent test runner with support for both local and API testing.
 
 ### Usage Examples
 
-#### CSV-based testing
+#### Basic usage
 ```bash
-# Basic run
-python -m evals.core
+# Basic run with API token as argument
+python -m gnw_evals.core --api-token your_token
 
-# API mode
-API_TOKEN=your_token python -m evals.core
+# Or set API token via environment variable
+export API_TOKEN=your_token
+python -m gnw_evals.core
+
+# With custom API endpoint
+python -m gnw_evals.core --api-token your_token --api-base-url http://localhost:8000
 
 # Run specific number of tests
-SAMPLE_SIZE=5 python -m evals.core
+python -m gnw_evals.core --api-token your_token --sample-size 5
 ```
 
 #### Filter by test group
 ```bash
-TEST_GROUP_FILTER=rel-accuracy python -m evals.core
-TEST_GROUP_FILTER=dataset SAMPLE_SIZE=10 python -m evals.core
+python -m gnw_evals.core --api-token your_token --test-group-filter rel-accuracy
+python -m gnw_evals.core --api-token your_token --test-group-filter dataset --sample-size 10
 ```
 
 #### Filter by status
 ```bash
 # Run only tests with status "ready"
-STATUS_FILTER=ready python -m evals.core
+python -m gnw_evals.core --api-token your_token --status-filter ready
 
 # Run tests with status "ready" or "rerun"
-STATUS_FILTER=ready,rerun python -m evals.core
+python -m gnw_evals.core --api-token your_token --status-filter ready,rerun
 ```
 
 #### Custom output filename (timestamp always appended)
 ```bash
-OUTPUT_FILENAME=my_test_run python -m evals.core
-OUTPUT_FILENAME=alerts_test TEST_GROUP_FILTER=alerts python -m evals.core
+python -m gnw_evals.core --api-token your_token --output-filename my_test_run
+python -m gnw_evals.core --api-token your_token --output-filename alerts_test --test-group-filter alerts
 ```
 
 #### Parallel execution
 ```bash
-NUM_WORKERS=10 SAMPLE_SIZE=20 python -m evals.core
-NUM_WORKERS=5 API_TOKEN=your_token python -m evals.core
+python -m gnw_evals.core --api-token your_token --num-workers 10 --sample-size 20
+python -m gnw_evals.core --api-token your_token --num-workers 5
 ```
 
 #### Sampling configuration
 ```bash
 # Use specific random seed for reproducible sampling
-RANDOM_SEED=123 SAMPLE_SIZE=10 python -m evals.core
+python -m gnw_evals.core --api-token your_token --random-seed 123 --sample-size 10
 
 # Start sampling from a specific offset
-OFFSET=5 SAMPLE_SIZE=10 python -m evals.core
+python -m gnw_evals.core --api-token your_token --offset 5 --sample-size 10
 ```
 
-### Environment Variables
+#### Custom test file
+```bash
+python -m gnw_evals.core --api-token your_token --test-file data/my_custom_tests.csv
+```
 
-#### General Configuration
-- **`API_BASE_URL`** - API endpoint URL (default: http://localhost:8000)
-- **`API_TOKEN`** - Bearer token for API authentication (required for API mode)
+#### Get help
+```bash
+python -m gnw_evals.core --help
+```
 
-#### CSV Mode Only
-- **`SAMPLE_SIZE`** - Number of test cases to run (default: 1, use -1 for all rows)
-- **`TEST_FILE`** - Path to CSV test file (default: experiments/e2e_test_dataset.csv)
-- **`TEST_GROUP_FILTER`** - Filter tests by test_group column (optional)
-- **`STATUS_FILTER`** - Filter tests by status column, comma-separated (e.g., "ready,rerun"). Default: None (allows all statuses)
-- **`OUTPUT_FILENAME`** - Custom filename for results (timestamp will be appended)
-- **`NUM_WORKERS`** - Number of parallel workers (default: 1, set to 10 for parallel execution)
-- **`RANDOM_SEED`** - Random seed for sampling (default: 42)
-- **`OFFSET`** - Offset for sampling (default: 0)
+### Command Line Arguments
+
+#### Required Arguments
+- **`--api-token`** - Bearer token for API authentication (required, can also be set via `API_TOKEN` environment variable)
+
+#### Optional Arguments
+- **`--api-base-url`** - API endpoint URL (default: `http://localhost:8000`)
+- **`--sample-size`** - Number of test cases to run (default: `1`, use `-1` for all rows)
+- **`--test-file`** - Path to CSV test file (default: `data/e2e_test_dataset.csv`)
+- **`--test-group-filter`** - Filter tests by test_group column (optional)
+- **`--status-filter`** - Filter tests by status column, comma-separated (e.g., `ready,rerun`)
+- **`--output-filename`** - Custom filename for results (timestamp will be appended)
+- **`--num-workers`** - Number of parallel workers (default: `1`)
+- **`--random-seed`** - Random seed for sampling (default: `0`, means no random sampling)
+- **`--offset`** - Offset for getting subset (default: `0`, ignored if random_seed is 0)
 
 ## Output Files
 
@@ -387,5 +401,6 @@ For gold standard tests:
 1. **Empty Results:** Check that `status` column contains "ready" or "rerun"
 2. **AOI Mismatches:** Verify GADM ID format (e.g., "USA.5_1" not "USA_5_1")
 3. **Date Format Issues:** Use consistent date format (YYYY-MM-DD)
-4. **API Authentication:** Ensure `API_TOKEN` is set for API mode
-5. **Parallel Execution:** Reduce `NUM_WORKERS` if hitting rate limits
+4. **API Authentication:** Ensure `--api-token` is provided or `API_TOKEN` environment variable is set (required)
+5. **Parallel Execution:** Reduce `--num-workers` if hitting rate limits
+6. **Missing Arguments:** Use `--help` to see all available options and their defaults

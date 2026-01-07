@@ -1,9 +1,10 @@
 import asyncio
 import time
 
+import click
+
 from gnw_evals.data_handlers import CSVLoader, ResultExporter
 from gnw_evals.runners import APITestRunner
-from gnw_evals.utils.config import get_test_config
 from gnw_evals.utils.eval_types import ExpectedData, TestResult
 
 
@@ -170,12 +171,110 @@ def _print_csv_summary(results: list[TestResult]) -> None:
     print(f"Final Answer: {answer_avg} ({answer_nones} None)")
 
 
-async def run_evals():
+@click.command()
+@click.option(
+    "--api-base-url",
+    default="https://api.staging.globalnaturewatch.org",
+    help="Base URL for API tests",
+)
+@click.option(
+    "--api-token",
+    default=None,
+    envvar="API_TOKEN",
+    help="API token for authentication (can also be set via API_TOKEN env var)",
+)
+@click.option(
+    "--sample-size",
+    default=1,
+    type=int,
+    help="Sample size: 1 means run single test (CI/CD friendly), -1 means run all rows",
+)
+@click.option(
+    "--test-file",
+    default="data/gnw-eval-sets-gold.csv",
+    help="Path to test dataset CSV file (relative to project root)",
+)
+@click.option(
+    "--test-group-filter",
+    default=None,
+    help="Filter by test_group column",
+)
+@click.option(
+    "--status-filter",
+    default=None,
+    help="Filter by status column (comma-separated values)",
+)
+@click.option(
+    "--output-filename",
+    default=None,
+    help="Custom filename (timestamp will be appended)",
+)
+@click.option(
+    "--num-workers",
+    default=1,
+    type=int,
+    help="Number of parallel workers for test execution",
+)
+@click.option(
+    "--random-seed",
+    default=0,
+    type=int,
+    help="Random seed for sampling (0 means no random sampling)",
+)
+@click.option(
+    "--offset",
+    default=0,
+    type=int,
+    help="Offset for getting subset. Ignored if random_seed is not 0",
+)
+def run_evals(
+    api_base_url: str,
+    api_token: str | None,
+    sample_size: int,
+    test_file: str,
+    test_group_filter: str | None,
+    status_filter: str | None,
+    output_filename: str | None,
+    num_workers: int,
+    random_seed: int,
+    offset: int,
+):
     """Run main E2E test function for CSV based evaluation."""
-    config = get_test_config()
-    results = await run_csv_tests(config)
+    # Validate API token
+    if not api_token:
+        raise click.BadParameter(
+            "API token is required. Provide --api-token or set API_TOKEN environment variable.",
+        )
+
+    # Validate inputs
+    if sample_size < -1:
+        raise click.BadParameter("SAMPLE_SIZE must be >= -1")
+    if num_workers < 1:
+        raise click.BadParameter("NUM_WORKERS must be >= 1")
+
+    # Parse status_filter from comma-separated string to list
+    status_filter_list = None
+    if status_filter:
+        status_filter_list = [s.strip() for s in status_filter.split(",") if s.strip()]
+
+    # Create a simple config object
+    class Config:
+        def __init__(self):
+            self.api_base_url = api_base_url
+            self.api_token = api_token
+            self.sample_size = sample_size
+            self.test_file = test_file
+            self.test_group_filter = test_group_filter
+            self.status_filter = status_filter_list
+            self.output_filename = output_filename
+            self.num_workers = num_workers
+            self.random_seed = random_seed
+            self.offset = offset
+
+    config = Config()
+    results = asyncio.run(run_csv_tests(config))
     assert len(results) > 0, "No test results from CSV"
 
 
 if __name__ == "__main__":
-    asyncio.run(run_evals())
+    run_evals()

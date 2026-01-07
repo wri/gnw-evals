@@ -3,8 +3,9 @@ name = "gnw-evals"
 version = "0.1.0"
 description = "Global Nature Watch Evaluation Framework"
 readme = "README.md"
-requires-python = ">=3.13.0"
+requires-python = "~=3.13.0"
 dependencies = [
+    "click==8.1.7",
     "httpx==0.28.1",
     "langchain-anthropic==1.3.1",
     "langchain-core==1.2.6",

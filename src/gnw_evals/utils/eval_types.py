@@ -94,6 +94,7 @@ class ExpectedData(BaseModel):
         if isinstance(v, str):
             # Split by comma and strip whitespace, filter out empty strings
             return [item.strip() for item in v.split(";") if item.strip()]
+        return []
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
