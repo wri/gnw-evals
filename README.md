@@ -8,8 +8,8 @@ Install the package and its dependencies into your env
 uv sync
 ```
 
-Copy env example env file and set your **GNW machine user key** and
-**anthropic api key** in the new `.env` file,
+Copy the example env file and set your **GNW machine user key** and
+**Anthropic API key** in the new `.env` file:
 
 ```bash
 cp .env.example .env
@@ -25,7 +25,7 @@ By default this will read tests from a google sheet with
 gold standard tests and evaluate the staging environment.
 
 You can change multiple aspects of the runner like what tests to run
-and parallelisation of the tests.
+and parallelization of the tests.
 
 To see the available config options run
 
@@ -57,20 +57,21 @@ When a test case can have multiple valid values for a field (e.g., comparing mul
 
 ### Essential Columns (Required for Tests)
 
-The following columns are **required** for the E2E tests to run properly:
+The following columns are **required** in the CSV file for the E2E tests to run properly. All fields from `ExpectedData` must be present (they can be empty strings if not applicable):
 
 #### Core Test Data
 
 - **`query`** - The user query to test (string)
-- **`test_group`** - Test grouping for filtering (e.g., "dataset", "rel-accuracy", "abs-accuracy" etc)
-- **`status`** - Test execution status:
+- **`test_group`** - Test grouping for filtering (e.g., "dataset", "rel-accuracy", "abs-accuracy" etc). Default: "unknown"
+- **`status`** - Test execution status. Default: "ready". Use `--status-filter` to filter by status:
   - `"ready"` - Test is ready to run (default for new tests)
   - `"rerun"` - Test should be re-executed (e.g., after fixing issues)
   - `"skip"` - Test should be skipped/ignored during execution
+  - **Note:** If `--status-filter` is not provided, all rows are included regardless of status
 
 #### AOI Selection Evaluation
 
-- **`expected_aoi_ids`** - Expected AOI identifier (e.g., "BRA", "USA.5_1", "IND.26_1"). For queries comparing multiple areas, use semicolons to separate values (e.g., "IND.21_1;IND.27_1" for Odisha and Maharashtra).
+- **`expected_aoi_ids`** - Expected AOI identifier(s) (e.g., "BRA", "USA.5_1", "IND.26_1"). For queries comparing multiple areas, use semicolons to separate values (e.g., "IND.21_1;IND.27_1" for Odisha and Maharashtra). Can be empty if not applicable.
 - **`expected_subregion`** - Expected subregion filter when user explicitly requests sub-administrative units. Only used when query explicitly mentions comparing or analyzing sub-units within a larger area. Valid values:
   - `"country"` - Countries within a region
   - `"state"` - States/provinces within a country
@@ -81,31 +82,29 @@ The following columns are **required** for the E2E tests to run properly:
   - `"kba"` - Key Biodiversity Areas
   - `"wdpa"` - Protected areas (World Database on Protected Areas)
   - `"landmark"` - Geographic landmarks
-
+- **`expected_aoi_source`** - Expected AOI source (for reference, not evaluated)
 
 #### Dataset Selection Evaluation
 
-- **`expected_dataset_id`** - Expected dataset ID (0-8 for current datasets). For queries that may match multiple datasets, separate IDs with semicolons (e.g., "0;1" for DIST-ALERT and another dataset).
-- **`expected_context_layer`** - Expected context layer (varies by dataset). Multiple values can be separated by semicolons if multiple layers are acceptable.
+- **`expected_dataset_id`** - Expected dataset ID (0-8 for current datasets). For queries that may match multiple datasets, separate IDs with semicolons (e.g., "0;1" for DIST-ALERT and another dataset). Can be empty if not applicable.
+- **`expected_context_layer`** - Expected context layer (varies by dataset). Multiple values can be separated by semicolons if multiple layers are acceptable. Can be empty if not applicable.
+- **`expected_dataset_name`** - Expected dataset name (for reference, not evaluated)
 
 #### Data Pull Evaluation
 
-- **`expected_start_date`** - Expected start date (YYYY-MM-DD). For date ranges, use the earliest expected date.
-- **`expected_end_date`** - Expected end date (YYYY-MM-DD). For date ranges, use the latest expected date.
+- **`expected_start_date`** - Expected start date (YYYY-MM-DD). For date ranges, use the earliest expected date. Can be empty if not applicable.
+- **`expected_end_date`** - Expected end date (YYYY-MM-DD). For date ranges, use the latest expected date. Can be empty if not applicable.
 
 #### Answer Quality Evaluation
 
-- **`expected_answer`** - Expected answer text for LLM-as-a-judge comparison
+- **`expected_answer`** - Expected answer text for LLM-as-a-judge comparison. Can be empty if not applicable.
 
 ### Optional Columns (For Review/Analysis)
 
-These columns are helpful for test management but not required for execution:
+These columns are helpful for test management but not required for execution. The CSV loader accepts any additional columns via `extra="allow"` in the data model:
 
-- **`expected_aoi_name`** - Human-readable AOI name (for review)
-- **`expected_aoi_source`** - Expected AOI source (for review, not evaluated)
-- **`expected_aoi_subtype`** - Expected AOI subtype (for review, not evaluated)
-- **`expected_dataset_name`** - Human-readable dataset name (for review)
 - **`priority`** - Test priority ("high", "medium", "low")
+- Any other custom columns for tracking or analysis
 
 ## Tool Evaluation Details
 
@@ -160,28 +159,38 @@ These columns are helpful for test management but not required for execution:
 
 ## Running E2E Tests
 
-Simple end-to-end agent test runner with support for both local and API testing.
+Simple end-to-end agent test runner for API testing.
 
 ### Usage Examples
 
-#### Basic usage
 ```bash
-# Basic run with API token as argument
-python -m gnw_evals.core --api-token your_token
+# Basic run with manual API token specification
+uv run gnw_evals --api-token your_token
 
 # Or set API token via environment variable
 export API_TOKEN=your_token
-python -m gnw_evals.core
+uv run gnw_evals
 
 # With custom API endpoint
-python -m gnw_evals.core --api-token your_token --api-base-url http://localhost:8000
+uv run gnw_evals --api-token your_token --api-base-url http://localhost:8000
 
-# Run specific number of tests
-python -m gnw_evals.core --api-token your_token --sample-size 5
+# Run specific number of tests (default: 5)
+uv run gnw_evals --api-token your_token --sample-size 10
+
+# Run all tests
+uv run gnw_evals --api-token your_token --sample-size -1
 
 # Filter by test group
-python -m gnw_evals.core --api-token your_token --test-group-filter rel-accuracy
-python -m gnw_evals.core --api-token your_token --test-group-filter dataset --sample-size 10
+uv run gnw_evals --api-token your_token --test-group-filter rel-accuracy
+
+# Filter by status (comma-separated)
+uv run gnw_evals --api-token your_token --status-filter ready,rerun
+
+# Combine filters
+uv run gnw_evals --api-token your_token --test-group-filter dataset --sample-size 10 --num-workers 3
+
+# Use custom test file
+uv run gnw_evals --api-token your_token --test-file data/my_tests.csv
 ```
 
 
@@ -196,14 +205,21 @@ Tests generate two CSV files in the root directory:
 ## Scoring Summary
 
 **Overall Score Calculation:**
+The overall score is calculated dynamically based on which evaluation components are present in the test case:
 ```
-overall_score = (aoi_score + dataset_score + pull_data_score + answer_score) / 4
+overall_score = sum(present_scores) / count(present_scores)
 ```
+
+Scores are included only if the corresponding expected data is provided:
+- `aoi_score` - Included if `expected_aoi_ids` is provided
+- `dataset_score` - Included if `expected_dataset_id` is provided
+- `pull_data_score` - Included if `expected_dataset_id` is provided (data pull is evaluated when a dataset is expected)
+- `answer_score` - Included if `expected_answer` is provided
 
 **Pass Threshold:** ≥ 0.7 (70%)
 
 **Individual Tool Weights:**
-- Each tool contributes equally (25%) to overall score
+- Each present tool contributes equally to the overall score (e.g., if 3 tools are evaluated, each contributes 33.3%)
 - Within each tool, sub-components have different weights as documented above
 
 ## Gold Standard Test Set Guidelines
@@ -252,7 +268,7 @@ query,expected_answer,test_group,status
 
 **Optional fields** (if you want to validate individual tools):
 ```csv
-expected_aoi_id,expected_subregion,expected_dataset_id,expected_context_layer,expected_start_date,expected_end_date
+expected_aoi_ids,expected_subregion,expected_dataset_id,expected_context_layer,expected_start_date,expected_end_date
 ```
 
 **Note:** For gold standard, set `test_group="gold"` and focus on final answer quality only. Individual tool validation is optional since the goal is end-to-end success without clarification.
@@ -299,7 +315,7 @@ For gold standard tests:
 
 ## Common Issues and Troubleshooting
 
-1. **Empty Results:** Check that `status` column contains "ready" or "rerun"
+1. **Empty Results:** Check that `status` column contains "ready" or "rerun", and use `--status-filter ready,rerun` to filter by status. Without `--status-filter`, all rows are included regardless of status.
 2. **AOI Mismatches:** Verify GADM ID format (e.g., "USA.5_1" not "USA_5_1")
 3. **Date Format Issues:** Use consistent date format (YYYY-MM-DD)
 4. **API Authentication:** Ensure `--api-token` is provided or `API_TOKEN` environment variable is set (required)
