@@ -30,7 +30,7 @@ class APITestRunner(BaseTestRunner):
             TestResult with evaluation scores and metadata
 
         """
-        thread_id = expected_data.thread_id or uuid4().hex
+        thread_id =  str(uuid4())
         trace_url = None
 
         try:
