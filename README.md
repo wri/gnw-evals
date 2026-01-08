@@ -1,5 +1,41 @@
 # Global Nature Watch Agent E2E Testing
 
+## Quickstart
+
+Install the package and its dependencies into your env
+
+```bash
+uv sync
+```
+
+Copy env example file
+
+```bash
+cp .env.example .env
+```
+
+Then set your GNW machine user key and anthropic api key in the `.env` file,
+then run the evals like this
+
+```bash
+uv run gnw_evals
+```
+
+By default this will read tests from a google sheet with
+gold standard tests and evaluate the staging environment.
+
+You can change multiple aspects of the runner like what tests to run
+and parallelisation of the tests.
+
+To see the available config options run
+
+```bash
+uv run gnw_evals --help
+```
+
+You can also set all of these variables in the `.env` file as
+an alternative to passing them on the cli command.
+
 ## Overview
 
 The E2E testing framework evaluates the complete agent workflow by testing four core tools:
