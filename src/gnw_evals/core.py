@@ -189,7 +189,7 @@ def _print_csv_summary(results: list[TestResult]) -> None:
 )
 @click.option(
     "--sample-size",
-    default=1,
+    default=5,
     type=int,
     envvar="SAMPLE_SIZE",
     help="Sample size: 1 means run single test (CI/CD friendly), -1 means run all rows (can also be set via SAMPLE_SIZE env var)",
@@ -252,6 +252,19 @@ def run_evals(
     offset: int,
 ):
     """Run main E2E test function for CSV based evaluation."""
+    print("\n" + "=" * 60)
+    print("EVALUATION CONFIGURATION")
+    print("=" * 60)
+    print(f"  API Base URL:      {api_base_url}")
+    print(f"  Sample Size:       {sample_size}")
+    print(f"  Test File:         {test_file}")
+    print(f"  Test Group Filter: {test_group_filter or 'None'}")
+    print(f"  Status Filter:     {status_filter or 'None'}")
+    print(f"  Output Filename:   {output_filename or 'Auto-generated'}")
+    print(f"  Num Workers:       {num_workers}")
+    print(f"  Random Seed:       {random_seed}")
+    print(f"  Offset:            {offset}")
+    print("=" * 60 + "\n")
     # Validate API token
     if not api_token:
         raise click.BadParameter(
