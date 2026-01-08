@@ -37,3 +37,6 @@ jobs:
 
       - name: Run pytest
         run: uv run pytest --verbose
+
+      - name: Test cli
+        run: uv run gnw_evals --help
