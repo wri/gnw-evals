@@ -178,7 +178,8 @@ def _print_csv_summary(results: list[TestResult]) -> None:
 @click.option(
     "--api-base-url",
     default="https://api.staging.globalnaturewatch.org",
-    help="Base URL for API tests",
+    envvar="API_BASE_URL",
+    help="Base URL for API tests (can also be set via API_BASE_URL env var)",
 )
 @click.option(
     "--api-token",
@@ -190,45 +191,53 @@ def _print_csv_summary(results: list[TestResult]) -> None:
     "--sample-size",
     default=1,
     type=int,
-    help="Sample size: 1 means run single test (CI/CD friendly), -1 means run all rows",
+    envvar="SAMPLE_SIZE",
+    help="Sample size: 1 means run single test (CI/CD friendly), -1 means run all rows (can also be set via SAMPLE_SIZE env var)",
 )
 @click.option(
     "--test-file",
     default="https://docs.google.com/spreadsheets/d/1_G1aq2fSCPqhT6w55_Od6VU7sov76t1lHQTBeZZxbdM/export?format=csv&gid=0",
-    help="Path to test dataset CSV file (relative to project root)",
+    envvar="TEST_FILE",
+    help="Path to test dataset CSV file (relative to project root) (can also be set via TEST_FILE env var)",
 )
 @click.option(
     "--test-group-filter",
     default=None,
-    help="Filter by test_group column",
+    envvar="TEST_GROUP_FILTER",
+    help="Filter by test_group column (can also be set via TEST_GROUP_FILTER env var)",
 )
 @click.option(
     "--status-filter",
     default=None,
-    help="Filter by status column (comma-separated values)",
+    envvar="STATUS_FILTER",
+    help="Filter by status column (comma-separated values) (can also be set via STATUS_FILTER env var)",
 )
 @click.option(
     "--output-filename",
     default=None,
-    help="Custom filename (timestamp will be appended)",
+    envvar="OUTPUT_FILENAME",
+    help="Custom filename (timestamp will be appended) (can also be set via OUTPUT_FILENAME env var)",
 )
 @click.option(
     "--num-workers",
     default=1,
     type=int,
-    help="Number of parallel workers for test execution",
+    envvar="NUM_WORKERS",
+    help="Number of parallel workers for test execution (can also be set via NUM_WORKERS env var)",
 )
 @click.option(
     "--random-seed",
     default=0,
     type=int,
-    help="Random seed for sampling (0 means no random sampling)",
+    envvar="RANDOM_SEED",
+    help="Random seed for sampling (0 means no random sampling) (can also be set via RANDOM_SEED env var)",
 )
 @click.option(
     "--offset",
     default=0,
     type=int,
-    help="Offset for getting subset. Ignored if random_seed is not 0",
+    envvar="OFFSET",
+    help="Offset for getting subset. Ignored if random_seed is not 0 (can also be set via OFFSET env var)",
 )
 def run_evals(
     api_base_url: str,
