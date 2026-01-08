@@ -125,7 +125,7 @@ class TestConfig:
     api_base_url: str = "http://localhost:8000"
     api_token: str = "test_token"
     sample_size: int = 3
-    test_file: str = "data/gnw-eval-sets-gold.csv"
+    test_file: str = "gnw-eval-sets-gold.csv"
     test_group_filter: str | None = None
     status_filter: list[str] | None = None
     output_filename: str = "test_results.csv"

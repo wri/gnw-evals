@@ -36,9 +36,10 @@ uv run gnw_evals --help
 You can also set all of these variables in the `.env` file as
 an alternative to passing them on the cli command.
 
-## Overview
+## Evaluation Method Overview
 
 The E2E testing framework evaluates the complete agent workflow by testing four core tools:
+
 1. **AOI Selection** (`pick_aoi`) - Evaluates location selection accuracy
 2. **Dataset Selection** (`pick_dataset`) - Evaluates dataset choice accuracy
 3. **Data Pull** (`pull_data`) - Evaluates data retrieval success
@@ -59,6 +60,7 @@ When a test case can have multiple valid values for a field (e.g., comparing mul
 The following columns are **required** for the E2E tests to run properly:
 
 #### Core Test Data
+
 - **`query`** - The user query to test (string)
 - **`test_group`** - Test grouping for filtering (e.g., "dataset", "rel-accuracy", "abs-accuracy" etc)
 - **`status`** - Test execution status:
@@ -67,6 +69,7 @@ The following columns are **required** for the E2E tests to run properly:
   - `"skip"` - Test should be skipped/ignored during execution
 
 #### AOI Selection Evaluation
+
 - **`expected_aoi_ids`** - Expected AOI identifier (e.g., "BRA", "USA.5_1", "IND.26_1"). For queries comparing multiple areas, use semicolons to separate values (e.g., "IND.21_1;IND.27_1" for Odisha and Maharashtra).
 - **`expected_subregion`** - Expected subregion filter when user explicitly requests sub-administrative units. Only used when query explicitly mentions comparing or analyzing sub-units within a larger area. Valid values:
   - `"country"` - Countries within a region
@@ -79,20 +82,19 @@ The following columns are **required** for the E2E tests to run properly:
   - `"wdpa"` - Protected areas (World Database on Protected Areas)
   - `"landmark"` - Geographic landmarks
 
-  **Examples:**
-  - Query: "Compare deforestation across states in Brazil" → `expected_subregion: "state"`
-  - Query: "Show districts in Odisha with highest alerts" → `expected_subregion: "district"`
-  - Query: "Deforestation in Brazil" (no sub-unit mentioned) → `expected_subregion: ""` (empty)
 
 #### Dataset Selection Evaluation
+
 - **`expected_dataset_id`** - Expected dataset ID (0-8 for current datasets). For queries that may match multiple datasets, separate IDs with semicolons (e.g., "0;1" for DIST-ALERT and another dataset).
 - **`expected_context_layer`** - Expected context layer (varies by dataset). Multiple values can be separated by semicolons if multiple layers are acceptable.
 
 #### Data Pull Evaluation
+
 - **`expected_start_date`** - Expected start date (YYYY-MM-DD). For date ranges, use the earliest expected date.
 - **`expected_end_date`** - Expected end date (YYYY-MM-DD). For date ranges, use the latest expected date.
 
 #### Answer Quality Evaluation
+
 - **`expected_answer`** - Expected answer text for LLM-as-a-judge comparison
 
 ### Optional Columns (For Review/Analysis)
@@ -104,26 +106,6 @@ These columns are helpful for test management but not required for execution:
 - **`expected_aoi_subtype`** - Expected AOI subtype (for review, not evaluated)
 - **`expected_dataset_name`** - Human-readable dataset name (for review)
 - **`priority`** - Test priority ("high", "medium", "low")
-
-## Available Datasets
-
-For the complete list of available datasets with their IDs, names, context layers, date ranges, and other details, refer to:
-
-**`/src/tools/analytics_datasets.yml`**
-
-This YAML file contains the authoritative dataset definitions including:
-- `dataset_id` - Use for `expected_dataset_id` field
-- `dataset_name` - Human-readable name
-- `context_layers` - Available values for `expected_context_layer` field
-- `start_date` / `end_date` - Valid date ranges for `expected_start_date` / `expected_end_date`
-- `content_date` - Coverage period description
-- `resolution`, `update_frequency`, and other metadata
-
-**Key Points:**
-- Dataset IDs currently range from 0-8
-- Only Dataset ID 0 (DIST-ALERT) has context layers: `driver`, `natural_lands`, `grasslands`, `land_cover`
-- Most datasets have no context layers (use empty string or null for `expected_context_layer`)
-- Date ranges vary by dataset - check `start_date`/`end_date` fields in YAML
 
 ## Tool Evaluation Details
 
@@ -139,20 +121,6 @@ This YAML file contains the authoritative dataset definitions including:
 - Supports clarification detection via LLM-as-a-judge
 - Empty expected_subregion treated as positive match
 
-**Evaluated Fields:**
-```python
-{
-    "aoi_score": 0.0-1.0,
-    "actual_id": "selected_aoi_id",
-    "actual_name": "selected_aoi_name",
-    "actual_subtype": "selected_subtype",
-    "actual_source": "selected_source",
-    "actual_subregion": "selected_subregion",
-    "match_aoi_id": True/False,
-    "match_subregion": True/False
-}
-```
-
 ### 2. Dataset Selection (`evaluate_dataset_selection`)
 
 **Scoring System (Additive):**
@@ -164,16 +132,6 @@ This YAML file contains the authoritative dataset definitions including:
 - Supports clarification detection via LLM-as-a-judge
 - Empty expected_context_layer treated as positive match
 - String normalization for comparison
-
-**Evaluated Fields:**
-```python
-{
-    "dataset_score": 0.0-1.0,
-    "actual_dataset_id": "selected_dataset_id",
-    "actual_dataset_name": "selected_dataset_name",
-    "actual_context_layer": "selected_context_layer"
-}
-```
 
 ### 3. Data Pull (`evaluate_data_pull`)
 
@@ -188,19 +146,6 @@ This YAML file contains the authoritative dataset definitions including:
 - Empty expected dates treated as positive match
 - Supports clarification detection
 
-**Evaluated Fields:**
-```python
-{
-    "pull_data_score": 0.0-1.0,
-    "row_count": actual_row_count,
-    "min_rows": minimum_expected_rows,
-    "data_pull_success": True/False,
-    "date_success": True/False,
-    "actual_start_date": "actual_start_date",
-    "actual_end_date": "actual_end_date"
-}
-```
-
 ### 4. Final Answer (`evaluate_final_answer`)
 
 **Scoring System:**
@@ -212,14 +157,6 @@ This YAML file contains the authoritative dataset definitions including:
 - Compares expected vs actual answer semantically
 - Extracts insights from charts_data or final messages
 - Handles Gemini's list-based content structure
-
-**Evaluated Fields:**
-```python
-{
-    "answer_score": 0.0-1.0,
-    "actual_answer": "generated_insight_text"
-}
-```
 
 ## Running E2E Tests
 
@@ -241,73 +178,16 @@ python -m gnw_evals.core --api-token your_token --api-base-url http://localhost:
 
 # Run specific number of tests
 python -m gnw_evals.core --api-token your_token --sample-size 5
-```
 
-#### Filter by test group
-```bash
+# Filter by test group
 python -m gnw_evals.core --api-token your_token --test-group-filter rel-accuracy
 python -m gnw_evals.core --api-token your_token --test-group-filter dataset --sample-size 10
 ```
 
-#### Filter by status
-```bash
-# Run only tests with status "ready"
-python -m gnw_evals.core --api-token your_token --status-filter ready
-
-# Run tests with status "ready" or "rerun"
-python -m gnw_evals.core --api-token your_token --status-filter ready,rerun
-```
-
-#### Custom output filename (timestamp always appended)
-```bash
-python -m gnw_evals.core --api-token your_token --output-filename my_test_run
-python -m gnw_evals.core --api-token your_token --output-filename alerts_test --test-group-filter alerts
-```
-
-#### Parallel execution
-```bash
-python -m gnw_evals.core --api-token your_token --num-workers 10 --sample-size 20
-python -m gnw_evals.core --api-token your_token --num-workers 5
-```
-
-#### Sampling configuration
-```bash
-# Use specific random seed for reproducible sampling
-python -m gnw_evals.core --api-token your_token --random-seed 123 --sample-size 10
-
-# Start sampling from a specific offset
-python -m gnw_evals.core --api-token your_token --offset 5 --sample-size 10
-```
-
-#### Custom test file
-```bash
-python -m gnw_evals.core --api-token your_token --test-file data/my_custom_tests.csv
-```
-
-#### Get help
-```bash
-python -m gnw_evals.core --help
-```
-
-### Command Line Arguments
-
-#### Required Arguments
-- **`--api-token`** - Bearer token for API authentication (required, can also be set via `API_TOKEN` environment variable)
-
-#### Optional Arguments
-- **`--api-base-url`** - API endpoint URL (default: `http://localhost:8000`)
-- **`--sample-size`** - Number of test cases to run (default: `1`, use `-1` for all rows)
-- **`--test-file`** - Path to CSV test file (default: `data/e2e_test_dataset.csv`)
-- **`--test-group-filter`** - Filter tests by test_group column (optional)
-- **`--status-filter`** - Filter tests by status column, comma-separated (e.g., `ready,rerun`)
-- **`--output-filename`** - Custom filename for results (timestamp will be appended)
-- **`--num-workers`** - Number of parallel workers (default: `1`)
-- **`--random-seed`** - Random seed for sampling (default: `0`, means no random sampling)
-- **`--offset`** - Offset for getting subset (default: `0`, ignored if random_seed is 0)
 
 ## Output Files
 
-Tests generate two CSV files in `data/tests/`:
+Tests generate two CSV files in the root directory:
 
 1. **`*_summary.csv`** - Query and scores only
 2. **`*_detailed.csv`** - Expected vs actual values side-by-side
@@ -325,21 +205,6 @@ overall_score = (aoi_score + dataset_score + pull_data_score + answer_score) / 4
 **Individual Tool Weights:**
 - Each tool contributes equally (25%) to overall score
 - Within each tool, sub-components have different weights as documented above
-
-## Test Data Requirements Summary
-
-### Minimum Required Columns for Functional Tests:
-```
-query, expected_aoi_ids, expected_subregion, expected_dataset_id,
-expected_context_layer, expected_start_date, expected_end_date,
-expected_answer, test_group, status
-```
-
-### Optional for Review/Management:
-```
-expected_aoi_name, expected_aoi_source, expected_aoi_subtype,
-expected_dataset_name, priority
-```
 
 ## Gold Standard Test Set Guidelines
 
