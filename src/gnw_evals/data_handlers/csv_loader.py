@@ -22,7 +22,7 @@ class CSVLoader:
         """Load test data from CSV file.
 
         Args:
-            csv_file: Path to CSV test file
+            csv_file: Path or URL to CSV test file
             sample_size: Number of test cases to load (0 means all)
             test_group_filter: Filter by test_group column (optional)
             status_filter: Filter by status column (optional)
