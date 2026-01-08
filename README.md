@@ -8,8 +8,8 @@ Install the package and its dependencies into your env
 uv sync
 ```
 
-Copy env example env file and set your GNW machine user key and
-anthropic api key in the new `.env` file,
+Copy env example env file and set your **GNW machine user key** and
+**anthropic api key** in the new `.env` file,
 
 ```bash
 cp .env.example .env
