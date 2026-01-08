@@ -1,12 +1,12 @@
 """Unit tests for run_evals functionality."""
 
 import json
+from dataclasses import dataclass
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from gnw_evals.core import run_csv_tests
-from gnw_evals.utils.config import TestConfig
 from gnw_evals.utils.eval_types import ExpectedData
 
 
@@ -116,6 +116,22 @@ def mock_agent_state():
         ],
         "messages": [],
     }
+
+
+@dataclass
+class TestConfig:
+    """Test configuration dataclass."""
+
+    api_base_url: str = "http://localhost:8000"
+    api_token: str = "test_token"
+    sample_size: int = 3
+    test_file: str = "data/gnw-eval-sets-gold.csv"
+    test_group_filter: str | None = None
+    status_filter: list[str] | None = None
+    output_filename: str = "test_results.csv"
+    num_workers: int = 1
+    random_seed: int = 0
+    offset: int = 0
 
 
 @pytest.fixture

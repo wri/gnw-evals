@@ -194,7 +194,7 @@ def _print_csv_summary(results: list[TestResult]) -> None:
 )
 @click.option(
     "--test-file",
-    default="data/gnw-eval-sets-gold.csv",
+    default="https://docs.google.com/spreadsheets/d/1_G1aq2fSCPqhT6w55_Od6VU7sov76t1lHQTBeZZxbdM/export?format=csv&gid=0",
     help="Path to test dataset CSV file (relative to project root)",
 )
 @click.option(

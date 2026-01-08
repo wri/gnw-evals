@@ -33,9 +33,11 @@ class CSVLoader:
             List of ExpectedData objects
 
         """
-        # Read CSV as strings and clean up
-        project_root = Path(__file__).parent.parent.parent.parent
-        df = pd.read_csv(project_root / csv_file, dtype=str, keep_default_na=False)
+        if not csv_file.startswith("http"):
+            project_root = Path(__file__).parent.parent.parent.parent
+            csv_file = project_root / csv_file
+
+        df = pd.read_csv(csv_file, dtype=str, keep_default_na=False)
 
         for field in ExpectedData.model_fields.keys():
             if (
