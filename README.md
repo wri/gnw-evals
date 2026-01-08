@@ -8,14 +8,14 @@ Install the package and its dependencies into your env
 uv sync
 ```
 
-Copy env example file
+Copy env example env file and set your GNW machine user key and
+anthropic api key in the new `.env` file,
 
 ```bash
 cp .env.example .env
 ```
 
-Then set your GNW machine user key and anthropic api key in the `.env` file,
-then run the evals like this
+Then run the evals like this
 
 ```bash
 uv run gnw_evals
