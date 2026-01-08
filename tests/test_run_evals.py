@@ -137,18 +137,7 @@ class TestConfig:
 @pytest.fixture
 def mock_config():
     """Create a mock test configuration."""
-    return TestConfig(
-        api_base_url="http://localhost:8000",
-        api_token="test_token",
-        sample_size=3,
-        test_file="data/gnw-eval-sets-gold.csv",
-        test_group_filter=None,
-        status_filter=None,
-        output_filename="test_results.csv",
-        num_workers=1,
-        random_seed=0,
-        offset=0,
-    )
+    return TestConfig()
 
 
 @pytest.mark.asyncio
