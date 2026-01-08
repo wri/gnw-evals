@@ -252,19 +252,23 @@ def run_evals(
     offset: int,
 ):
     """Run main E2E test function for CSV based evaluation."""
-    print("\n" + "=" * 60)
-    print("EVALUATION CONFIGURATION")
-    print("=" * 60)
-    print(f"  API Base URL:      {api_base_url}")
-    print(f"  Sample Size:       {sample_size}")
-    print(f"  Test File:         {test_file}")
-    print(f"  Test Group Filter: {test_group_filter or 'None'}")
-    print(f"  Status Filter:     {status_filter or 'None'}")
-    print(f"  Output Filename:   {output_filename or 'Auto-generated'}")
-    print(f"  Num Workers:       {num_workers}")
-    print(f"  Random Seed:       {random_seed}")
-    print(f"  Offset:            {offset}")
-    print("=" * 60 + "\n")
+    print(
+        f"""
+========================
+EVALUATION CONFIGURATION
+========================
+  API Base URL:      {api_base_url}
+  Sample Size:       {sample_size}
+  Test File:         {test_file}
+  Test Group Filter: {test_group_filter or "None"}
+  Status Filter:     {status_filter or "None"}
+  Output Filename:   {output_filename or "Auto-generated"}
+  Num Workers:       {num_workers}
+  Random Seed:       {random_seed}
+  Offset:            {offset}
+========================
+""",
+    )
     # Validate API token
     if not api_token:
         raise click.BadParameter(
