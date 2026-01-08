@@ -198,7 +198,7 @@ def _print_csv_summary(results: list[TestResult]) -> None:
     "--test-file",
     default="https://docs.google.com/spreadsheets/d/1_G1aq2fSCPqhT6w55_Od6VU7sov76t1lHQTBeZZxbdM/export?format=csv&gid=0",
     envvar="TEST_FILE",
-    help="Path to test dataset CSV file (relative to project root) (can also be set via TEST_FILE env var)",
+    help="Path or URL to test dataset CSV file (relative to project root) (can also be set via TEST_FILE env var)",
 )
 @click.option(
     "--test-group-filter",
