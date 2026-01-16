@@ -43,7 +43,7 @@ def evaluate_final_answer(
             "error": final_response,
         }
 
-    # Get Zeno Insight from charts data
+    # Get GNW Insight from charts data
     insight = charts_data[0].get("insight", "") if charts_data else ""
 
     if not insight:
