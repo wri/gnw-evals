@@ -196,10 +196,10 @@ uv run gnw_evals --api-token your_token --test-file data/my_tests.csv
 
 ## Output Files
 
-Tests generate two CSV files in the root directory:
+Tests generate two CSV files in the `outputs/` directory at the project root:
 
-1. **`*_summary.csv`** - Query and scores only
-2. **`*_detailed.csv`** - Expected vs actual values side-by-side
+1. **`outputs/*_summary.csv`** - Query and scores only
+2. **`outputs/*_detailed.csv`** - Expected vs actual values side-by-side
 
 
 ## Scoring Summary

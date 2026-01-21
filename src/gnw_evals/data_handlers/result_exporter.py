@@ -1,8 +1,8 @@
 """Result export functionality for E2E testing framework."""
 
 import csv
-import os
 from datetime import datetime
+from pathlib import Path
 
 from gnw_evals.utils.eval_types import TestResult
 
@@ -38,8 +38,8 @@ class ResultExporter:
             clean_filename = filename.replace(".csv", "")
             base_filename = f"{clean_filename}_{timestamp}"
 
-        # Create directory if needed
-        os.makedirs(os.path.dirname(f"{base_filename}_summary.csv"), exist_ok=True)
+        output_dir = Path(__file__).parent.parent.parent.parent / "outputs"
+        output_dir.mkdir(exist_ok=True)
 
         # 1. Summary CSV - just query and scores
         summary_fields = [
@@ -55,7 +55,12 @@ class ResultExporter:
         ]
 
         summary_filename = f"{base_filename}_summary.csv"
-        with open(summary_filename, "w", newline="", encoding="utf-8") as f:
+        with open(
+            output_dir / summary_filename,
+            "w",
+            newline="",
+            encoding="utf-8",
+        ) as f:
             writer = csv.DictWriter(f, fieldnames=summary_fields, extrasaction="ignore")
             writer.writeheader()
             writer.writerows([result.to_dict() for result in results])
@@ -109,7 +114,12 @@ class ResultExporter:
         ]
 
         detailed_filename = f"{base_filename}_detailed.csv"
-        with open(detailed_filename, "w", newline="", encoding="utf-8") as f:
+        with open(
+            output_dir / detailed_filename,
+            "w",
+            newline="",
+            encoding="utf-8",
+        ) as f:
             writer = csv.DictWriter(
                 f,
                 fieldnames=detailed_fields,

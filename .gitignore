@@ -209,5 +209,8 @@ __marimo__/
 # Evals data
 data/
 
+# Outputs
+outputs/
+
 # Uv lock file
 uv.lock
