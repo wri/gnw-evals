@@ -88,16 +88,35 @@ Clarification requests returned score of 1.0 in:
 ## Task 3: Answer Score - No Data Scenario
 
 **Priority:** Medium  
-**Status:** [ ]  
+**Status:** [x]  
 **Category:** Fix
 
 ### Problem
-If no charts data or answer, the answer score is zero. This seems different than providing an incorrect answer.
+If no charts data or answer, the answer score is zero. This seems different than providing an incorrect answer. Additionally, there are two potential sources of answers: `charts_data[0]["insight"]` (structured answer) and `messages[-1].content` (raw LLM response), but only one was being evaluated.
 
-### Expected Behavior
-Distinguish between:
-- No data/answer provided → return `None` (check not applicable)
-- Incorrect answer provided → return score 0.0
+### Old Behavior
+- Single `answer_score` field evaluated only `charts_data[0]["insight"]`
+- When no `charts_data` exists → `answer_score = 0` (treated as wrong answer)
+- This penalized the agent twice: once for pipeline failure, again for "wrong" answer
+- No visibility into agent's raw message responses
+
+### Updated Behavior
+- Split into **two separate scores**:
+  - `charts_answer_score` (0/1/None) - evaluates `charts_data[0]["insight"]`
+  - `agent_answer_score` (0/1/None) - evaluates `messages[-1].content`
+- When no `charts_data` exists → `charts_answer_score = None` (not applicable)
+- When no `messages` exist → `agent_answer_score = None` (not applicable)
+- When `charts_data` exists but `insight = ""` → `charts_answer_score = 0` (evaluated as wrong)
+- Both scores included in overall score when `expected_answer` is provided
+- None values excluded from averaging (no double penalty)
+- CSV exports now include 4 columns instead of 2: `charts_answer_score`, `agent_answer_score`, `actual_charts_answer`, `actual_agent_answer`
+
+### Implementation Details
+- Modified 6 files: `eval_types.py`, `answer_evaluator.py`, `base.py`, `result_exporter.py`, `core.py`, and test file
+- Complete rewrite of `evaluate_final_answer()` to extract and evaluate both answer sources
+- Added 3 new unit tests validating the new behavior
+- Updated 2 existing tests to use new field names
+- All 17 tests pass (4 integration + 7 Task 1 + 3 Task 2 + 3 Task 3 unit tests)
 
 ---
 
