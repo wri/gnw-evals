@@ -20,19 +20,21 @@ def evaluate_aoi_selection(
         expected_subregion: Expected subregion (e.g., "state-province", "country")
         query: Original user query for clarification detection
     Returns:
-        Dict with aoi_score (0 or 1), actual_id, actual_name, actual_subtype, actual_source, actual_subregion
+        Dict with aoi_id_match_score (0/1/None), subregion_match_score (0/1/None),
+        actual_id, actual_name, actual_subtype, actual_source, actual_subregion
 
     """
     if not expected_aoi_ids:
         return {
-            "aoi_score": None,
+            "aoi_id_match_score": None,
+            "subregion_match_score": None,
             "actual_id": None,
             "actual_name": None,
             "actual_subtype": None,
             "actual_source": None,
             "actual_subregion": None,
             "match_aoi_id": False,
-            "match_subregion": False,
+            "match_subregion": None,
         }
 
     aoi = agent_state.get("aoi")
@@ -48,7 +50,8 @@ def evaluate_aoi_selection(
         if clarification["is_clarification"]:
             # Agent appropriately asked for clarification - this is a pass
             return {
-                "aoi_score": 1.0,  # Full score for appropriate clarification
+                "aoi_id_match_score": 1.0,  # Full score for appropriate clarification
+                "subregion_match_score": 1.0,  # Full score for appropriate clarification
                 "actual_id": f"CLARIFICATION_REQUEST: {clarification['explanation']}",
                 "actual_name": "Agent requested clarification",
                 "actual_subtype": "clarification",
@@ -60,14 +63,15 @@ def evaluate_aoi_selection(
 
     if not aoi or not expected_aoi_ids:
         return {
-            "aoi_score": None,
+            "aoi_id_match_score": None,
+            "subregion_match_score": None,
             "actual_id": None,
             "actual_name": None,
             "actual_subtype": None,
             "actual_source": None,
             "actual_subregion": None,
             "match_aoi_id": False,
-            "match_subregion": False,
+            "match_subregion": None,
         }
 
     # Get actual AOI ID based on subtype
@@ -94,21 +98,20 @@ def evaluate_aoi_selection(
     expected_subregion_str = normalize_value(expected_subregion)
     actual_subregion_str = normalize_value(subregion)
 
-    # Additive scoring: AOI match = 0.75, subregion match = 0.25
-    aoi_score = 0.75 if match_aoi_id else 0
+    # Binary scoring: Each component is 0 or 1 (or None if not evaluated)
+    aoi_id_match_score = 1.0 if match_aoi_id else 0.0
 
-    # If expected subregion is empty, treat as positive match (0.25)
+    # If expected subregion is empty, return None (not evaluated)
     if not expected_subregion_str:
-        match_subregion = True
-        subregion_score = 0.25
+        match_subregion = None
+        subregion_match_score = None
     else:
         match_subregion = expected_subregion_str == actual_subregion_str
-        subregion_score = 0.25 if match_subregion else 0
-
-    score = aoi_score + subregion_score
+        subregion_match_score = 1.0 if match_subregion else 0.0
 
     return {
-        "aoi_score": score,
+        "aoi_id_match_score": aoi_id_match_score,
+        "subregion_match_score": subregion_match_score,
         "actual_id": actual_aoi_id,
         "actual_name": actual_aoi_name,
         "actual_subtype": actual_aoi_subtype,

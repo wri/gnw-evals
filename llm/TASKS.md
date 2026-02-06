@@ -18,25 +18,36 @@
 ## Task 1: Missing "Expected" Values Handling ⭐ FOUNDATIONAL
 
 **Priority:** High  
-**Status:** [ ]  
+**Status:** [x]  
 **Category:** Fix
 
 ### Problem
-Missing "Expected" values should result in `None` (NaN) score results, not positive scores. If no check is being done, no score should be given. Currently, empty expected values are treated as positive matches, awarding points incorrectly.
+Missing "Expected" values should result in `None` (NaN) score results, not positive scores. If no check is being done, no score should be given. Previously, empty expected values were treated as positive matches, awarding points incorrectly.
 
-### Current Behavior
+### Old Behavior
 - Empty `expected_subregion` → treated as match (0.25 points awarded)
 - Empty `expected_context_layer` → treated as match (0.25 points awarded)
 - Missing expected dates → treated as match (0.25 points awarded)
-- Missing `expected_answer` → correctly returns `None`
+- Missing `expected_answer` → correctly returned `None`
+- Additive scoring: AOI (0.75 + 0.25), Dataset (0.75 + 0.25), Data Pull (0.75 + 0.25)
 
-### Expected Behavior
-- If an expected field is missing/empty → return `None` for that score component
-- Never award points for missing expected values
-- Overall score calculation should exclude `None` values from averaging
+### Updated Behavior
+- Refactored to **separate binary scores** (0/1/None) for each check component:
+  - `aoi_id_match_score` (0/1/None) - returns None if no `expected_aoi_ids`
+  - `subregion_match_score` (0/1/None) - returns None if no `expected_subregion`
+  - `dataset_id_match_score` (0/1/None) - returns None if no `expected_dataset_id`
+  - `context_layer_match_score` (0/1/None) - returns None if no `expected_context_layer`
+  - `data_pull_exists_score` (0/1) - checks if data was pulled successfully
+  - `date_match_score` (0/1/None) - returns None if no expected dates
+  - `answer_score` (0/1/None) - returns None if no `expected_answer`
+- Overall score calculation excludes `None` values from averaging
+- Never awards points for missing expected values
+- CSV exports now include 7 separate score columns instead of 4 combined scores
 
-### Dependencies
-- **Blocks:** Task 5 (Overall Score Calculation needs to handle None values)
+### Implementation Details
+- Modified 8 files: `eval_types.py`, 3 evaluators, `base.py`, `result_exporter.py`, `core.py`, and test file
+- Added 7 new unit tests validating the new behavior
+- All 11 tests pass (4 integration + 7 unit tests)
 
 ---
 
@@ -100,26 +111,30 @@ Distinguish between:
 ## Task 5: Overall Score Calculation Improvements
 
 **Priority:** Medium  
-**Status:** [ ]  
+**Status:** [~]  
 **Category:** Fix
 
-### Current Issues
+### Current Issues (PARTIALLY RESOLVED)
 ```
-Currently: overall_score = round(sum(scores) / len(scores), 2)
+Old: overall_score = round(sum(scores) / len(scores), 2)  # Included None values, 0.25 increments
 ```
 
 **Problems:**
-- AOI, Dataset and Data Pull scores have 4 discrete values (0, 0.25, 0.5, 0.75, 1.0). This results in incorrect "Averaging"
+- ~~AOI, Dataset and Data Pull scores have 4 discrete values (0, 0.25, 0.5, 0.75, 1.0)~~ ✅ FIXED in Task 1
 - Currently all scores get equal weight, but they are dependent. If AOI selection fails, answer will surely be wrong
-- A perfect score for a test looks the same if only one check was made vs. if all checks passed
-- Example: row5 and row6 scores are very similar (0.2 apart) but one got the answer right, and the other skipped answer check
+- ~~A perfect score for a test looks the same if only one check was made vs. if all checks passed~~ ✅ FIXED in Task 1
+- ~~Example: row5 and row6 scores are very similar (0.2 apart) but one got the answer right, and the other skipped answer check~~ ✅ FIXED in Task 1
 
-### Proposed Solutions
-- Average the pipeline (AOI, dataset, data pull) into a "pipeline avg score". Keep answer score separate
-- OR, keep all scores 0/1. Create more scores if needed (e.g., separate AOI ID match and Subregion match scores)
+### Completed in Task 1
+- ✅ All scores now binary 0/1 (no more 0.25 increments)
+- ✅ Separate scores for each component (7 total score fields)
+- ✅ Overall score excludes None values from averaging
+- ✅ Scores only calculated when expected values are present
 
-### Dependencies
-- **Requires:** Task 1 (must handle None values properly)
+### Remaining Work
+- Weighted scoring: Consider giving different weights to different checks
+- Pipeline grouping: Average pipeline (AOI, dataset, data pull) separately from answer score
+- Dependency modeling: Account for dependent checks (e.g., if AOI fails, downstream likely fails)
 
 ---
 
@@ -236,3 +251,14 @@ Before CSV export, need these column name changes in "GNW eval sets" spreadsheet
 3. **Dataset:** `expected_dataset` → `expected_dataset_id`
 4. **Analysis:** `expected_result_standardized` → `expected_answer` + add `expected_dataset_id`
 
+
+
+--- 
+
+# notes 
+
+things to look into later: 
+* Currently data pull is only evaluated if expected_dataset_id exists. Should we make data pull checks independent?
+
+reminders: 
+* make sure readme.md is updated 

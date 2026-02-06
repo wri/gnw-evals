@@ -17,28 +17,31 @@ class TestResult(BaseModel):
     overall_score: float
     execution_time: str
 
-    # AOI evaluation fields
-    aoi_score: float | None = None
+    # AOI evaluation fields - separate binary scores (0/1/None)
+    aoi_id_match_score: float | None = None
+    subregion_match_score: float | None = None
     actual_id: str | None = None
     actual_name: str | None = None
     actual_subtype: str | None = None
     actual_source: str | None = None
     actual_subregion: str | None = None
     match_aoi_id: bool = False
-    match_subregion: bool = False
+    match_subregion: bool | None = None
 
-    # Dataset evaluation fields
-    dataset_score: float | None = None
+    # Dataset evaluation fields - separate binary scores (0/1/None)
+    dataset_id_match_score: float | None = None
+    context_layer_match_score: float | None = None
     actual_dataset_id: str | None = None
     actual_dataset_name: str | None = None
     actual_context_layer: str | None = None
 
-    # Data pull evaluation fields
-    pull_data_score: float | None = None
+    # Data pull evaluation fields - separate binary scores (0/1/None)
+    data_pull_exists_score: float | None = None
+    date_match_score: float | None = None
     row_count: int = 0
     min_rows: int = 1
     data_pull_success: bool = False
-    date_success: bool = False
+    date_success: bool | None = None
     actual_start_date: str | None = None
     actual_end_date: str | None = None
 

@@ -37,7 +37,10 @@ async def run_single_test(
         f"[COMPLETED] Test {test_index + 1}/{total_tests}: Score {score:.2f} ({duration:.1f}s)",
     )
     print(
-        f"  AOI: {result.aoi_score} | Dataset: {result.dataset_score} | Data: {result.pull_data_score} | Answer: {result.answer_score}",
+        f"  AOI_ID: {result.aoi_id_match_score} | Subregion: {result.subregion_match_score} | Dataset_ID: {result.dataset_id_match_score} | Context: {result.context_layer_match_score}",
+    )
+    print(
+        f"  Data_Pull: {result.data_pull_exists_score} | Date: {result.date_match_score} | Answer: {result.answer_score}",
     )
 
     return result
@@ -132,37 +135,83 @@ def _print_csv_summary(results: list[TestResult]) -> None:
     print(f"Average Score: {avg_score:.2f}")
     print(f"Passed (≥0.7): {passed}/{total_tests} ({passed / total_tests:.1%})")
 
-    # Tool-specific stats
-    aoi_nones = len([r for r in results if r.aoi_score is None])
-    if total_tests - aoi_nones > 0:
-        aoi_avg = sum(r.aoi_score for r in results if r.aoi_score is not None) / (
-            total_tests - aoi_nones
-        )
-        aoi_avg = f"{aoi_avg:.2f}"
-    else:
-        aoi_avg = None
-    print(f"AOI Selection: {aoi_avg} ({aoi_nones} None)")
+    # Component-specific stats (separate binary scores)
 
-    dataset_nones = len([r for r in results if r.dataset_score is None])
-    if total_tests - dataset_nones > 0:
-        dataset_avg = sum(
-            r.dataset_score for r in results if r.dataset_score is not None
-        ) / (total_tests - dataset_nones)
-        dataset_avg = f"{dataset_avg:.2f}"
+    # AOI ID Match
+    aoi_id_nones = len([r for r in results if r.aoi_id_match_score is None])
+    if total_tests - aoi_id_nones > 0:
+        aoi_id_avg = sum(
+            r.aoi_id_match_score for r in results if r.aoi_id_match_score is not None
+        ) / (total_tests - aoi_id_nones)
+        aoi_id_avg = f"{aoi_id_avg:.2f}"
     else:
-        dataset_avg = None
-    print(f"Dataset Selection: {dataset_avg} ({dataset_nones} None)")
+        aoi_id_avg = None
+    print(f"AOI ID Match: {aoi_id_avg} ({aoi_id_nones} None)")
 
-    data_nones = len([r for r in results if r.pull_data_score is None])
-    if total_tests - data_nones > 0:
-        data_avg = sum(
-            r.pull_data_score for r in results if r.pull_data_score is not None
-        ) / (total_tests - data_nones)
-        data_avg = f"{data_avg:.2f}"
+    # Subregion Match
+    subregion_nones = len([r for r in results if r.subregion_match_score is None])
+    if total_tests - subregion_nones > 0:
+        subregion_avg = sum(
+            r.subregion_match_score
+            for r in results
+            if r.subregion_match_score is not None
+        ) / (total_tests - subregion_nones)
+        subregion_avg = f"{subregion_avg:.2f}"
     else:
-        data_avg = None
-    print(f"Data Pull: {data_avg} ({data_nones} None)")
+        subregion_avg = None
+    print(f"Subregion Match: {subregion_avg} ({subregion_nones} None)")
 
+    # Dataset ID Match
+    dataset_id_nones = len([r for r in results if r.dataset_id_match_score is None])
+    if total_tests - dataset_id_nones > 0:
+        dataset_id_avg = sum(
+            r.dataset_id_match_score
+            for r in results
+            if r.dataset_id_match_score is not None
+        ) / (total_tests - dataset_id_nones)
+        dataset_id_avg = f"{dataset_id_avg:.2f}"
+    else:
+        dataset_id_avg = None
+    print(f"Dataset ID Match: {dataset_id_avg} ({dataset_id_nones} None)")
+
+    # Context Layer Match
+    context_nones = len([r for r in results if r.context_layer_match_score is None])
+    if total_tests - context_nones > 0:
+        context_avg = sum(
+            r.context_layer_match_score
+            for r in results
+            if r.context_layer_match_score is not None
+        ) / (total_tests - context_nones)
+        context_avg = f"{context_avg:.2f}"
+    else:
+        context_avg = None
+    print(f"Context Layer Match: {context_avg} ({context_nones} None)")
+
+    # Data Pull Exists
+    data_pull_nones = len([r for r in results if r.data_pull_exists_score is None])
+    if total_tests - data_pull_nones > 0:
+        data_pull_avg = sum(
+            r.data_pull_exists_score
+            for r in results
+            if r.data_pull_exists_score is not None
+        ) / (total_tests - data_pull_nones)
+        data_pull_avg = f"{data_pull_avg:.2f}"
+    else:
+        data_pull_avg = None
+    print(f"Data Pull Exists: {data_pull_avg} ({data_pull_nones} None)")
+
+    # Date Match
+    date_nones = len([r for r in results if r.date_match_score is None])
+    if total_tests - date_nones > 0:
+        date_avg = sum(
+            r.date_match_score for r in results if r.date_match_score is not None
+        ) / (total_tests - date_nones)
+        date_avg = f"{date_avg:.2f}"
+    else:
+        date_avg = None
+    print(f"Date Match: {date_avg} ({date_nones} None)")
+
+    # Answer
     answer_nones = len([r for r in results if r.answer_score is None])
     if total_tests - answer_nones > 0:
         answer_avg = sum(
