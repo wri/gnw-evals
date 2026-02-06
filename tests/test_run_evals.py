@@ -748,3 +748,142 @@ def test_overall_score_with_clarification():
     assert score == 1.0, (
         f"Expected 1.0, got {score}. Clarification score should be the only score"
     )
+
+
+# ============================================================================
+# TASK 3: UNIT TESTS FOR ANSWER SCORE SPLIT
+# ============================================================================
+
+
+def test_answer_evaluator_both_answers_present():
+    """Test that both charts and agent answers are evaluated when both exist.
+
+    Task 3: Verifies that we get two separate scores when both data sources exist.
+    Charts answer is correct (1.0), agent answer is wrong (0.0).
+    """
+    from unittest.mock import patch
+
+    from gnw_evals.evaluators import evaluate_final_answer
+
+    agent_state = {
+        "charts_data": [{"insight": "The answer is Brazil with 500 hectares."}],
+        "messages": [
+            type(
+                "obj", (object,), {"content": "Based on the data, Australia has more."}
+            )(),
+        ],
+    }
+
+    with patch("gnw_evals.evaluators.llm_judges.llm_judge") as mock_judge:
+        # First call for charts answer (correct), second call for agent answer (wrong)
+        mock_judge.side_effect = [1.0, 0.0]
+
+        result = evaluate_final_answer(
+            agent_state=agent_state,
+            expected_answer="Brazil",
+        )
+
+        assert result["charts_answer_score"] == 1.0, (
+            "Charts answer should score 1.0 (correct)"
+        )
+        assert result["agent_answer_score"] == 0.0, (
+            "Agent answer should score 0.0 (wrong)"
+        )
+        assert (
+            result["actual_charts_answer"] == "The answer is Brazil with 500 hectares."
+        ), "Should capture charts insight"
+        assert (
+            result["actual_agent_answer"] == "Based on the data, Australia has more."
+        ), "Should capture agent message"
+        # Verify LLM judge was called twice
+        assert mock_judge.call_count == 2, (
+            "Should call LLM judge twice (charts + agent)"
+        )
+
+
+def test_answer_evaluator_no_charts_data():
+    """Test that charts_answer_score is None when no charts_data exists.
+
+    Task 3: This is the key fix - when pipeline fails before charts generation,
+    charts_answer_score should be None (not applicable), not 0.
+    """
+    from unittest.mock import patch
+
+    from gnw_evals.evaluators import evaluate_final_answer
+
+    agent_state = {
+        "charts_data": [],  # No charts - pipeline failed earlier
+        "messages": [
+            type("obj", (object,), {"content": "I need more information to answer."})(),
+        ],
+    }
+
+    with patch("gnw_evals.evaluators.llm_judges.llm_judge") as mock_judge:
+        # Only agent answer is evaluated (returns 0 - wrong answer)
+        mock_judge.return_value = 0.0
+
+        result = evaluate_final_answer(
+            agent_state=agent_state,
+            expected_answer="Brazil",
+        )
+
+        assert result["charts_answer_score"] is None, (
+            "Charts score should be None when no charts_data exists (not applicable)"
+        )
+        assert result["agent_answer_score"] == 0.0, (
+            "Agent answer should still be evaluated and score 0.0"
+        )
+        assert result["actual_charts_answer"] is None, (
+            "No charts answer should be recorded"
+        )
+        assert result["actual_agent_answer"] == "I need more information to answer.", (
+            "Should capture agent message"
+        )
+        # Verify LLM judge was called only once (for agent answer)
+        assert mock_judge.call_count == 1, (
+            "Should call LLM judge only once (agent answer only)"
+        )
+
+
+def test_overall_score_with_both_answer_scores():
+    """Test that overall score calculation includes both answer scores.
+
+    Task 3: When expected_answer exists, overall score should include both
+    charts_answer_score and agent_answer_score in the average.
+    """
+    from gnw_evals.runners.api import APITestRunner
+    from gnw_evals.utils.eval_types import ExpectedData
+
+    runner = APITestRunner(api_base_url="http://test", api_token="test")
+
+    # Scenario: Charts answer correct (1.0), agent answer wrong (0.0)
+    evaluations = {
+        "aoi_id_match_score": 1.0,
+        "subregion_match_score": None,  # Not evaluated (missing expected)
+        "dataset_id_match_score": 1.0,
+        "context_layer_match_score": None,  # Not evaluated (missing expected)
+        "data_pull_exists_score": 1.0,
+        "date_match_score": None,  # Not evaluated (missing expected)
+        "charts_answer_score": 1.0,  # Charts answer correct
+        "agent_answer_score": 0.0,  # Agent answer wrong
+        "clarification_requested_score": None,
+    }
+
+    expected_data = ExpectedData(
+        expected_aoi_ids=["BRA"],
+        expected_subregion="",  # Empty
+        expected_dataset_id="0",
+        expected_context_layer="",  # Empty
+        expected_start_date="",  # Empty
+        expected_end_date="",  # Empty
+        expected_answer="Brazil",  # Present - both answer scores should be included
+    )
+
+    score = runner._calculate_overall_score(evaluations, expected_data)
+
+    # Should average: aoi_id (1.0), dataset_id (1.0), data_pull (1.0),
+    #                 charts_answer (1.0), agent_answer (0.0)
+    # = (1.0 + 1.0 + 1.0 + 1.0 + 0.0) / 5 = 0.8
+    assert score == 0.8, (
+        f"Expected 0.8, got {score}. Both answer scores should be included in average"
+    )
