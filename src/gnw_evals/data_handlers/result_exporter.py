@@ -52,6 +52,7 @@ class ResultExporter:
             "data_pull_exists_score",
             "date_match_score",
             "answer_score",
+            "clarification_requested_score",
             "execution_time",
             "error",
             "trace_url",
@@ -113,6 +114,9 @@ class ResultExporter:
             "expected_answer",
             "actual_answer",
             "answer_score",
+            # Clarification: Expected vs Actual (Task 2)
+            "expected_clarification",
+            "clarification_requested_score",
             # Metadata
             "test_group",
             "error",

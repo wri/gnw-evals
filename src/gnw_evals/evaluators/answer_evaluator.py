@@ -6,14 +6,20 @@ from gnw_evals.evaluators.llm_judges import llm_judge
 def evaluate_final_answer(
     agent_state: dict[str, Any],
     expected_answer: str,
+    expected_clarification: bool = False,
 ) -> dict[str, Any]:
     """Check if final answer contains key information from expected answer using LLM-as-a-judge.
 
     Args:
         agent_state: Final agent state after execution
         expected_answer: Expected answer text
+        expected_clarification: Whether clarification is expected (Task 2, kept for consistency)
     Returns:
         Dict with answer_score (0 or 1), actual_answer
+
+    Note:
+        Per Task 2 requirements, answer_score is evaluated independently of expected_clarification.
+        If expected_answer is provided, we evaluate it regardless of clarification expectations.
 
     """
     if not expected_answer:

@@ -11,6 +11,7 @@ def evaluate_data_pull(
     min_rows: int = 1,
     expected_start_date: str | None = None,
     expected_end_date: str | None = None,
+    expected_clarification: bool = False,
     query: str = "",
 ) -> dict[str, Any]:
     """Check if data was successfully pulled, or if the agent asked for clarification.
@@ -20,11 +21,13 @@ def evaluate_data_pull(
         min_rows: Minimum number of rows expected
         expected_start_date: Expected start date
         expected_end_date: Expected end date
+        expected_clarification: Whether clarification request is expected (Task 2)
         query: Original user query for clarification detection
 
     Returns:
         Dict with data_pull_exists_score (0/1), date_match_score (0/1/None),
-        row_count, min_rows, data_pull_success, date_success
+        clarification_requested_score (0/1/None), row_count, min_rows,
+        data_pull_success, date_success
 
     """
     raw_data = agent_state.get("raw_data")
@@ -33,13 +36,16 @@ def evaluate_data_pull(
     if not raw_data and query:
         clarification = llm_judge_clarification(agent_state, query)
         if clarification["is_clarification"]:
+            # Task 2: Score clarification based on whether it was expected
+            clarification_score = 1.0 if expected_clarification else 0.0
             return {
-                "data_pull_exists_score": 1.0,
-                "date_match_score": 1.0,
+                "clarification_requested_score": clarification_score,
+                "data_pull_exists_score": None,  # Not applicable when clarification given
+                "date_match_score": None,  # Not applicable when clarification given
                 "row_count": 0,
                 "min_rows": min_rows,
-                "data_pull_success": True,  # Treat clarification as success
-                "date_success": True,
+                "data_pull_success": False,
+                "date_success": None,
                 "actual_start_date": f"CLARIFICATION_REQUEST: {clarification['explanation']}",
                 "actual_end_date": "CLARIFICATION_REQUEST",
                 "error": "",
@@ -49,6 +55,7 @@ def evaluate_data_pull(
         return {
             "data_pull_exists_score": 0.0,
             "date_match_score": None,
+            "clarification_requested_score": None,
             "row_count": 0,
             "min_rows": min_rows,
             "data_pull_success": False,
@@ -88,6 +95,7 @@ def evaluate_data_pull(
     return {
         "data_pull_exists_score": data_pull_exists_score,
         "date_match_score": date_match_score,
+        "clarification_requested_score": None,  # No clarification when data pulled
         "row_count": row_count,
         "min_rows": min_rows,
         "data_pull_success": data_pull_success,

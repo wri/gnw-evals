@@ -83,6 +83,8 @@ class BaseTestRunner(ABC):
             # Answer evaluation fields
             answer_score=None,
             actual_answer=None,
+            # Clarification evaluation fields
+            clarification_requested_score=None,
             # Expected data
             **kwargs,
             # Error
@@ -100,21 +102,28 @@ class BaseTestRunner(ABC):
             agent_state,
             expected_data.expected_aoi_ids,
             expected_data.expected_subregion,
+            expected_data.expected_clarification,
             query,
         )
         dataset_eval = evaluate_dataset_selection(
             agent_state,
             expected_data.expected_dataset_id,
             expected_data.expected_context_layer,
+            expected_data.expected_clarification,
             query,
         )
         data_eval = evaluate_data_pull(
             agent_state,
             expected_start_date=expected_data.expected_start_date,
             expected_end_date=expected_data.expected_end_date,
+            expected_clarification=expected_data.expected_clarification,
             query=query,
         )
-        answer_eval = evaluate_final_answer(agent_state, expected_data.expected_answer)
+        answer_eval = evaluate_final_answer(
+            agent_state,
+            expected_data.expected_answer,
+            expected_data.expected_clarification,
+        )
 
         return {
             **aoi_eval,
@@ -131,12 +140,16 @@ class BaseTestRunner(ABC):
         """Calculate overall score from individual evaluation scores.
 
         Each check (AOI ID, subregion, dataset ID, context layer, data pull,
-        date match, answer) is scored independently as 0 or 1.
+        date match, answer, clarification) is scored independently as 0 or 1.
 
         Only non-None scores are included in the average. A score of None
         means that check was not applicable (missing expected value).
         """
         scores = []
+
+        # Clarification check (Task 2)
+        if expected_data.expected_clarification:
+            scores.append(evaluations.get("clarification_requested_score"))
 
         # AOI checks
         if expected_data.expected_aoi_ids:

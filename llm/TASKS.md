@@ -54,23 +54,34 @@ Missing "Expected" values should result in `None` (NaN) score results, not posit
 ## Task 2: Clarification Score Fix
 
 **Priority:** High  
-**Status:** [ ]  
+**Status:** [x]  
 **Category:** Fix
 
 ### Problem
 Currently scoring 1.0 (full points) when agent asks for clarification. This should be 0.0, unless there's a column specifically indicating clarification is expected/target behavior.
 
-### Current Behavior
-Clarification requests return score of 1.0 in:
-- AOI evaluator
-- Dataset evaluator
-- Data pull evaluator
+### Old Behavior
+Clarification requests returned score of 1.0 in:
+- AOI evaluator (lines 53-54)
+- Dataset evaluator (lines 44-45)
+- Data pull evaluator (lines 37-38)
 
-### Expected Behavior
-- Clarification requests should score **0.0** by default
-- Add optional `expected_clarification: bool` field (defaults to `False`)
-- If `expected_clarification=True` AND agent requests clarification → score 1.0
-- If `expected_clarification=False` AND agent requests clarification → score 0.0
+### Updated Behavior
+- Added `expected_clarification: bool` field (defaults to `False`) to ExpectedData and TestResult
+- Added `clarification_requested_score: float | None` field to TestResult
+- Clarification scoring logic:
+  - If `expected_clarification=True` AND agent requests clarification → `clarification_requested_score = 1.0`
+  - If `expected_clarification=False` AND agent requests clarification → `clarification_requested_score = 0.0`
+  - If no clarification requested → `clarification_requested_score = None`
+- When clarification is given, other scores (aoi_id, dataset_id, etc.) are set to `None` (not applicable)
+- `answer_score` is evaluated independently - if `expected_answer` is provided, it's evaluated regardless of clarification expectations
+- Overall score calculation includes `clarification_requested_score` when `expected_clarification=True`
+- CSV exports include `clarification_requested_score` and `expected_clarification` columns
+
+### Implementation Details
+- Modified 8 files: `eval_types.py`, 3 evaluators (`aoi_evaluator.py`, `dataset_evaluator.py`, `data_pull_evaluator.py`), `answer_evaluator.py`, `base.py`, `result_exporter.py`, and test file
+- Added 3 new unit tests validating the new behavior
+- All 14 tests pass (4 integration + 7 Task 1 unit tests + 3 Task 2 unit tests)
 
 ---
 
@@ -251,6 +262,8 @@ Before CSV export, need these column name changes in "GNW eval sets" spreadsheet
 3. **Dataset:** `expected_dataset` → `expected_dataset_id`
 4. **Analysis:** `expected_result_standardized` → `expected_answer` + add `expected_dataset_id`
 
+also
+* need a clarification expected column in the golden set. Add a few example rows 
 
 
 --- 
@@ -259,6 +272,10 @@ Before CSV export, need these column name changes in "GNW eval sets" spreadsheet
 
 things to look into later: 
 * Currently data pull is only evaluated if expected_dataset_id exists. Should we make data pull checks independent?
+* a bitmap style cheatsheet of results where each row is a eval row, and each column is a test score: neutral if None, green/red for pass/fail scores. 
+* write a file that explains all the scores and how they are calculated. input column from spreadsheet --> logic --> output score. remove this from the readme
 
 reminders: 
 * make sure readme.md is updated 
+* simplify the unittests. They're getting lengthly
+* before PRs, get rid of the references to "Task 1 / 2" etc. Those were emphemeral 

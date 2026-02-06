@@ -49,6 +49,9 @@ class TestResult(BaseModel):
     answer_score: float | None = None
     actual_answer: str | None = None
 
+    # Clarification evaluation fields (Task 2)
+    clarification_requested_score: float | None = None
+
     # Expected data fields
     expected_aoi_ids: list[str] = []
     expected_subregion: str = ""
@@ -59,6 +62,7 @@ class TestResult(BaseModel):
     expected_start_date: str = ""
     expected_end_date: str = ""
     expected_answer: str = ""
+    expected_clarification: bool = False
     test_group: str = "unknown"
     status: str = "ready"
 
@@ -84,6 +88,7 @@ class ExpectedData(BaseModel):
     expected_start_date: str = ""
     expected_end_date: str = ""
     expected_answer: str = ""
+    expected_clarification: bool = False
     test_group: str = "unknown"
     status: str = "ready"
     thread_id: str | None = None
