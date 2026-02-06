@@ -1,4 +1,9 @@
-"""Unit tests for run_evals functionality."""
+"""Unit tests for run_evals functionality.
+
+Usage
+$ uv run pytest tests/test_run_evals.py -v
+
+"""
 
 import json
 from dataclasses import dataclass
@@ -208,6 +213,37 @@ async def test_run_csv_tests_with_mocked_data(
                             "All results should have a query"
                         )
 
+                        # Verify new score structure (Task 1)
+                        first_result = results[0]
+                        assert hasattr(
+                            first_result,
+                            "aoi_id_match_score",
+                        ), "Should have aoi_id_match_score field"
+                        assert hasattr(
+                            first_result,
+                            "subregion_match_score",
+                        ), "Should have subregion_match_score field"
+                        assert hasattr(
+                            first_result,
+                            "dataset_id_match_score",
+                        ), "Should have dataset_id_match_score field"
+                        assert hasattr(
+                            first_result,
+                            "context_layer_match_score",
+                        ), "Should have context_layer_match_score field"
+                        assert hasattr(
+                            first_result,
+                            "data_pull_exists_score",
+                        ), "Should have data_pull_exists_score field"
+                        assert hasattr(
+                            first_result,
+                            "date_match_score",
+                        ), "Should have date_match_score field"
+                        assert hasattr(
+                            first_result,
+                            "answer_score",
+                        ), "Should have answer_score field"
+
                         # Check that CSVLoader was called correctly
                         mock_loader.load_test_data.assert_called_once_with(
                             mock_config.test_file,
@@ -357,3 +393,218 @@ async def test_run_csv_tests_with_empty_data(mock_config):
                 [],
                 mock_config.output_filename,
             )
+
+
+# ============================================================================
+# TASK 1: UNIT TESTS FOR MISSING EXPECTED VALUES
+# ============================================================================
+
+
+def test_aoi_evaluator_missing_expected_subregion():
+    """Test that missing expected_subregion returns None for subregion_match_score.
+
+    Task 1: Missing "Expected" values should result in None scores, not positive scores.
+    """
+    from gnw_evals.evaluators import evaluate_aoi_selection
+
+    agent_state = {
+        "aoi": {
+            "src_id": "BRA",
+            "name": "Brazil",
+            "subtype": "country",
+            "source": "gadm",
+        },
+        "subregion": "country",
+    }
+
+    result = evaluate_aoi_selection(
+        agent_state=agent_state,
+        expected_aoi_ids=["BRA"],
+        expected_subregion="",  # Empty - should return None
+        query="",
+    )
+
+    assert result["aoi_id_match_score"] == 1.0, "AOI ID should match"
+    assert result["subregion_match_score"] is None, (
+        "Subregion score should be None when expected is empty"
+    )
+    assert result["match_aoi_id"] is True, "AOI ID match flag should be True"
+
+
+def test_dataset_evaluator_missing_expected_context_layer():
+    """Test that missing expected_context_layer returns None for context_layer_match_score.
+
+    Task 1: Missing "Expected" values should result in None scores, not positive scores.
+    """
+    from gnw_evals.evaluators import evaluate_dataset_selection
+
+    agent_state = {
+        "dataset": {
+            "dataset_id": "0",
+            "dataset_name": "DIST-ALERT",
+            "context_layer": "tree_cover",
+        },
+    }
+
+    result = evaluate_dataset_selection(
+        agent_state=agent_state,
+        expected_dataset_id="0",
+        expected_context_layer="",  # Empty - should return None
+        query="",
+    )
+
+    assert result["dataset_id_match_score"] == 1.0, "Dataset ID should match"
+    assert result["context_layer_match_score"] is None, (
+        "Context layer score should be None when expected is empty"
+    )
+
+
+def test_data_pull_evaluator_missing_expected_dates():
+    """Test that missing expected dates returns None for date_match_score.
+
+    Task 1: Missing "Expected" values should result in None scores, not positive scores.
+    """
+    from gnw_evals.evaluators import evaluate_data_pull
+
+    agent_state = {
+        "raw_data": [{"value": 100}, {"value": 200}],
+        "start_date": "2023-01-01",
+        "end_date": "2023-12-31",
+    }
+
+    result = evaluate_data_pull(
+        agent_state=agent_state,
+        min_rows=1,
+        expected_start_date=None,  # Missing
+        expected_end_date=None,  # Missing
+        query="",
+    )
+
+    assert result["data_pull_exists_score"] == 1.0, "Data pull should succeed"
+    assert result["date_match_score"] is None, (
+        "Date score should be None when expected dates are missing"
+    )
+    assert result["data_pull_success"] is True, "Data pull success flag should be True"
+
+
+def test_overall_score_excludes_none_values():
+    """Test that overall score calculation excludes None values from averaging.
+
+    Task 1: Overall score calculation should exclude None values (missing expected fields).
+    """
+    from gnw_evals.runners.api import APITestRunner
+    from gnw_evals.utils.eval_types import ExpectedData
+
+    runner = APITestRunner(api_base_url="http://test", api_token="test")
+
+    # Evaluations with some None scores (missing expected values)
+    evaluations = {
+        "aoi_id_match_score": 1.0,
+        "subregion_match_score": None,  # Not evaluated (missing expected)
+        "dataset_id_match_score": 1.0,
+        "context_layer_match_score": None,  # Not evaluated (missing expected)
+        "data_pull_exists_score": 1.0,
+        "date_match_score": None,  # Not evaluated (missing expected)
+        "answer_score": 0.0,
+    }
+
+    expected_data = ExpectedData(
+        expected_aoi_ids=["BRA"],
+        expected_subregion="",  # Empty
+        expected_dataset_id="0",
+        expected_context_layer="",  # Empty
+        expected_start_date="",  # Empty
+        expected_end_date="",  # Empty
+        expected_answer="Test",
+    )
+
+    score = runner._calculate_overall_score(evaluations, expected_data)
+
+    # Should average only: aoi_id (1.0), dataset_id (1.0), data_pull (1.0), answer (0.0)
+    # = (1.0 + 1.0 + 1.0 + 0.0) / 4 = 0.75
+    assert score == 0.75, (
+        f"Expected 0.75, got {score}. None values should be excluded from average"
+    )
+
+
+def test_aoi_evaluator_all_fields_present():
+    """Test AOI evaluator with all expected fields present.
+
+    Validates that both scores are calculated when both expected values are provided.
+    """
+    from gnw_evals.evaluators import evaluate_aoi_selection
+
+    agent_state = {
+        "aoi": {
+            "src_id": "BRA",
+            "name": "Brazil",
+            "subtype": "country",
+            "source": "gadm",
+        },
+        "subregion": "country",
+    }
+
+    result = evaluate_aoi_selection(
+        agent_state=agent_state,
+        expected_aoi_ids=["BRA"],
+        expected_subregion="country",  # Provided
+        query="",
+    )
+
+    assert result["aoi_id_match_score"] == 1.0, "AOI ID should match"
+    assert result["subregion_match_score"] == 1.0, "Subregion should match"
+    assert result["match_aoi_id"] is True
+    assert result["match_subregion"] is True
+
+
+def test_dataset_evaluator_all_fields_present():
+    """Test dataset evaluator with all expected fields present.
+
+    Validates that both scores are calculated when both expected values are provided.
+    """
+    from gnw_evals.evaluators import evaluate_dataset_selection
+
+    agent_state = {
+        "dataset": {
+            "dataset_id": "0",
+            "dataset_name": "DIST-ALERT",
+            "context_layer": "tree_cover",
+        },
+    }
+
+    result = evaluate_dataset_selection(
+        agent_state=agent_state,
+        expected_dataset_id="0",
+        expected_context_layer="tree_cover",  # Provided
+        query="",
+    )
+
+    assert result["dataset_id_match_score"] == 1.0, "Dataset ID should match"
+    assert result["context_layer_match_score"] == 1.0, "Context layer should match"
+
+
+def test_data_pull_evaluator_all_fields_present():
+    """Test data pull evaluator with all expected fields present.
+
+    Validates that both scores are calculated when both expected values are provided.
+    """
+    from gnw_evals.evaluators import evaluate_data_pull
+
+    agent_state = {
+        "raw_data": [{"value": 100}, {"value": 200}],
+        "start_date": "2023-01-01",
+        "end_date": "2023-12-31",
+    }
+
+    result = evaluate_data_pull(
+        agent_state=agent_state,
+        min_rows=1,
+        expected_start_date="2023-01-01",  # Provided
+        expected_end_date="2023-12-31",  # Provided
+        query="",
+    )
+
+    assert result["data_pull_exists_score"] == 1.0, "Data pull should succeed"
+    assert result["date_match_score"] == 1.0, "Dates should match"
+    assert result["data_pull_success"] is True
+    assert result["date_success"] is True
