@@ -45,9 +45,11 @@ class TestResult(BaseModel):
     actual_start_date: str | None = None
     actual_end_date: str | None = None
 
-    # Answer evaluation fields
-    answer_score: float | None = None
-    actual_answer: str | None = None
+    # Answer evaluation fields (Task 3: Split into two separate scores)
+    charts_answer_score: float | None = None
+    agent_answer_score: float | None = None
+    actual_charts_answer: str | None = None
+    actual_agent_answer: str | None = None
 
     # Clarification evaluation fields (Task 2)
     clarification_requested_score: float | None = None

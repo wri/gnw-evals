@@ -774,7 +774,7 @@ def test_answer_evaluator_both_answers_present():
         ],
     }
 
-    with patch("gnw_evals.evaluators.llm_judges.llm_judge") as mock_judge:
+    with patch("gnw_evals.evaluators.answer_evaluator.llm_judge") as mock_judge:
         # First call for charts answer (correct), second call for agent answer (wrong)
         mock_judge.side_effect = [1.0, 0.0]
 
@@ -818,7 +818,7 @@ def test_answer_evaluator_no_charts_data():
         ],
     }
 
-    with patch("gnw_evals.evaluators.llm_judges.llm_judge") as mock_judge:
+    with patch("gnw_evals.evaluators.answer_evaluator.llm_judge") as mock_judge:
         # Only agent answer is evaluated (returns 0 - wrong answer)
         mock_judge.return_value = 0.0
 

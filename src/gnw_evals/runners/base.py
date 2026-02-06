@@ -80,9 +80,11 @@ class BaseTestRunner(ABC):
             date_success=None,
             actual_start_date=None,
             actual_end_date=None,
-            # Answer evaluation fields
-            answer_score=None,
-            actual_answer=None,
+            # Answer evaluation fields (Task 3)
+            charts_answer_score=None,
+            agent_answer_score=None,
+            actual_charts_answer=None,
+            actual_agent_answer=None,
             # Clarification evaluation fields
             clarification_requested_score=None,
             # Expected data
@@ -171,9 +173,10 @@ class BaseTestRunner(ABC):
         if expected_data.expected_start_date and expected_data.expected_end_date:
             scores.append(evaluations.get("date_match_score"))
 
-        # Answer check
+        # Answer checks (Task 3: Both answer scores included)
         if expected_data.expected_answer:
-            scores.append(evaluations.get("answer_score"))
+            scores.append(evaluations.get("charts_answer_score"))
+            scores.append(evaluations.get("agent_answer_score"))
 
         # Filter out None values (checks that weren't applicable)
         valid_scores = [s for s in scores if s is not None]
