@@ -58,6 +58,7 @@ def mock_test_cases():
             expected_start_date="8/1/2023",
             expected_end_date="8/31/2024",
             expected_answer="TRUE",
+            expected_clarification=False,
             test_group="",
             status="",
         ),
@@ -72,6 +73,7 @@ def mock_test_cases():
             expected_start_date="7/1/2024",
             expected_end_date="12/31/2024",
             expected_answer="198.4 hectares",
+            expected_clarification=False,
             test_group="",
             status="",
         ),
@@ -86,6 +88,7 @@ def mock_test_cases():
             expected_start_date="1/1/2023",
             expected_end_date="12/31/2023",
             expected_answer="Brazil",
+            expected_clarification=False,
             test_group="",
             status="",
         ),
@@ -213,7 +216,7 @@ async def test_run_csv_tests_with_mocked_data(
                             "All results should have a query"
                         )
 
-                        # Verify new score structure (Task 1)
+                        # Verify new score structure (Task 1 & Task 2)
                         first_result = results[0]
                         assert hasattr(
                             first_result,
@@ -243,6 +246,10 @@ async def test_run_csv_tests_with_mocked_data(
                             first_result,
                             "answer_score",
                         ), "Should have answer_score field"
+                        assert hasattr(
+                            first_result,
+                            "clarification_requested_score",
+                        ), "Should have clarification_requested_score field (Task 2)"
 
                         # Check that CSVLoader was called correctly
                         mock_loader.load_test_data.assert_called_once_with(
@@ -608,3 +615,136 @@ def test_data_pull_evaluator_all_fields_present():
     assert result["date_match_score"] == 1.0, "Dates should match"
     assert result["data_pull_success"] is True
     assert result["date_success"] is True
+
+
+# ============================================================================
+# TASK 2: UNIT TESTS FOR CLARIFICATION SCORING
+# ============================================================================
+
+
+def test_clarification_expected_and_given_scores_1():
+    """Test that clarification request scores 1.0 when expected.
+
+    Task 2: When expected_clarification=True AND agent requests clarification,
+    clarification_requested_score should be 1.0, and other scores should be None.
+    """
+    from unittest.mock import patch
+
+    from gnw_evals.evaluators import evaluate_aoi_selection
+
+    agent_state = {
+        "aoi": None,  # No AOI selected
+        "messages": [
+            type("obj", (object,), {"content": "Could you clarify which region?"})(),
+        ],
+    }
+
+    with patch(
+        "gnw_evals.evaluators.llm_judges.llm_judge_clarification",
+    ) as mock_judge:
+        mock_judge.return_value = {
+            "is_clarification": True,
+            "explanation": "Agent is asking for region clarification",
+        }
+
+        result = evaluate_aoi_selection(
+            agent_state=agent_state,
+            expected_aoi_ids=["BRA"],
+            expected_subregion="",
+            expected_clarification=True,
+            query="Show me data",
+        )
+
+        assert result["clarification_requested_score"] == 1.0, (
+            "Should score 1.0 when clarification is expected and given"
+        )
+        assert result["aoi_id_match_score"] is None, (
+            "AOI score should be None when clarification is given"
+        )
+        assert result["subregion_match_score"] is None, (
+            "Subregion score should be None when clarification is given"
+        )
+
+
+def test_clarification_not_expected_but_given_scores_0():
+    """Test that clarification request scores 0.0 when NOT expected.
+
+    Task 2: This is the bug being fixed. Previously scored 1.0, now should score 0.0.
+    When expected_clarification=False AND agent requests clarification,
+    clarification_requested_score should be 0.0.
+    """
+    from unittest.mock import patch
+
+    from gnw_evals.evaluators import evaluate_dataset_selection
+
+    agent_state = {
+        "dataset": None,  # No dataset selected
+        "messages": [
+            type("obj", (object,), {"content": "Which dataset did you mean?"})(),
+        ],
+    }
+
+    with patch(
+        "gnw_evals.evaluators.llm_judges.llm_judge_clarification",
+    ) as mock_judge:
+        mock_judge.return_value = {
+            "is_clarification": True,
+            "explanation": "Agent is asking which dataset",
+        }
+
+        result = evaluate_dataset_selection(
+            agent_state=agent_state,
+            expected_dataset_id="0",
+            expected_context_layer="",
+            expected_clarification=False,
+            query="Get forest data",
+        )
+
+        assert result["clarification_requested_score"] == 0.0, (
+            "Should score 0.0 when clarification is NOT expected but given"
+        )
+        assert result["dataset_id_match_score"] is None, (
+            "Dataset score should be None when clarification is given"
+        )
+
+
+def test_overall_score_with_clarification():
+    """Test that overall score calculation includes clarification_requested_score.
+
+    Task 2: When expected_clarification=True, the overall score should include
+    clarification_requested_score in the average and exclude other None scores.
+    """
+    from gnw_evals.runners.api import APITestRunner
+    from gnw_evals.utils.eval_types import ExpectedData
+
+    runner = APITestRunner(api_base_url="http://test", api_token="test")
+
+    # Scenario: Clarification was expected and given (1.0), no other checks applicable
+    evaluations = {
+        "clarification_requested_score": 1.0,
+        "aoi_id_match_score": None,  # Not evaluated (clarification given)
+        "subregion_match_score": None,
+        "dataset_id_match_score": None,
+        "context_layer_match_score": None,
+        "data_pull_exists_score": None,
+        "date_match_score": None,
+        "answer_score": None,  # Not evaluated (no expected_answer)
+    }
+
+    expected_data = ExpectedData(
+        expected_aoi_ids=["BRA"],
+        expected_subregion="",
+        expected_dataset_id="",
+        expected_context_layer="",
+        expected_start_date="",
+        expected_end_date="",
+        expected_answer="",
+        expected_clarification=True,
+    )
+
+    score = runner._calculate_overall_score(evaluations, expected_data)
+
+    # Should only average clarification_requested_score: 1.0 / 1 = 1.0
+    assert score == 1.0, (
+        f"Expected 1.0, got {score}. Clarification score should be the only score"
+    )
