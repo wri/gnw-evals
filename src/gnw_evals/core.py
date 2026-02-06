@@ -40,7 +40,7 @@ async def run_single_test(
         f"  AOI_ID: {result.aoi_id_match_score} | Subregion: {result.subregion_match_score} | Dataset_ID: {result.dataset_id_match_score} | Context: {result.context_layer_match_score}",
     )
     print(
-        f"  Data_Pull: {result.data_pull_exists_score} | Date: {result.date_match_score} | Answer: {result.answer_score}",
+        f"  Data_Pull: {result.data_pull_exists_score} | Date: {result.date_match_score} | Charts_Answer: {result.charts_answer_score} | Agent_Answer: {result.agent_answer_score}",
     )
 
     return result
@@ -211,16 +211,27 @@ def _print_csv_summary(results: list[TestResult]) -> None:
         date_avg = None
     print(f"Date Match: {date_avg} ({date_nones} None)")
 
-    # Answer
-    answer_nones = len([r for r in results if r.answer_score is None])
-    if total_tests - answer_nones > 0:
-        answer_avg = sum(
-            r.answer_score for r in results if r.answer_score is not None
-        ) / (total_tests - answer_nones)
-        answer_avg = f"{answer_avg:.2f}"
+    # Charts Answer (Task 3)
+    charts_answer_nones = len([r for r in results if r.charts_answer_score is None])
+    if total_tests - charts_answer_nones > 0:
+        charts_answer_avg = sum(
+            r.charts_answer_score for r in results if r.charts_answer_score is not None
+        ) / (total_tests - charts_answer_nones)
+        charts_answer_avg = f"{charts_answer_avg:.2f}"
     else:
-        answer_avg = None
-    print(f"Final Answer: {answer_avg} ({answer_nones} None)")
+        charts_answer_avg = None
+    print(f"Charts Answer: {charts_answer_avg} ({charts_answer_nones} None)")
+
+    # Agent Answer (Task 3)
+    agent_answer_nones = len([r for r in results if r.agent_answer_score is None])
+    if total_tests - agent_answer_nones > 0:
+        agent_answer_avg = sum(
+            r.agent_answer_score for r in results if r.agent_answer_score is not None
+        ) / (total_tests - agent_answer_nones)
+        agent_answer_avg = f"{agent_answer_avg:.2f}"
+    else:
+        agent_answer_avg = None
+    print(f"Agent Answer: {agent_answer_avg} ({agent_answer_nones} None)")
 
 
 @click.command()

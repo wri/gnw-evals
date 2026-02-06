@@ -51,7 +51,8 @@ class ResultExporter:
             "context_layer_match_score",
             "data_pull_exists_score",
             "date_match_score",
-            "answer_score",
+            "charts_answer_score",
+            "agent_answer_score",
             "clarification_requested_score",
             "execution_time",
             "error",
@@ -110,10 +111,12 @@ class ResultExporter:
             "row_count",
             "data_pull_success",
             "date_success",
-            # Answer: Expected vs Actual
+            # Answer: Expected vs Actual (Task 3: Split into two scores)
             "expected_answer",
-            "actual_answer",
-            "answer_score",
+            "actual_charts_answer",
+            "charts_answer_score",
+            "actual_agent_answer",
+            "agent_answer_score",
             # Clarification: Expected vs Actual (Task 2)
             "expected_clarification",
             "clarification_requested_score",

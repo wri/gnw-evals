@@ -244,8 +244,12 @@ async def test_run_csv_tests_with_mocked_data(
                         ), "Should have date_match_score field"
                         assert hasattr(
                             first_result,
-                            "answer_score",
-                        ), "Should have answer_score field"
+                            "charts_answer_score",
+                        ), "Should have charts_answer_score field (Task 3)"
+                        assert hasattr(
+                            first_result,
+                            "agent_answer_score",
+                        ), "Should have agent_answer_score field (Task 3)"
                         assert hasattr(
                             first_result,
                             "clarification_requested_score",
@@ -512,7 +516,8 @@ def test_overall_score_excludes_none_values():
         "context_layer_match_score": None,  # Not evaluated (missing expected)
         "data_pull_exists_score": 1.0,
         "date_match_score": None,  # Not evaluated (missing expected)
-        "answer_score": 0.0,
+        "charts_answer_score": 0.0,  # Task 3: Split answer score
+        "agent_answer_score": 1.0,  # Task 3: Agent answer correct
     }
 
     expected_data = ExpectedData(
@@ -527,10 +532,11 @@ def test_overall_score_excludes_none_values():
 
     score = runner._calculate_overall_score(evaluations, expected_data)
 
-    # Should average only: aoi_id (1.0), dataset_id (1.0), data_pull (1.0), answer (0.0)
-    # = (1.0 + 1.0 + 1.0 + 0.0) / 4 = 0.75
-    assert score == 0.75, (
-        f"Expected 0.75, got {score}. None values should be excluded from average"
+    # Should average only: aoi_id (1.0), dataset_id (1.0), data_pull (1.0),
+    #                      charts_answer (0.0), agent_answer (1.0)
+    # = (1.0 + 1.0 + 1.0 + 0.0 + 1.0) / 5 = 0.8
+    assert score == 0.8, (
+        f"Expected 0.8, got {score}. None values should be excluded from average"
     )
 
 
