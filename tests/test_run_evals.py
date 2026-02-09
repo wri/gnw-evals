@@ -58,7 +58,7 @@ def mock_test_cases():
             expected_start_date="8/1/2023",
             expected_end_date="8/31/2024",
             expected_answer="TRUE",
-            expected_clarification=False,
+            expected_clarification="",
             test_group="",
             status="",
         ),
@@ -73,7 +73,7 @@ def mock_test_cases():
             expected_start_date="7/1/2024",
             expected_end_date="12/31/2024",
             expected_answer="198.4 hectares",
-            expected_clarification=False,
+            expected_clarification="",
             test_group="",
             status="",
         ),
@@ -88,7 +88,7 @@ def mock_test_cases():
             expected_start_date="1/1/2023",
             expected_end_date="12/31/2023",
             expected_answer="Brazil",
-            expected_clarification=False,
+            expected_clarification="",
             test_group="",
             status="",
         ),
@@ -657,7 +657,7 @@ def test_clarification_expected_and_given_scores_1():
             agent_state=agent_state,
             expected_aoi_ids=["BRA"],
             expected_subregion="",
-            expected_clarification=True,
+            expected_clarification="true",
             query="Show me data",
         )
 
@@ -702,7 +702,7 @@ def test_clarification_not_expected_but_given_scores_0():
             agent_state=agent_state,
             expected_dataset_id="0",
             expected_context_layer="",
-            expected_clarification=False,
+            expected_clarification="",
             query="Get forest data",
         )
 
@@ -745,7 +745,7 @@ def test_overall_score_with_clarification():
         expected_start_date="",
         expected_end_date="",
         expected_answer="",
-        expected_clarification=True,
+        expected_clarification="true",
     )
 
     score = runner._calculate_overall_score(evaluations, expected_data)

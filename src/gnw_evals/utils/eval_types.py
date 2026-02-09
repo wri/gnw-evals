@@ -64,7 +64,7 @@ class TestResult(BaseModel):
     expected_start_date: str = ""
     expected_end_date: str = ""
     expected_answer: str = ""
-    expected_clarification: bool = False
+    expected_clarification: str = ""
     test_group: str = "unknown"
     status: str = "ready"
 
@@ -90,7 +90,7 @@ class ExpectedData(BaseModel):
     expected_start_date: str = ""
     expected_end_date: str = ""
     expected_answer: str = ""
-    expected_clarification: bool = False
+    expected_clarification: str = ""
     test_group: str = "unknown"
     status: str = "ready"
     thread_id: str | None = None
