@@ -87,6 +87,7 @@ def llm_judge(expected_answer: str, actual_answer: str):
 
     class Score(BaseModel):
         score: int
+        answer_eval_type: str  # "boolean", "numeric", "named_entity", "year"
 
     JUDGE_PROMPT = ChatPromptTemplate.from_messages(
         [
@@ -99,14 +100,58 @@ def llm_judge(expected_answer: str, actual_answer: str):
 
                 ACTUAL INSIGHT: {actual_answer}
 
-                Does the actual insight capture the key information and meaning of the expected answer?
+                Your task is to:
+                1. Detect the answer type
+                2. Apply the appropriate comparison logic
+                3. Return a score (0 or 1)
 
-                Consider:
-                - Similar factual content (numbers, dates, locations)
-                - Similar conclusions or findings
-                - Comparable level of detail and accuracy
+                ## Answer Type Detection & Scoring Rules
 
-                Respond with ONLY "1" if the insight adequately captures the expected answer, or "0" if it does not.
+                **BOOLEAN** (true/false, yes/no questions):
+                - Expected answer contains: "TRUE", "FALSE", "true", "false", "yes", "no", "Yes", "No"
+                - Scoring: Exact semantic match required
+                - Examples: 
+                  - Expected "TRUE" vs Actual "true" → MATCH (1)
+                  - Expected "TRUE" vs Actual "yes" → MATCH (1)
+                  - Expected "TRUE" vs Actual "The statement is correct" → MATCH (1) if actual clearly affirms
+                  - Expected "FALSE" vs Actual "TRUE" → NO MATCH (0)
+
+                **NUMERIC** (numbers with optional units):
+                - Expected answer contains numbers: "198.4 hectares", "0.20%", "211 kha", "924,000 km²"
+                - Scoring: Extract the primary numeric value and compare with 5% tolerance
+                - Examples:
+                  - Expected "198.4 hectares" vs Actual "200 hectares" → MATCH (1) [within tolerance]
+                  - Expected "0.20%" vs Actual "0.19%" → MATCH (1) [within tolerance]
+                  - Expected "211 kha" vs Actual "220 kha" → NO MATCH (0) [exceeds tolerance]
+                  - Expected "200 kha" vs Actual "200,000 hectares" → MATCH (1) [within tolerance]
+                - For percentages, compare the percentage values directly
+
+                **YEAR** (4-digit years):
+                - Expected answer is a year: "2015", "2023"
+                - Scoring: Exact match required
+                - Examples:
+                  - Expected "2015" vs Actual "2015" → MATCH (1)
+                  - Expected "2015" vs Actual "2016" → NO MATCH (0)
+
+                **NAMED_ENTITY** (countries, regions, places, land cover types):
+                - Expected answer is a proper noun or descriptive term: "Brazil", "South Dakota" 
+                - Scoring: Semantic similarity - the actual answer should clearly identify the same entity or category
+                - Examples:
+                  - Expected "Brazil" vs Actual "Brazil had the most" → MATCH (1)
+                  - Expected "South Dakota" vs Actual "S Dakota" → MATCH (1)
+                  - Expected "Brazil" vs Actual "Australia" → NO MATCH (0)
+
+                ## Instructions
+
+                1. First, identify which answer_eval_type the expected answer belongs to
+                2. Apply the appropriate scoring rule from above
+                3. Return:
+                   - score: 1 if it matches according to the rules, 0 if it does not
+                   - answer_eval_type: one of "boolean", "numeric", "year", "named_entity"
+
+                Be strict with the rules above, especially for boolean, numeric, and year types.
+
+                IMPORTANT: Respond with ONLY "1" if the insight adequately captures the expected answer, or "0" if it does not.
                 """,
             ),
         ],
@@ -120,4 +165,8 @@ def llm_judge(expected_answer: str, actual_answer: str):
             "actual_answer": actual_answer,
         },
     )
+
+    # Currently not doing anything with other structured output
+    # score.answer_eval_type
+
     return score.score
