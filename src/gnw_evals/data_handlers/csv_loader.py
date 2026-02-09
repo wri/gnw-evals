@@ -39,14 +39,27 @@ class CSVLoader:
 
         df = pd.read_csv(csv_file, dtype=str, keep_default_na=False)
 
+        # Check which expected_* fields are present vs missing
+        present_fields = []
+        missing_fields = []
+
         for field in ExpectedData.model_fields.keys():
-            if (
-                field not in df.columns
-                and field not in FIELD_EXCLUDE_FROM_EXPECTED_DATA
-            ):
-                raise ValueError(
-                    f"Column {field} not in CSV file. Please check the CSV file and make sure all required columns are present.",
-                )
+            if field in FIELD_EXCLUDE_FROM_EXPECTED_DATA:
+                continue
+
+            if field in df.columns:
+                present_fields.append(field)
+            else:
+                missing_fields.append(field)
+                # Add missing field with default value
+                default_value = ExpectedData.model_fields[field].default
+                df[field] = default_value
+
+        # Print summary (one-time per CSV load)
+        if present_fields:
+            print(f"✓ Expected fields detected: {', '.join(present_fields)}")
+        if missing_fields:
+            print(f"○ Expected fields not in CSV: {', '.join(missing_fields)}")
 
         # Simple cleanup: replace NaN/null with empty string
         df = df.fillna("")
