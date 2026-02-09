@@ -24,11 +24,21 @@ def llm_judge_clarification(agent_state: dict, query: str) -> dict:
 
         if messages:
             content = messages[-1].content
-            # For Gemini, content is a list, with thinking and query as separate messages
-            if isinstance(content, list):
-                final_response = content[-1]
-            else:
+
+            if isinstance(content, str):
+                # Claude format: direct string
                 final_response = content
+            elif isinstance(content, list) and content:
+                # Gemini format: list of content items
+                last_item = content[-1]
+                if isinstance(last_item, dict) and "text" in last_item:
+                    final_response = last_item["text"]
+                else:
+                    # Fallback for unexpected list items
+                    final_response = str(last_item)
+            else:
+                # Fallback for any other format
+                final_response = str(content) if content else ""
         else:
             final_response = ""
 

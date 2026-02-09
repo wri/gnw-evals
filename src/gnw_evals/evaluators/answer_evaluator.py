@@ -42,11 +42,21 @@ def evaluate_final_answer(
     actual_agent_answer = ""
     if messages:
         content = messages[-1].content
-        # For Gemini, content is a list, with thinking and query as separate messages
-        if isinstance(content, list):
-            actual_agent_answer = content[-1]
-        else:
+
+        if isinstance(content, str):
+            # Claude format: direct string
             actual_agent_answer = content
+        elif isinstance(content, list) and content:
+            # Gemini format: list of content items
+            last_item = content[-1]
+            if isinstance(last_item, dict) and "text" in last_item:
+                actual_agent_answer = last_item["text"]
+            else:
+                # Fallback for unexpected list items
+                actual_agent_answer = str(last_item)
+        else:
+            # Fallback for any other format
+            actual_agent_answer = str(content) if content else ""
 
     # Score charts answer
     charts_answer_score = None
