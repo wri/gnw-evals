@@ -123,18 +123,49 @@ If no charts data or answer, the answer score is zero. This seems different than
 ## Task 4: Answer Score Improvements
 
 **Priority:** Medium  
-**Status:** [ ]  
+**Status:** [x]  
 **Category:** Fix
 
-### Problems
-- Answer score is currently pass-fail (binary: either 0 or 1)
-- Uses `charts_data[0].get("insight", "")` - is this the right source?
-- Should break this up into groups, including ANSWER_DECISION - a simple test where a choice is easy to detect
+### Problem
+- Answer score was binary (0/1) with basic LLM judge prompt
+- Single generic prompt didn't distinguish between answer types (boolean, numeric, named entity, year)
+- No tolerance handling for numeric comparisons (198.4 hectares vs 200 hectares)
+- No strict matching for boolean/year answers
 
-### Proposed Improvements
-- Consider more granular scoring options
-- Verify using correct answer source
-- Add support for different answer types (decision vs quantitative)
+### Old Behavior
+- Single LLM judge prompt: "Does the actual insight capture the key information?"
+- Generic scoring for all answer types
+- No specific rules for:
+  - Boolean exact matching (TRUE/FALSE should be exact)
+  - Numeric tolerance (how close is close enough?)
+  - Year matching (should be exact)
+  - Named entity comparison (semantic similarity)
+
+### Updated Behavior
+- Enhanced LLM judge prompt with type-specific scoring rules:
+  - **BOOLEAN**: Exact semantic match (TRUE=true=yes=The statement is correct)
+  - **NUMERIC**: Extract numbers and compare with 5% tolerance, ignore unit differences
+  - **YEAR**: Exact match required (2015 must equal 2015)
+  - **NAMED_ENTITY**: Semantic similarity (Brazil="Brazil had the most")
+- Added `answer_eval_type` to structured output (for future logging/debugging)
+- Maintains backward compatibility: still returns 0/1 score
+- No CSV output changes
+
+### Implementation Details
+- Modified 1 file: `llm_judges.py`
+- Updated `Score` class to include `answer_eval_type: str` field
+- Replaced generic JUDGE_PROMPT with comprehensive prompt containing:
+  - Clear type detection rules
+  - Specific scoring examples for each type
+  - 5% tolerance rule for numeric comparisons
+  - Strict matching for boolean and year types
+- All 17 existing tests pass
+
+
+## Imprecise 
+Issue: The LLM scored "211 kha" vs "230 kha" as a match (1) when it should be no match (0) since 9% > 5% tolerance.
+- created example test in `tests/test_answer_llm_judge_manual.py` 
+Manual testing shows 90.9% accuracy (10/11 answer type scenarios)
 
 ---
 
