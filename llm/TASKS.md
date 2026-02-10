@@ -162,40 +162,31 @@ If no charts data or answer, the answer score is zero. This seems different than
 - All 17 existing tests pass
 
 
-## Imprecise 
-Issue: The LLM scored "211 kha" vs "230 kha" as a match (1) when it should be no match (0) since 9% > 5% tolerance.
-- created example test in `tests/test_answer_llm_judge_manual.py` 
-Manual testing shows 90.9% accuracy (10/11 answer type scenarios)
 
 ---
+
 
 ## Task 5: Overall Score Calculation Improvements
 
 **Priority:** Medium  
-**Status:** [~]  
+**Status:** [x]  
 **Category:** Fix
 
-### Current Issues (PARTIALLY RESOLVED)
+### Current Issues 
 ```
 Old: overall_score = round(sum(scores) / len(scores), 2)  # Included None values, 0.25 increments
 ```
 
 **Problems:**
 - ~~AOI, Dataset and Data Pull scores have 4 discrete values (0, 0.25, 0.5, 0.75, 1.0)~~ ✅ FIXED in Task 1
-- Currently all scores get equal weight, but they are dependent. If AOI selection fails, answer will surely be wrong
 - ~~A perfect score for a test looks the same if only one check was made vs. if all checks passed~~ ✅ FIXED in Task 1
 - ~~Example: row5 and row6 scores are very similar (0.2 apart) but one got the answer right, and the other skipped answer check~~ ✅ FIXED in Task 1
 
-### Completed in Task 1
+### Completed
 - ✅ All scores now binary 0/1 (no more 0.25 increments)
 - ✅ Separate scores for each component (7 total score fields)
 - ✅ Overall score excludes None values from averaging
 - ✅ Scores only calculated when expected values are present
-
-### Remaining Work
-- Weighted scoring: Consider giving different weights to different checks
-- Pipeline grouping: Average pipeline (AOI, dataset, data pull) separately from answer score
-- Dependency modeling: Account for dependent checks (e.g., if AOI fails, downstream likely fails)
 
 ---
 
@@ -229,6 +220,14 @@ Double-check GADM normalization logic to ensure it's working correctly.
 **Target:** `main`
 
 ---
+
+### Task 
+- Currently all scores get equal weight, but they are dependent. If AOI selection fails, answer will surely be wrong
+
+possible approaches
+- Weighted scoring: Consider giving different weights to different checks
+- Pipeline grouping: Average pipeline (AOI, dataset, data pull) separately from answer score
+- Dependency modeling: Account for dependent checks (e.g., if AOI fails, downstream likely fails)
 
 ## Task 8: Multiple AOI_IDs Handling
 
