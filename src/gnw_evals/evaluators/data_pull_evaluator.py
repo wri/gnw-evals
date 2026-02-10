@@ -3,7 +3,7 @@
 from typing import Any
 
 from gnw_evals.evaluators.llm_judges import llm_judge_clarification
-from gnw_evals.evaluators.utils import normalize_value
+from gnw_evals.evaluators.utils import normalize_date, normalize_value
 
 
 def evaluate_data_pull(
@@ -76,17 +76,22 @@ def evaluate_data_pull(
     data_pull_exists_score = 1.0 if data_pull_success else 0.0
 
     if expected_start_date and expected_end_date:
-        # Normalize date values for comparison
-        expected_start_str = normalize_value(expected_start_date)
-        expected_end_str = normalize_value(expected_end_date)
-        actual_start_str = normalize_value(actual_start_date)
-        actual_end_str = normalize_value(actual_end_date)
+        # Normalize date values to YYYY-MM-DD format for comparison
+        expected_start_str = normalize_date(expected_start_date)
+        expected_end_str = normalize_date(expected_end_date)
+        actual_start_str = normalize_date(actual_start_date)
+        actual_end_str = normalize_date(actual_end_date)
 
-        date_success = (
-            expected_start_str == actual_start_str
-            and expected_end_str == actual_end_str
-        )
-        date_match_score = 1.0 if date_success else 0.0
+        # If any date failed to parse (empty string), treat as missing expected
+        if not expected_start_str or not expected_end_str:
+            date_success = None
+            date_match_score = None
+        else:
+            date_success = (
+                expected_start_str == actual_start_str
+                and expected_end_str == actual_end_str
+            )
+            date_match_score = 1.0 if date_success else 0.0
     else:
         # Missing expected dates - return None (not evaluated)
         date_success = None

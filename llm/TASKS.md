@@ -178,11 +178,11 @@ Old: overall_score = round(sum(scores) / len(scores), 2)  # Included None values
 ```
 
 **Problems:**
-- ~~AOI, Dataset and Data Pull scores have 4 discrete values (0, 0.25, 0.5, 0.75, 1.0)~~ ✅ FIXED in Task 1
-- ~~A perfect score for a test looks the same if only one check was made vs. if all checks passed~~ ✅ FIXED in Task 1
-- ~~Example: row5 and row6 scores are very similar (0.2 apart) but one got the answer right, and the other skipped answer check~~ ✅ FIXED in Task 1
+- AOI, Dataset and Data Pull scores have 4 discrete values (0, 0.25, 0.5, 0.75, 1.0)
+- A perfect score for a test looks the same if only one check was made vs. if all checks passed
+- Example: row5 and row6 scores are very similar (0.2 apart) but one got the answer right, and the other skipped answer check
 
-### Completed
+**Completed**
 - ✅ All scores now binary 0/1 (no more 0.25 increments)
 - ✅ Separate scores for each component (7 total score fields)
 - ✅ Overall score excludes None values from averaging
@@ -193,13 +193,38 @@ Old: overall_score = round(sum(scores) / len(scores), 2)  # Included None values
 ## Task 6: Date Check Range Implementation
 
 **Priority:** Low  
-**Status:** [ ]  
+**Status:** [x]  
 **Category:** Fix
 
 ### Problem
-- `evaluate_data_pull` needs date range checking to be finished
-- `date_success` is false even when actual dates match expected dates
-- Seems to be caused by format mismatch
+Date range checking in `evaluate_data_pull` was failing due to format mismatch between expected dates (from CSV) and actual dates (from agent state).
+
+### Old Behavior
+- Expected dates from CSV: `M/D/YYYY` format (e.g., `1/1/2023`, `12/31/2023`)
+- Actual dates from agent state: `YYYY-MM-DD` format (e.g., `2023-01-01`, `2023-12-31`)
+- Comparison method: Simple string equality using `normalize_value()` (only strips whitespace)
+- Result: All date comparisons failed even when dates were semantically equivalent
+- `date_match_score = 0.0` for `1/1/2023` vs `2023-01-01` (same date, different format)
+
+### Updated Behavior
+- Added `normalize_date()` function to handle multiple date formats:
+  - `M/D/YYYY` or `MM/DD/YYYY` (CSV format) → normalized to `YYYY-MM-DD`
+  - `YYYY-MM-DD` (ISO format) → passes through unchanged
+  - `YYYY` (year only) → converts to `YYYY-01-01`
+  - Invalid dates or None → returns empty string (treated as missing/not evaluated)
+- Updated `evaluate_data_pull()` to use `normalize_date()` instead of `normalize_value()` for date comparisons
+- Dates now compared after normalization to common format
+- If expected dates fail to parse (invalid), returns `date_match_score = None` (not evaluated)
+- Maintains consistency with Task 1's principle: invalid/missing expected values → None score, not 0
+
+### Implementation Details
+- Modified 2 files: `utils.py` (added `normalize_date()`), `data_pull_evaluator.py` (updated date comparison logic)
+- Added 3 new unit tests validating date normalization behavior
+- All 20 tests pass (17 existing + 3 Task 6 unit tests)
+- Validation on tests 7-11 from gold dataset shows correct behavior:
+  - Slash format dates now match ISO format dates (`date_match_score = 1.0`)
+  - Missing expected dates return `date_match_score = None` (not evaluated)
+  - Overall date match score: 1.00 (when dates are present and comparable)
 
 ---
 
