@@ -893,3 +893,125 @@ def test_overall_score_with_both_answer_scores():
     assert score == 0.8, (
         f"Expected 0.8, got {score}. Both answer scores should be included in average"
     )
+
+
+# ============================================================================
+# TASK 6: UNIT TESTS FOR DATE NORMALIZATION
+# ============================================================================
+
+
+def test_normalize_date_format_mismatch():
+    """Test that M/D/YYYY format matches YYYY-MM-DD format after normalization.
+
+    Task 6: This is the key bug fix - dates in different formats should normalize
+    to the same string for comparison.
+    """
+    from gnw_evals.evaluators.utils import normalize_date
+
+    # CSV format (M/D/YYYY) should normalize to ISO format
+    assert normalize_date("1/1/2023") == "2023-01-01"
+    assert normalize_date("12/31/2023") == "2023-12-31"
+    assert normalize_date("8/1/2024") == "2024-08-01"
+
+    # ISO format should pass through unchanged
+    assert normalize_date("2023-01-01") == "2023-01-01"
+    assert normalize_date("2023-12-31") == "2023-12-31"
+    assert normalize_date("2024-08-01") == "2024-08-01"
+
+    # Year-only should convert to Jan 1
+    assert normalize_date("2023") == "2023-01-01"
+    assert normalize_date("2024") == "2024-01-01"
+
+    # Critical: Same date in different formats should produce same output
+    assert normalize_date("1/1/2023") == normalize_date("2023-01-01")
+    assert normalize_date("8/15/2024") == normalize_date("2024-08-15")
+
+
+def test_normalize_date_invalid_returns_empty():
+    """Test that invalid dates return empty string (treated as None/missing).
+
+    Task 6: Invalid expected dates should result in None score (not 0),
+    consistent with Task 1's principle.
+    """
+    from gnw_evals.evaluators.utils import normalize_date
+
+    # None, empty, and "None" string
+    assert normalize_date(None) == ""
+    assert normalize_date("") == ""
+    assert normalize_date("None") == ""
+    assert normalize_date("   ") == ""
+
+    # Invalid date formats
+    assert normalize_date("invalid-date") == ""
+    assert normalize_date("13/32/2023") == ""  # Invalid month/day
+    assert normalize_date("not a date") == ""
+    assert normalize_date("2023-13-45") == ""  # Invalid ISO date
+
+
+def test_evaluate_data_pull_with_date_format_mismatch():
+    """Test that evaluate_data_pull handles date format mismatches correctly.
+
+    Task 6: Integration test - dates should match despite format differences,
+    and genuinely different dates should still fail.
+    """
+    from gnw_evals.evaluators import evaluate_data_pull
+
+    # Test 1: Format mismatch but same dates -> should PASS
+    agent_state_matching = {
+        "raw_data": [{"value": 100}],
+        "start_date": "2023-01-01",  # ISO format (agent)
+        "end_date": "2023-12-31",
+    }
+
+    result_matching = evaluate_data_pull(
+        agent_state=agent_state_matching,
+        min_rows=1,
+        expected_start_date="1/1/2023",  # Slash format (CSV)
+        expected_end_date="12/31/2023",
+        query="",
+    )
+
+    assert result_matching["date_match_score"] == 1.0, (
+        "Dates should match despite format difference"
+    )
+    assert result_matching["date_success"] is True
+
+    # Test 2: Different dates -> should FAIL
+    agent_state_different = {
+        "raw_data": [{"value": 100}],
+        "start_date": "2023-11-01",  # November (agent)
+        "end_date": "2023-11-30",
+    }
+
+    result_different = evaluate_data_pull(
+        agent_state=agent_state_different,
+        min_rows=1,
+        expected_start_date="1/1/2023",  # January (CSV)
+        expected_end_date="12/31/2023",  # December
+        query="",
+    )
+
+    assert result_different["date_match_score"] == 0.0, (
+        "Different dates should not match even after normalization"
+    )
+    assert result_different["date_success"] is False
+
+    # Test 3: Invalid expected dates -> should return None
+    agent_state_valid = {
+        "raw_data": [{"value": 100}],
+        "start_date": "2023-01-01",
+        "end_date": "2023-12-31",
+    }
+
+    result_invalid = evaluate_data_pull(
+        agent_state=agent_state_valid,
+        min_rows=1,
+        expected_start_date="invalid-date",  # Invalid
+        expected_end_date="also-invalid",
+        query="",
+    )
+
+    assert result_invalid["date_match_score"] is None, (
+        "Invalid expected dates should result in None score (not evaluated)"
+    )
+    assert result_invalid["date_success"] is None
