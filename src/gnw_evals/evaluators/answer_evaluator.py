@@ -10,7 +10,7 @@ def evaluate_final_answer(
 ) -> dict[str, Any]:
     """Check if final answer contains key information from expected answer using LLM-as-a-judge.
 
-    Task 3: Now returns TWO separate scores:
+    Returns TWO separate "answer" scores:
     - charts_answer_score: Compares expected_answer to charts_data[0]["insight"]
     - agent_answer_score: Compares expected_answer to messages[-1].content
 

@@ -111,13 +111,13 @@ class ResultExporter:
             "row_count",
             "data_pull_success",
             "date_success",
-            # Answer: Expected vs Actual (Task 3: Split into two scores)
+            # Answer: Expected vs Actual
             "expected_answer",
             "actual_charts_answer",
             "charts_answer_score",
             "actual_agent_answer",
             "agent_answer_score",
-            # Clarification: Expected vs Actual (Task 2)
+            # Clarification: Expected vs Actual
             "expected_clarification",
             "clarification_requested_score",
             # Metadata

@@ -1,8 +1,8 @@
 """
-Manual test script for Task 4: Answer Score Improvements
+Manual test script Answer Score
 
-This script tests the updated llm_judge function with different answer types.
-From project root, run with: uv run tests/python test_task4_manual.py
+This script tests the llm_judge function with different answer types.
+From project root, run with: uv run tests/python test_answer_llm_judge_manual.py
 """
 
 from gnw_evals.evaluators.llm_judges import llm_judge
@@ -86,7 +86,7 @@ test_cases = [
 
 def run_tests():
     print("=" * 80)
-    print("Task 4: Answer Score Improvements - Manual Test")
+    print("Answer Score - Manual Test")
     print("=" * 80)
     print()
     

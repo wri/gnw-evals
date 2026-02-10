@@ -80,7 +80,7 @@ class BaseTestRunner(ABC):
             date_success=None,
             actual_start_date=None,
             actual_end_date=None,
-            # Answer evaluation fields (Task 3)
+            # Answer evaluation fields
             charts_answer_score=None,
             agent_answer_score=None,
             actual_charts_answer=None,
@@ -149,7 +149,7 @@ class BaseTestRunner(ABC):
         """
         scores = []
 
-        # Clarification check (Task 2)
+        # Clarification check
         if expected_data.expected_clarification:
             scores.append(evaluations.get("clarification_requested_score"))
 
@@ -173,7 +173,7 @@ class BaseTestRunner(ABC):
         if expected_data.expected_start_date and expected_data.expected_end_date:
             scores.append(evaluations.get("date_match_score"))
 
-        # Answer checks (Task 3: Both answer scores included)
+        # Answer checks
         if expected_data.expected_answer:
             scores.append(evaluations.get("charts_answer_score"))
             scores.append(evaluations.get("agent_answer_score"))

@@ -21,7 +21,7 @@ def evaluate_data_pull(
         min_rows: Minimum number of rows expected
         expected_start_date: Expected start date
         expected_end_date: Expected end date
-        expected_clarification: Whether clarification request is expected (Task 2)
+        expected_clarification: Whether clarification request is expected
         query: Original user query for clarification detection
 
     Returns:
@@ -36,7 +36,7 @@ def evaluate_data_pull(
     if not raw_data and query:
         clarification = llm_judge_clarification(agent_state, query)
         if clarification["is_clarification"]:
-            # Task 2: Score clarification based on whether it was expected
+            # Score clarification based on whether it was expected
             clarification_score = 1.0 if expected_clarification else 0.0
             return {
                 "clarification_requested_score": clarification_score,

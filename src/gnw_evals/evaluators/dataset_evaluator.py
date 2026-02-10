@@ -19,7 +19,7 @@ def evaluate_dataset_selection(
         agent_state: Final agent state after execution
         expected_dataset_id: Expected dataset id as string
         expected_context_layer: Expected context layer as string
-        expected_clarification: Whether clarification request is expected (Task 2)
+        expected_clarification: Whether clarification request is expected
         query: Original user query for clarification detection
 
     Returns:
@@ -44,7 +44,7 @@ def evaluate_dataset_selection(
     if not dataset and query:
         clarification = llm_judge_clarification(agent_state, query)
         if clarification["is_clarification"]:
-            # Task 2: Score clarification based on whether it was expected
+            # Score clarification based on whether it was expected
             clarification_score = 1.0 if expected_clarification else 0.0
             return {
                 "clarification_requested_score": clarification_score,

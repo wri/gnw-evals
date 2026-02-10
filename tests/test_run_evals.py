@@ -216,7 +216,7 @@ async def test_run_csv_tests_with_mocked_data(
                             "All results should have a query"
                         )
 
-                        # Verify new score structure (Task 1 & Task 2)
+                        # Verify score structure 
                         first_result = results[0]
                         assert hasattr(
                             first_result,
@@ -245,15 +245,15 @@ async def test_run_csv_tests_with_mocked_data(
                         assert hasattr(
                             first_result,
                             "charts_answer_score",
-                        ), "Should have charts_answer_score field (Task 3)"
+                        ), "Should have charts_answer_score field"
                         assert hasattr(
                             first_result,
                             "agent_answer_score",
-                        ), "Should have agent_answer_score field (Task 3)"
+                        ), "Should have agent_answer_score field"
                         assert hasattr(
                             first_result,
                             "clarification_requested_score",
-                        ), "Should have clarification_requested_score field (Task 2)"
+                        ), "Should have clarification_requested_score field"
 
                         # Check that CSVLoader was called correctly
                         mock_loader.load_test_data.assert_called_once_with(
@@ -407,14 +407,14 @@ async def test_run_csv_tests_with_empty_data(mock_config):
 
 
 # ============================================================================
-# TASK 1: UNIT TESTS FOR MISSING EXPECTED VALUES
+# UNIT TESTS FOR MISSING EXPECTED VALUES
 # ============================================================================
 
 
 def test_aoi_evaluator_missing_expected_subregion():
     """Test that missing expected_subregion returns None for subregion_match_score.
 
-    Task 1: Missing "Expected" values should result in None scores, not positive scores.
+    Missing "Expected" values should result in None scores, not positive scores.
     """
     from gnw_evals.evaluators import evaluate_aoi_selection
 
@@ -445,7 +445,7 @@ def test_aoi_evaluator_missing_expected_subregion():
 def test_dataset_evaluator_missing_expected_context_layer():
     """Test that missing expected_context_layer returns None for context_layer_match_score.
 
-    Task 1: Missing "Expected" values should result in None scores, not positive scores.
+    Missing "Expected" values should result in None scores, not positive scores.
     """
     from gnw_evals.evaluators import evaluate_dataset_selection
 
@@ -473,7 +473,7 @@ def test_dataset_evaluator_missing_expected_context_layer():
 def test_data_pull_evaluator_missing_expected_dates():
     """Test that missing expected dates returns None for date_match_score.
 
-    Task 1: Missing "Expected" values should result in None scores, not positive scores.
+    Missing "Expected" values should result in None scores, not positive scores.
     """
     from gnw_evals.evaluators import evaluate_data_pull
 
@@ -501,7 +501,7 @@ def test_data_pull_evaluator_missing_expected_dates():
 def test_overall_score_excludes_none_values():
     """Test that overall score calculation excludes None values from averaging.
 
-    Task 1: Overall score calculation should exclude None values (missing expected fields).
+    Overall score calculation should exclude None values (missing expected fields).
     """
     from gnw_evals.runners.api import APITestRunner
     from gnw_evals.utils.eval_types import ExpectedData
@@ -516,8 +516,8 @@ def test_overall_score_excludes_none_values():
         "context_layer_match_score": None,  # Not evaluated (missing expected)
         "data_pull_exists_score": 1.0,
         "date_match_score": None,  # Not evaluated (missing expected)
-        "charts_answer_score": 0.0,  # Task 3: Split answer score
-        "agent_answer_score": 1.0,  # Task 3: Agent answer correct
+        "charts_answer_score": 0.0,   
+        "agent_answer_score": 1.0,   
     }
 
     expected_data = ExpectedData(
@@ -624,14 +624,14 @@ def test_data_pull_evaluator_all_fields_present():
 
 
 # ============================================================================
-# TASK 2: UNIT TESTS FOR CLARIFICATION SCORING
+# UNIT TESTS FOR CLARIFICATION SCORING
 # ============================================================================
 
 
 def test_clarification_expected_and_given_scores_1():
     """Test that clarification request scores 1.0 when expected.
 
-    Task 2: When expected_clarification=True AND agent requests clarification,
+    When expected_clarification=True AND agent requests clarification,
     clarification_requested_score should be 1.0, and other scores should be None.
     """
     from unittest.mock import patch
@@ -675,7 +675,6 @@ def test_clarification_expected_and_given_scores_1():
 def test_clarification_not_expected_but_given_scores_0():
     """Test that clarification request scores 0.0 when NOT expected.
 
-    Task 2: This is the bug being fixed. Previously scored 1.0, now should score 0.0.
     When expected_clarification=False AND agent requests clarification,
     clarification_requested_score should be 0.0.
     """
@@ -717,7 +716,7 @@ def test_clarification_not_expected_but_given_scores_0():
 def test_overall_score_with_clarification():
     """Test that overall score calculation includes clarification_requested_score.
 
-    Task 2: When expected_clarification=True, the overall score should include
+    When expected_clarification=True, the overall score should include
     clarification_requested_score in the average and exclude other None scores.
     """
     from gnw_evals.runners.api import APITestRunner
@@ -757,14 +756,14 @@ def test_overall_score_with_clarification():
 
 
 # ============================================================================
-# TASK 3: UNIT TESTS FOR ANSWER SCORE SPLIT
+# UNIT TESTS FOR ANSWER SCORE SPLIT
 # ============================================================================
 
 
 def test_answer_evaluator_both_answers_present():
     """Test that both charts and agent answers are evaluated when both exist.
 
-    Task 3: Verifies that we get two separate scores when both data sources exist.
+    Verifies that we get two separate scores when both data sources exist.
     Charts answer is correct (1.0), agent answer is wrong (0.0).
     """
     from unittest.mock import patch
@@ -810,8 +809,8 @@ def test_answer_evaluator_both_answers_present():
 def test_answer_evaluator_no_charts_data():
     """Test that charts_answer_score is None when no charts_data exists.
 
-    Task 3: This is the key fix - when pipeline fails before charts generation,
-    charts_answer_score should be None (not applicable), not 0.
+    when pipeline fails before charts generation, charts_answer_score should be
+    None (not applicable), not 0.
     """
     from unittest.mock import patch
 
@@ -854,7 +853,7 @@ def test_answer_evaluator_no_charts_data():
 def test_overall_score_with_both_answer_scores():
     """Test that overall score calculation includes both answer scores.
 
-    Task 3: When expected_answer exists, overall score should include both
+    When expected_answer exists, overall score should include both
     charts_answer_score and agent_answer_score in the average.
     """
     from gnw_evals.runners.api import APITestRunner
@@ -896,15 +895,14 @@ def test_overall_score_with_both_answer_scores():
 
 
 # ============================================================================
-# TASK 6: UNIT TESTS FOR DATE NORMALIZATION
+# UNIT TESTS FOR DATE NORMALIZATION
 # ============================================================================
 
 
 def test_normalize_date_format_mismatch():
     """Test that M/D/YYYY format matches YYYY-MM-DD format after normalization.
 
-    Task 6: This is the key bug fix - dates in different formats should normalize
-    to the same string for comparison.
+    dates in different formats should normalize to the same string for comparison.
     """
     from gnw_evals.evaluators.utils import normalize_date
 
@@ -930,8 +928,7 @@ def test_normalize_date_format_mismatch():
 def test_normalize_date_invalid_returns_empty():
     """Test that invalid dates return empty string (treated as None/missing).
 
-    Task 6: Invalid expected dates should result in None score (not 0),
-    consistent with Task 1's principle.
+    Invalid expected dates should result in None score (not 0),
     """
     from gnw_evals.evaluators.utils import normalize_date
 
@@ -951,7 +948,7 @@ def test_normalize_date_invalid_returns_empty():
 def test_evaluate_data_pull_with_date_format_mismatch():
     """Test that evaluate_data_pull handles date format mismatches correctly.
 
-    Task 6: Integration test - dates should match despite format differences,
+    Integration test - dates should match despite format differences,
     and genuinely different dates should still fail.
     """
     from gnw_evals.evaluators import evaluate_data_pull

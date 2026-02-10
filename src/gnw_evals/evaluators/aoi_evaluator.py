@@ -19,7 +19,7 @@ def evaluate_aoi_selection(
         agent_state: Final agent state after execution
         expected_aoi_ids: Expected AOI IDs (e.g., ["BRA", "USA.5_1"])
         expected_subregion: Expected subregion (e.g., "state-province", "country")
-        expected_clarification: Whether clarification request is expected (Task 2)
+        expected_clarification: Whether clarification request is expected
         query: Original user query for clarification detection
     Returns:
         Dict with aoi_id_match_score (0/1/None), subregion_match_score (0/1/None),
@@ -52,7 +52,7 @@ def evaluate_aoi_selection(
     if not aoi and query:
         clarification = llm_judge_clarification(agent_state, query)
         if clarification["is_clarification"]:
-            # Task 2: Score clarification based on whether it was expected
+            # Score clarification based on whether it was expected
             clarification_score = 1.0 if expected_clarification else 0.0
             return {
                 "clarification_requested_score": clarification_score,
