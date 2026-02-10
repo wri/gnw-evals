@@ -45,6 +45,8 @@ The E2E testing framework evaluates the complete agent workflow by testing four 
 3. **Data Pull** (`pull_data`) - Evaluates data retrieval success
 4. **Final Answer** (`generate_insights`) - Evaluates answer quality using LLM-as-a-judge
 
+**For detailed scoring methodology and calculation details, see [SCORING_METHODOLOGY.md](SCORING_METHODOLOGY.md).**
+
 ## Test Dataset Structure
 
 ### Multiple Values in Test Cases
@@ -99,63 +101,16 @@ The following columns are **required** in the CSV file for the E2E tests to run 
 
 - **`expected_answer`** - Expected answer text for LLM-as-a-judge comparison. Can be empty if not applicable.
 
+#### Clarification Handling
+
+- **`expected_clarification`** - Boolean flag indicating whether agent should request clarification instead of completing the task (default: `False`)
+
 ### Optional Columns (For Review/Analysis)
 
 These columns are helpful for test management but not required for execution. The CSV loader accepts any additional columns via `extra="allow"` in the data model:
 
 - **`priority`** - Test priority ("high", "medium", "low")
 - Any other custom columns for tracking or analysis
-
-## Tool Evaluation Details
-
-### 1. AOI Selection (`evaluate_aoi_selection`)
-
-**Scoring System (Additive):**
-- AOI ID match: 0.75 points
-- Subregion match: 0.25 points
-- **Total possible: 1.0**
-
-**Key Features:**
-- Handles GADM ID normalization (e.g., "USA.5_1" → "usa.5.1")
-- Supports clarification detection via LLM-as-a-judge
-- Empty expected_subregion treated as positive match
-
-### 2. Dataset Selection (`evaluate_dataset_selection`)
-
-**Scoring System (Additive):**
-- Dataset ID match: 0.75 points
-- Context layer match: 0.25 points
-- **Total possible: 1.0**
-
-**Key Features:**
-- Supports clarification detection via LLM-as-a-judge
-- Empty expected_context_layer treated as positive match
-- String normalization for comparison
-
-### 3. Data Pull (`evaluate_data_pull`)
-
-**Scoring System (Additive):**
-- Data retrieval success: 0.75 points (row_count >= min_rows)
-- Date range match: 0.25 points
-- **Total possible: 1.0**
-
-**Key Features:**
-- Configurable minimum row threshold (default: 1)
-- Date string normalization and comparison
-- Empty expected dates treated as positive match
-- Supports clarification detection
-
-### 4. Final Answer (`evaluate_final_answer`)
-
-**Scoring System:**
-- LLM-as-a-judge binary scoring: 0 or 1
-- **Total possible: 1.0**
-
-**Key Features:**
-- Uses Haiku model for evaluation
-- Compares expected vs actual answer semantically
-- Extracts insights from charts_data or final messages
-- Handles Gemini's list-based content structure
 
 ## Running E2E Tests
 
@@ -204,23 +159,17 @@ Tests generate two CSV files in the `outputs/` directory at the project root:
 
 ## Scoring Summary
 
-**Overall Score Calculation:**
-The overall score is calculated dynamically based on which evaluation components are present in the test case:
+Individual scores are **binary** (0 or 1, or `None` if not evaluated). The overall score is the **simple average** of all applicable scores:
+
 ```
-overall_score = sum(present_scores) / count(present_scores)
+overall_score = sum(valid_scores) / count(valid_scores)
 ```
 
-Scores are included only if the corresponding expected data is provided:
-- `aoi_score` - Included if `expected_aoi_ids` is provided
-- `dataset_score` - Included if `expected_dataset_id` is provided
-- `pull_data_score` - Included if `expected_dataset_id` is provided (data pull is evaluated when a dataset is expected)
-- `answer_score` - Included if `expected_answer` is provided
+Scores are only calculated when the corresponding `expected_*` value is provided in the test case.
 
 **Pass Threshold:** ≥ 0.7 (70%)
 
-**Individual Tool Weights:**
-- Each present tool contributes equally to the overall score (e.g., if 3 tools are evaluated, each contributes 33.3%)
-- Within each tool, sub-components have different weights as documented above
+**For complete details on score calculation, see [SCORING_METHODOLOGY.md](SCORING_METHODOLOGY.md).**
 
 ## Gold Standard Test Set Guidelines
 

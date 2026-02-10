@@ -228,15 +228,6 @@ Date range checking in `evaluate_data_pull` was failing due to format mismatch b
 
 ---
 
-## Task 7: GADM Normalization Logic
-
-**Priority:** TBD  
-**Status:** [ ]  
-**Category:** Fix
-
-### Problem
-Double-check GADM normalization logic to ensure it's working correctly.
-
 ---
 
 # PR #2: NEW FEATURES
@@ -254,7 +245,20 @@ possible approaches
 - Pipeline grouping: Average pipeline (AOI, dataset, data pull) separately from answer score
 - Dependency modeling: Account for dependent checks (e.g., if AOI fails, downstream likely fails)
 
-## Task 8: Multiple AOI_IDs Handling
+## Task: check GADM Normalization Logic
+
+**Priority:** TBD  
+**Status:** [ ]  
+**Category:** Fix
+
+### Problem
+Double-check GADM normalization logic to ensure it's working correctly.
+- normalize_gadm_id() strips everything after _ and converts - to .   Is this okay, or might it create false positives? 
+- example
+    - "USA.5_1" → "usa.5"
+    - "USA.5_2" → "usa.5"  ← Different subregion, same normalized ID!
+
+## Task: Multiple AOI_IDs Handling
 
 **Priority:** Medium  
 **Status:** [ ]  
@@ -271,7 +275,7 @@ Support evaluation of queries that require multiple AOIs for comparison.
 
 ---
 
-## Task 9: Add Row Numbers to CSV Output
+## Task: Add Row Numbers to CSV Output
 
 **Priority:** Low  
 **Status:** [ ]  
@@ -285,7 +289,7 @@ Add row numbers to CSV output for easier tracking and debugging.
 
 ---
 
-## Task 10: Non-E2E Sheets Handling
+## Task: Non-E2E Sheets Handling
 
 **Priority:** Medium  
 **Status:** [ ]  
@@ -303,26 +307,7 @@ Handling the non-E2E sheets in the GNW_evals spreadsheet -- that is, the Q&A set
 
 ---
 
-## Task 11: Analysis Results - New LLM Judge
-
-**Priority:** Low  
-**Status:** [ ]  
-**Category:** New Feature
-
-### Problem
-Analysis Results will likely need a new LLM as a Judge.
-
-**Current Limitations:**
-- Current judge is written for textual answers (A/B, true/false, multiple choice), not quantitative ones (comparing 211 kha to 210.8 kha) with a tolerance, etc.
-- Will need to route or separate out numeric vs textual
-- Set (5) contains both types; haven't tried this yet, though
-
-### Expected Behavior
-Add numeric comparison judge with tolerance support for quantitative analysis results.
-
----
-
-## Task 12: Column Name Changes in Spreadsheet
+## Task: Column Name Changes in Spreadsheet
 
 **Priority:** Medium  
 **Status:** [ ]  
@@ -339,12 +324,11 @@ Before CSV export, need these column name changes in "GNW eval sets" spreadsheet
 also
 * need a clarification expected column in the golden set. Add a few example rows 
 
-
 --- 
 
-# notes 
+# Additional things to look into. 
 
-things to look into later: 
+Things to look into later: 
 * Currently data pull is only evaluated if expected_dataset_id exists. Should we make data pull checks independent?
 * a bitmap style cheatsheet of results where each row is a eval row, and each column is a test score: neutral if None, green/red for pass/fail scores. 
 * write a file that explains all the scores and how they are calculated. input column from spreadsheet --> logic --> output score. remove this from the readme
