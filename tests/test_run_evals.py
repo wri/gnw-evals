@@ -216,7 +216,7 @@ async def test_run_csv_tests_with_mocked_data(
                             "All results should have a query"
                         )
 
-                        # Verify score structure 
+                        # Verify score structure
                         first_result = results[0]
                         assert hasattr(
                             first_result,
@@ -516,8 +516,8 @@ def test_overall_score_excludes_none_values():
         "context_layer_match_score": None,  # Not evaluated (missing expected)
         "data_pull_exists_score": 1.0,
         "date_match_score": None,  # Not evaluated (missing expected)
-        "charts_answer_score": 0.0,   
-        "agent_answer_score": 1.0,   
+        "charts_answer_score": 0.0,
+        "agent_answer_score": 1.0,
     }
 
     expected_data = ExpectedData(
@@ -774,7 +774,9 @@ def test_answer_evaluator_both_answers_present():
         "charts_data": [{"insight": "The answer is Brazil with 500 hectares."}],
         "messages": [
             type(
-                "obj", (object,), {"content": "Based on the data, Australia has more."}
+                "obj",
+                (object,),
+                {"content": "Based on the data, Australia has more."},
             )(),
         ],
     }

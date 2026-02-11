@@ -222,7 +222,7 @@ def _print_csv_summary(results: list[TestResult]) -> None:
         charts_answer_avg = None
     print(f"Charts Answer: {charts_answer_avg} ({charts_answer_nones} None)")
 
-    # Agent Answer 
+    # Agent Answer
     agent_answer_nones = len([r for r in results if r.agent_answer_score is None])
     if total_tests - agent_answer_nones > 0:
         agent_answer_avg = sum(

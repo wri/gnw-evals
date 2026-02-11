@@ -3,7 +3,7 @@
 from typing import Any
 
 from gnw_evals.evaluators.llm_judges import llm_judge_clarification
-from gnw_evals.evaluators.utils import normalize_date, normalize_value
+from gnw_evals.evaluators.utils import normalize_date
 
 
 def evaluate_data_pull(
