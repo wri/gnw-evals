@@ -43,7 +43,7 @@ def llm_judge_clarification(agent_state: dict, query: str) -> dict:
             final_response = ""
 
     if not final_response:
-        return False  # No response to evaluate
+        return {"is_clarification": False, "explanation": "No response to evaluate"}
 
     CLARIFICATION_JUDGE_PROMPT = ChatPromptTemplate.from_messages(
         [
@@ -79,7 +79,7 @@ def llm_judge_clarification(agent_state: dict, query: str) -> dict:
         result = judge_chain.invoke({"query": query, "response": final_response})
         return result.model_dump()
     except Exception:
-        return False  # Default to not clarification if LLM call fails
+        return {"is_clarification": False, "explanation": "LLM call failed"}
 
 
 def llm_judge(expected_answer: str, actual_answer: str):
@@ -174,7 +174,7 @@ def llm_judge(expected_answer: str, actual_answer: str):
 
     judge_chain = JUDGE_PROMPT | HAIKU.with_structured_output(Score)
 
-    score = judge_chain.invoke(
+    llm_judgement = judge_chain.invoke(
         {
             "expected_answer": expected_answer,
             "actual_answer": actual_answer,
@@ -182,6 +182,6 @@ def llm_judge(expected_answer: str, actual_answer: str):
     )
 
     # Currently not doing anything with other structured output
-    # score.answer_eval_type
+    # llm_judgement.answer_eval_type
 
-    return score.score
+    return llm_judgement.score
