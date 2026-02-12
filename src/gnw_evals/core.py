@@ -7,6 +7,7 @@ import dotenv
 from gnw_evals.data_handlers import CSVLoader, ResultExporter
 from gnw_evals.runners import APITestRunner
 from gnw_evals.utils.eval_types import ExpectedData, TestResult
+from gnw_evals.utils.sheet_registry import DEFAULT_GOLD_URL, EVAL_SETS, get_sheet_url
 
 dotenv.load_dotenv()
 
@@ -255,8 +256,15 @@ def _print_csv_summary(results: list[TestResult]) -> None:
     help="Sample size: 1 means run single test (CI/CD friendly), -1 means run all rows (can also be set via SAMPLE_SIZE env var)",
 )
 @click.option(
+    "--eval-set",
+    default="gold",
+    type=click.Choice(list(EVAL_SETS.keys()) + ["all"], case_sensitive=False),
+    envvar="EVAL_SET",
+    help="Which eval set to run: gold, location_id, dataset_id, dataset_interpretation, analysis_results, analysis_interpretation, guardrail, date_selection, or all (can also be set via EVAL_SET env var)",
+)
+@click.option(
     "--test-file",
-    default="https://docs.google.com/spreadsheets/d/1_G1aq2fSCPqhT6w55_Od6VU7sov76t1lHQTBeZZxbdM/export?format=csv&gid=0",
+    default=None,
     envvar="TEST_FILE",
     help="Path or URL to test dataset CSV file (relative to project root) (can also be set via TEST_FILE env var)",
 )
@@ -303,7 +311,8 @@ def run_evals(
     api_base_url: str,
     api_token: str | None,
     sample_size: int,
-    test_file: str,
+    eval_set: str,
+    test_file: str | None,
     test_group_filter: str | None,
     status_filter: str | None,
     output_filename: str | None,
@@ -312,14 +321,92 @@ def run_evals(
     offset: int,
 ):
     """Run main E2E test function for CSV based evaluation."""
+    # Validate API token
+    if not api_token:
+        raise click.BadParameter(
+            "API token is required. Provide --api-token or set API_TOKEN environment variable.",
+        )
+
+    # Validate: user cannot specify both --eval-set (non-default) and --test-file (custom)
+    if test_file and eval_set != "gold":
+        raise click.BadParameter(
+            "Cannot specify both --test-file and --eval-set. "
+            "Use --eval-set to select a predefined sheet, or --test-file for a custom file."
+        )
+
+    # Handle "all" eval sets
+    if eval_set == "all":
+        # Run all eval sets sequentially
+        for current_eval_set in EVAL_SETS.keys():
+            print(f"\n{'=' * 70}")
+            print(f"Running eval set: {current_eval_set}")
+            print(f"{'=' * 70}\n")
+
+            # Call helper function for each eval set
+            _run_single_eval_set(
+                api_base_url=api_base_url,
+                api_token=api_token,
+                sample_size=sample_size,
+                eval_set=current_eval_set,
+                test_file=test_file,
+                test_group_filter=test_group_filter,
+                status_filter=status_filter,
+                output_filename=output_filename or f"{current_eval_set}_test",
+                num_workers=num_workers,
+                random_seed=random_seed,
+                offset=offset,
+            )
+        return  # Exit after running all
+
+    # Run single eval set
+    _run_single_eval_set(
+        api_base_url=api_base_url,
+        api_token=api_token,
+        sample_size=sample_size,
+        eval_set=eval_set,
+        test_file=test_file,
+        test_group_filter=test_group_filter,
+        status_filter=status_filter,
+        output_filename=output_filename,
+        num_workers=num_workers,
+        random_seed=random_seed,
+        offset=offset,
+    )
+
+
+def _run_single_eval_set(
+    api_base_url: str,
+    api_token: str,
+    sample_size: int,
+    eval_set: str,
+    test_file: str | None,
+    test_group_filter: str | None,
+    status_filter: str | None,
+    output_filename: str | None,
+    num_workers: int,
+    random_seed: int,
+    offset: int,
+):
+    """Run evals for a single eval set. Internal helper function."""
+    # Resolve test file for single eval set
+    if test_file:
+        # User provided a custom test file
+        resolved_test_file = test_file
+        resolved_eval_set = "custom"
+    else:
+        # Use eval_set to determine which sheet
+        resolved_test_file = get_sheet_url(eval_set)
+        resolved_eval_set = eval_set
+
     print(
         f"""
 ========================
 EVALUATION CONFIGURATION
 ========================
   API Base URL:      {api_base_url}
+  Eval Set:          {resolved_eval_set}
+  Test File:         {resolved_test_file}
   Sample Size:       {sample_size}
-  Test File:         {test_file}
   Test Group Filter: {test_group_filter or "None"}
   Status Filter:     {status_filter or "None"}
   Output Filename:   {output_filename or "Auto-generated"}
@@ -329,11 +416,6 @@ EVALUATION CONFIGURATION
 ========================
 """,
     )
-    # Validate API token
-    if not api_token:
-        raise click.BadParameter(
-            "API token is required. Provide --api-token or set API_TOKEN environment variable.",
-        )
 
     # Validate inputs
     if sample_size < -1:
@@ -352,7 +434,7 @@ EVALUATION CONFIGURATION
             self.api_base_url = api_base_url
             self.api_token = api_token
             self.sample_size = sample_size
-            self.test_file = test_file
+            self.test_file = resolved_test_file
             self.test_group_filter = test_group_filter
             self.status_filter = status_filter_list
             self.output_filename = output_filename
