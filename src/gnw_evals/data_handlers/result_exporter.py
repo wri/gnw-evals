@@ -44,6 +44,7 @@ class ResultExporter:
         # 1. Summary CSV - just query and scores
         summary_fields = [
             "query",
+            "eval_set",
             "overall_score",
             "aoi_id_match_score",
             "subregion_match_score",
@@ -74,6 +75,7 @@ class ResultExporter:
         detailed_fields = [
             # Basic info
             "query",
+            "eval_set",
             "thread_id",
             "trace_id",
             "trace_url",

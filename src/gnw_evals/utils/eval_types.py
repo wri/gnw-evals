@@ -14,6 +14,7 @@ class TestResult(BaseModel):
     trace_id: str | None = None
     trace_url: str | None = None
     query: str
+    eval_set: str = "custom"
     overall_score: float
     execution_time: str
 

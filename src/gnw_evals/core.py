@@ -111,10 +111,6 @@ async def run_csv_tests(config) -> list[TestResult]:
     total_duration = time.time() - start_time
     print(f"\nAll tests completed in {total_duration:.1f} seconds")
 
-    # Save results
-    exporter = ResultExporter()
-    exporter.save_results_to_csv(results, config.output_filename)
-
     # Print summary
     _print_csv_summary(results)
     return results
@@ -334,44 +330,127 @@ def run_evals(
             "Use --eval-set to select a predefined sheet, or --test-file for a custom file."
         )
 
-    # Handle "all" eval sets
-    if eval_set == "all":
-        # Run all eval sets sequentially
-        for current_eval_set in EVAL_SETS.keys():
+    # Handle custom test file (bypass eval_set system)
+    if test_file:
+        _run_custom_test_file(
+            api_base_url=api_base_url,
+            api_token=api_token,
+            sample_size=sample_size,
+            test_file=test_file,
+            test_group_filter=test_group_filter,
+            status_filter=status_filter,
+            output_filename=output_filename,
+            num_workers=num_workers,
+            random_seed=random_seed,
+            offset=offset,
+        )
+        return
+
+    # Determine which eval sets to run
+    eval_sets_to_run = list(EVAL_SETS.keys()) if eval_set == "all" else [eval_set]
+
+    # Collect results from all eval sets
+    all_results = []
+
+    for i, current_eval_set in enumerate(eval_sets_to_run, 1):
+        # Print header for multi-set runs
+        if len(eval_sets_to_run) > 1:
             print(f"\n{'=' * 70}")
-            print(f"Running eval set: {current_eval_set}")
+            print(f"EVAL SET {i}/{len(eval_sets_to_run)}: {current_eval_set}")
             print(f"{'=' * 70}\n")
 
-            # Call helper function for each eval set
-            _run_single_eval_set(
-                api_base_url=api_base_url,
-                api_token=api_token,
-                sample_size=sample_size,
-                eval_set=current_eval_set,
-                test_file=test_file,
-                test_group_filter=test_group_filter,
-                status_filter=status_filter,
-                output_filename=output_filename or f"{current_eval_set}_test",
-                num_workers=num_workers,
-                random_seed=random_seed,
-                offset=offset,
-            )
-        return  # Exit after running all
+        # Run this eval set
+        results = _run_single_eval_set(
+            api_base_url=api_base_url,
+            api_token=api_token,
+            sample_size=sample_size,
+            eval_set=current_eval_set,
+            test_file=None,
+            test_group_filter=test_group_filter,
+            status_filter=status_filter,
+            output_filename=None,
+            num_workers=num_workers,
+            random_seed=random_seed,
+            offset=offset,
+        )
 
-    # Run single eval set
-    _run_single_eval_set(
+        # Tag results with eval_set and accumulate
+        if results:
+            for result in results:
+                result.eval_set = current_eval_set
+            all_results.extend(results)
+
+    # Write combined CSV
+    if all_results:
+        exporter = ResultExporter()
+        final_output = output_filename or "eval_results"
+        exporter.save_results_to_csv(all_results, final_output)
+
+        # Print summary
+        print(f"\n{'=' * 70}")
+        print(f"RESULTS SUMMARY")
+        print(f"{'=' * 70}")
+        print(f"Total tests: {len(all_results)}")
+
+        if len(eval_sets_to_run) > 1:
+            print(f"\nBreakdown by eval set:")
+            for es in eval_sets_to_run:
+                count = sum(1 for r in all_results if r.eval_set == es)
+                if count > 0:
+                    avg = (
+                        sum(r.overall_score for r in all_results if r.eval_set == es)
+                        / count
+                    )
+                    print(f"  {es:30} | Tests: {count:3} | Avg Score: {avg:.2f}")
+    else:
+        print("\n❌ No results collected from any eval set")
+
+
+def _run_custom_test_file(
+    api_base_url: str,
+    api_token: str,
+    sample_size: int,
+    test_file: str,
+    test_group_filter: str | None,
+    status_filter: str | None,
+    output_filename: str | None,
+    num_workers: int,
+    random_seed: int,
+    offset: int,
+) -> None:
+    """Run evals with a custom test file (not from standard eval sets).
+
+    This function handles the case where user provides --test-file directly.
+    Results are tagged with eval_set = "custom".
+    """
+    print("\nRunning with custom test file...")
+
+    results = _run_single_eval_set(
         api_base_url=api_base_url,
         api_token=api_token,
         sample_size=sample_size,
-        eval_set=eval_set,
+        eval_set="custom",
         test_file=test_file,
         test_group_filter=test_group_filter,
         status_filter=status_filter,
-        output_filename=output_filename,
+        output_filename=None,
         num_workers=num_workers,
         random_seed=random_seed,
         offset=offset,
     )
+
+    # Tag results with eval_set = "custom"
+    for result in results:
+        result.eval_set = "custom"
+
+    # Write CSV
+    if results:
+        exporter = ResultExporter()
+        final_output = output_filename or "eval_results"
+        exporter.save_results_to_csv(results, final_output)
+        print(f"\n✓ Results saved: {len(results)} tests")
+    else:
+        print("\n❌ No results collected")
 
 
 def _run_single_eval_set(
@@ -386,8 +465,12 @@ def _run_single_eval_set(
     num_workers: int,
     random_seed: int,
     offset: int,
-):
-    """Run evals for a single eval set. Internal helper function."""
+) -> list[TestResult]:
+    """Run evals for a single eval set. Internal helper function.
+
+    Returns:
+        List of TestResult objects, or empty list if error occurs
+    """
     # Resolve test file for single eval set
     if test_file:
         # User provided a custom test file
@@ -443,14 +526,13 @@ EVALUATION CONFIGURATION
             self.offset = offset
 
     config = Config()
-    try: 
+    try:
         results = asyncio.run(run_csv_tests(config))
-    except ValueError as e: 
+        print(f"Processed {len(results)} tests.")
+        return results
+    except ValueError as e:
         print(f"❌ ERROR: {e}")
-        return  # skip this eval set and continue to next if any
-
-    print ("Processed {len(results)} tests.")
-
+        return []  # Return empty list on error
 
 
 if __name__ == "__main__":
