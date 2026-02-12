@@ -114,25 +114,48 @@ These columns are helpful for test management but not required for execution. Th
 
 ## Running E2E Tests
 
-Simple end-to-end agent test runner for API testing.
+Simple end-to-end agent test runner for API testing. 
 
-### Usage Examples
+Evals source. By default, gnw_evals will run tests against the live spreadsheet, 
+URL specified in `utils/sheet_registry.py` 
+
+### Usage Examples: Basic
 
 ```bash
 # Basic run with manual API token specification
 uv run gnw_evals --api-token your_token
 
-# Or set API token via environment variable
-export API_TOKEN=your_token
-uv run gnw_evals
-
-# With custom API endpoint
+# With custom API endpoint instead of GNW Staging or GNW production
 uv run gnw_evals --api-token your_token --api-base-url http://localhost:8000
 
-# Run specific number of tests (default: 5)
+# Run specific number of GOLDEN SET tests (default sample size is 5)
 uv run gnw_evals --api-token your_token --sample-size 10
 
-# Run all tests
+```
+
+Suggested basis usage
+* Add the following in the .env file: 
+    * API_TOKEN 
+    * ANTHROPIC_API_KEY
+    * SPREADSHEET_ID
+    * NUM_WORKERS=5
+# run first 5 rows of the LOCATION ID tests
+uv run gnw_evals --sample-size 5 --eval-set location_id --output-filename "sample_locationid_evals" 
+
+# run all tests 
+uv run gnw_evals --sample-size -1 --eval-set all --output-filename "all_evals" 
+
+```
+
+### Usage Examples: selecting eval sets and filters
+
+Running GOLDEN SET filters in the spreadsheet
+* REMINDER: Make sure the spreadsheet is properly specified in the `.env` file using `SPREADSHEET_ID`
+
+
+```bash
+
+# Run all GOLDEN SET tests
 uv run gnw_evals --api-token your_token --sample-size -1
 
 # Filter by test group
@@ -141,13 +164,41 @@ uv run gnw_evals --api-token your_token --test-group-filter rel-accuracy
 # Filter by status (comma-separated)
 uv run gnw_evals --api-token your_token --status-filter ready,rerun
 
-# Combine filters
-uv run gnw_evals --api-token your_token --test-group-filter dataset --sample-size 10 --num-workers 3
-
-# Use custom test file
-uv run gnw_evals --api-token your_token --test-file data/my_tests.csv
 ```
 
+The framework supports multiple specialized eval sets, not just the GOLDEN SET
+- `gold` - Full E2E golden set (default)
+- `location_id` - Location/AOI identification tests
+- `dataset_id` - Dataset selection tests
+- `date_selection` - Date selection tests
+- and others.. 
+
+**Note:** 
+- REMINDER: Make sure the spreadsheet is properly specified in the `.env` file using `SPREADSHEET_ID`
+- When using `--eval-set all`, separate output files are generated for each eval set (e.g., `gold_test_TIMESTAMP.csv`, `location_id_test_TIMESTAMP.csv`, etc.)
+- You cannot use `--eval-set` and `--test-file` together. Use one or the other.
+
+```bash
+# Default (gold set)
+uv run gnw_evals
+
+# Run specific eval set
+uv run gnw_evals --eval-set location_id --sample-size 10
+
+# Run all eval sets (set and forget for multi-hour runs)
+uv run gnw_evals --eval-set all --sample-size -1
+
+# Via environment variable
+export EVAL_SET=dataset_id
+uv run gnw_evals
+```
+
+Custom evals: Run eval tests in a local CSV  file
+
+```bash
+# Run eval tests in a custom CSV  file
+uv run gnw_evals --api-token your_token --test-file data/my_tests.csv
+```
 
 ## Output Files
 
