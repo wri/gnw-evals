@@ -37,7 +37,13 @@ class CSVLoader:
             project_root = Path(__file__).parent.parent.parent.parent
             csv_file = project_root / csv_file
 
-        df = pd.read_csv(csv_file, dtype=str, keep_default_na=False)
+
+        # load the eval data
+        df_raw = pd.read_csv(csv_file, dtype=str, keep_default_na=False)
+
+        # find and set header row
+        # useful if the spreadsheet has rows at the top with information for the user
+        df = _set_header(df_raw)
 
         # Check which expected_* fields are present vs missing
         present_fields = []
@@ -53,13 +59,22 @@ class CSVLoader:
                 missing_fields.append(field)
                 # Add missing field with default value
                 default_value = ExpectedData.model_fields[field].default
-                df[field] = default_value
+                # Convert default to appropriate string for CSV
+                if default_value is None or default_value == "":
+                    df[field] = ""
+                elif isinstance(default_value, bool):
+                    df[field] = str(default_value)
+                else:
+                    df[field] = str(default_value)
 
         # Print summary (one-time per CSV load)
         if present_fields:
             print(f"✓ Expected fields detected: {', '.join(present_fields)}")
-        if missing_fields:
-            print(f"○ Expected fields not in CSV: {', '.join(missing_fields)}")
+        else: 
+            print(f"WARNING: No 'expected_' fields found.")
+
+        # DEBUG 
+        # print(f"DEBUG: Expected fields not in CSV: {', '.join(missing_fields)}")
 
         # Simple cleanup: replace NaN/null with empty string
         df = df.fillna("")
@@ -109,3 +124,43 @@ class CSVLoader:
             test_cases.append(test_case)
 
         return test_cases
+
+
+def _set_header(df_raw: pd.DataFrame) -> pd.DataFrame: 
+    """Find the header row containing 'query' column and return properly formatted DataFrame.
+    
+    Searches the first 5 rows of df_raw for a row containing 'query' in the first 10 columns.
+    This handles CSV files that may have description/purpose rows before the actual headers.
+    
+    Args:
+        df_raw: Raw DataFrame read with header=None
+        
+    Returns:
+        DataFrame with proper column headers and data rows, reset index
+        
+    Raises:
+        ValueError: If 'query' column not found in first 5 rows
+    """
+    # Find the row containing "query" column (case-insensitive)
+
+    # check first 5 rows, max
+    for i in range(5):
+        # Get row values 
+        row_values = df_raw.iloc[i].astype(str).str.lower().tolist()
+        
+        # Check if "query" appears in first 10 columns
+        if "query" in row_values[:10]:
+            header_row_idx = i
+            break
+
+    if header_row_idx is None: 
+        # we didn't find "query" in the above search
+        raise ValueError("No header row found")
+
+     # Set that row as header
+    df = df_raw.iloc[header_row_idx + 1:].copy()  # Data starts after header
+    df.columns = df_raw.iloc[header_row_idx]      # Set column names
+    df = df.reset_index(drop=True)
+
+    # now we know the headers are in the right place
+    return df
