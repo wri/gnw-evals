@@ -38,8 +38,8 @@ class CSVLoader:
             csv_file = project_root / csv_file
 
 
-        # load the eval data
-        df_raw = pd.read_csv(csv_file, dtype=str, keep_default_na=False)
+        # load the eval data without the header row
+        df_raw = pd.read_csv(csv_file, dtype=str, keep_default_na=False, header=None)
 
         # find and set header row
         # useful if the spreadsheet has rows at the top with information for the user
@@ -142,9 +142,11 @@ def _set_header(df_raw: pd.DataFrame) -> pd.DataFrame:
         ValueError: If 'query' column not found in first 5 rows
     """
     # Find the row containing "query" column (case-insensitive)
+    header_row_idx = None
 
     # check first 5 rows, max
-    for i in range(5):
+    search_range = min(5, len(df_raw))
+    for i in range(search_range):
         # Get row values 
         row_values = df_raw.iloc[i].astype(str).str.lower().tolist()
         

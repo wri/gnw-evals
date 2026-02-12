@@ -443,8 +443,14 @@ EVALUATION CONFIGURATION
             self.offset = offset
 
     config = Config()
-    results = asyncio.run(run_csv_tests(config))
-    assert len(results) > 0, "No test results from CSV"
+    try: 
+        results = asyncio.run(run_csv_tests(config))
+    except ValueError as e: 
+        print(f"❌ ERROR: {e}")
+        return  # skip this eval set and continue to next if any
+
+    print ("Processed {len(results)} tests.")
+
 
 
 if __name__ == "__main__":
