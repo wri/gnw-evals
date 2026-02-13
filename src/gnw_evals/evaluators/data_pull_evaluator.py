@@ -30,7 +30,15 @@ def evaluate_data_pull(
         data_pull_success, date_success
 
     """
-    raw_data = agent_state.get("raw_data")
+    stats = agent_state.get("statistics", [])
+    if stats:
+        raw_data = stats[-1].get("data", [])
+        actual_start_date = stats[-1].get("start_date", "")
+        actual_end_date = stats[-1].get("end_date", "")
+    else:
+        raw_data = []
+        actual_start_date = ""
+        actual_end_date = ""
 
     # Check if agent asked for clarification instead of pulling data
     if not raw_data and query:
@@ -67,10 +75,6 @@ def evaluate_data_pull(
 
     row_count = len(raw_data)
     data_pull_success = row_count >= min_rows
-
-    # Get actual dates from agent state
-    actual_start_date = agent_state.get("start_date", "")
-    actual_end_date = agent_state.get("end_date", "")
 
     # Binary scoring: Each component is 0 or 1 (or None if not evaluated)
     data_pull_exists_score = 1.0 if data_pull_success else 0.0
