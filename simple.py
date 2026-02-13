@@ -133,18 +133,11 @@ def _(results_simple, score_cols, score_map):
 
 
 @app.cell(hide_code=True)
-def _(results_simple, score_cols, score_map):
-    # create an id as there is none in the CSV
-    df2 = results_simple.reset_index(drop=True).copy()
-    df2["idx"] = df2.index
-
-    # Long form 
-    long = df2.melt(id_vars="idx", value_vars=score_cols, var_name="score", value_name="value")
-    long["state"] = long["value"].map({1: "pass", 0: "fail"}).fillna("missing")
-
-    # Add human-readable label for the x axis + tooltip
-    long["score_label"] = long["score"].map(score_map).fillna(long["score"])
-    return df2, long
+def _():
+    mo.md(r"""
+    ## Heatmap
+    """)
+    return
 
 
 @app.cell(hide_code=True)
@@ -198,12 +191,46 @@ def _(df2, long, score_cols, score_map):
     return (heatmap,)
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _():
-    mo.md(r"""
-    ## Heatmap
-    """)
     return
+
+
+@app.cell(hide_code=True)
+def _(eval_set_ui, results_simple, score_cols, score_map):
+    # Preprocessing for heatmap 
+
+    # create an id as there is none in the CSV
+    df2 = results_simple.reset_index(drop=True).copy()
+    df2["idx"] = df2.index
+
+    # filter to the eval_set selected by user
+    mask = df2['eval_set'] == eval_set_ui.value
+
+    # Long form 
+    long = df2[mask].melt(id_vars="idx", value_vars=score_cols, var_name="score", value_name="value")
+    long["state"] = long["value"].map({1: "pass", 0: "fail"}).fillna("missing")
+
+    # Add human-readable label for the x axis + tooltip
+    long["score_label"] = long["score"].map(score_map).fillna(long["score"])
+    return df2, long
+
+
+@app.cell
+def _(results_simple):
+    # select which eval set to show in the heatmap
+    eval_sets_available = sorted(results_simple.eval_set.unique())
+
+    # display "gold" by default
+    _default = "gold" if ("gold" in eval_sets_available) else eval_sets_available[0]
+
+    # dropdown UI
+    eval_set_ui = mo.ui.dropdown(
+        options=eval_sets_available, value=_default, 
+        label="Select which Evaluation Set to display in heatmap"
+    )
+    eval_set_ui
+    return (eval_set_ui,)
 
 
 @app.cell(hide_code=True)
@@ -242,17 +269,13 @@ def _(clickable_heatmap):
 
 @app.cell(hide_code=True)
 def _(score_map, selected, selected_idx, selected_score):
+    # Display info about selection, if there is a selection
     mo.stop(selected.empty)
 
     mo.md(f"""
     You have selected **{score_map[selected_score]} score** for eval **test #{selected_idx}**.
     Details below.
     """)
-    return
-
-
-@app.cell
-def _():
     return
 
 
@@ -266,6 +289,7 @@ def _(
     selected_idx,
     selected_score,
 ):
+    # Display diagnostic table 
     mo.stop(selected.empty)
 
     _show_cols = get_columns(selected_score)
