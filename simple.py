@@ -24,13 +24,19 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _():
     eval_results_dir = "outputs/"
 
-    source_file_name_simple = "gold_test_n25_20260210_115406_summary.csv"
-    source_file_name_detailed = "gold_test_n25_20260210_115406_detailed.csv"
+    source_file_name_simple = "combined_20260212_205134_summary.csv"
+    source_file_name_detailed = "combined_20260212_205134_detailed.csv"
     return eval_results_dir, source_file_name_detailed, source_file_name_simple
+
+
+@app.cell
+def _():
+    # sorted(os.listdir(eval_results_dir))
+    return
 
 
 @app.cell(hide_code=True)
@@ -43,7 +49,6 @@ def _(eval_results_dir, source_file_name_simple):
     # add an id column
     results_simple = results_simple.reset_index(drop=True)
     results_simple["idx"] = results_simple.index
-
     return (results_simple,)
 
 
@@ -204,7 +209,6 @@ def _(heatmap, interpretation):
         interpretation],
              widths='equal'
              )
-
     return (clickable_heatmap,)
 
 
@@ -213,7 +217,6 @@ def _(clickable_heatmap):
     selected = clickable_heatmap.value   # a DataFrame of selected points
     selected_idx = None if selected.empty else selected.iloc[0]["idx"]
     selected_score = None if selected.empty else selected.iloc[0]["score"]
-
     return selected, selected_idx, selected_score
 
 
@@ -274,7 +277,6 @@ def _(eval_results_dir, source_file_name_detailed):
     # add an id column
     results_detailed = results_detailed.reset_index(drop=True)
     results_detailed["idx"] = results_detailed.index
-
     return (results_detailed,)
 
 
@@ -361,7 +363,7 @@ def _(selected_score):
         diag_df: transposed selection df (rows=fields, cols=1 eval column)
         """
         df_kv = diag_df.copy()
-    
+
         # Convenience modifications to the diagnostic dataframe
         df_kv["result"] = df_kv[selected_score].map({1: "PASS", 0: "FAIL"}).fillna("missing")
         df_kv["query"] = '"' + df_kv["query"].astype(str) + '"'
@@ -387,7 +389,7 @@ def _(selected_score):
             .tab_header(title=title, subtitle=subtitle)
             #.cols_label(Field="Field", Value="Value")
             .cols_width(cases={"Field": "150px", "Value": "800px"})  # tune as needed
-            
+
             # Render markdown for answer and enable link with [trace](url)
             .fmt_markdown(columns="Value")
 
@@ -398,7 +400,7 @@ def _(selected_score):
                 style=style.text(whitespace="pre-wrap"),
                 locations=loc.body(columns="Value"),
             )
-        
+
                 # Optional: make Field column visually “label-ish”
             .tab_style(
                 style=style.text(size="0.8rem",),
@@ -430,7 +432,7 @@ def _(selected_score):
                     size="1.5rem"
                 ),
             ],
-        
+
             locations=loc.body(
                 rows=lambda d: d["Field"].str.contains("result", case=False, na=False),
                 columns=["Value"],
