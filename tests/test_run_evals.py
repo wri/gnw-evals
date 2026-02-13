@@ -1,4 +1,9 @@
-"""Unit tests for run_evals functionality."""
+"""Unit tests for run_evals functionality.
+
+Usage
+$ uv run pytest tests/test_run_evals.py -v
+
+"""
 
 import json
 from dataclasses import dataclass
@@ -53,6 +58,7 @@ def mock_test_cases():
             expected_start_date="8/1/2023",
             expected_end_date="8/31/2024",
             expected_answer="TRUE",
+            expected_clarification=False,
             test_group="",
             status="",
         ),
@@ -67,6 +73,7 @@ def mock_test_cases():
             expected_start_date="7/1/2024",
             expected_end_date="12/31/2024",
             expected_answer="198.4 hectares",
+            expected_clarification=False,
             test_group="",
             status="",
         ),
@@ -81,6 +88,7 @@ def mock_test_cases():
             expected_start_date="1/1/2023",
             expected_end_date="12/31/2023",
             expected_answer="Brazil",
+            expected_clarification=False,
             test_group="",
             status="",
         ),
@@ -207,6 +215,45 @@ async def test_run_csv_tests_with_mocked_data(
                         assert all(r.query for r in results), (
                             "All results should have a query"
                         )
+
+                        # Verify score structure
+                        first_result = results[0]
+                        assert hasattr(
+                            first_result,
+                            "aoi_id_match_score",
+                        ), "Should have aoi_id_match_score field"
+                        assert hasattr(
+                            first_result,
+                            "subregion_match_score",
+                        ), "Should have subregion_match_score field"
+                        assert hasattr(
+                            first_result,
+                            "dataset_id_match_score",
+                        ), "Should have dataset_id_match_score field"
+                        assert hasattr(
+                            first_result,
+                            "context_layer_match_score",
+                        ), "Should have context_layer_match_score field"
+                        assert hasattr(
+                            first_result,
+                            "data_pull_exists_score",
+                        ), "Should have data_pull_exists_score field"
+                        assert hasattr(
+                            first_result,
+                            "date_match_score",
+                        ), "Should have date_match_score field"
+                        assert hasattr(
+                            first_result,
+                            "charts_answer_score",
+                        ), "Should have charts_answer_score field"
+                        assert hasattr(
+                            first_result,
+                            "agent_answer_score",
+                        ), "Should have agent_answer_score field"
+                        assert hasattr(
+                            first_result,
+                            "clarification_requested_score",
+                        ), "Should have clarification_requested_score field"
 
                         # Check that CSVLoader was called correctly
                         mock_loader.load_test_data.assert_called_once_with(
@@ -357,3 +404,613 @@ async def test_run_csv_tests_with_empty_data(mock_config):
                 [],
                 mock_config.output_filename,
             )
+
+
+# ============================================================================
+# UNIT TESTS FOR MISSING EXPECTED VALUES
+# ============================================================================
+
+
+def test_aoi_evaluator_missing_expected_subregion():
+    """Test that missing expected_subregion returns None for subregion_match_score.
+
+    Missing "Expected" values should result in None scores, not positive scores.
+    """
+    from gnw_evals.evaluators import evaluate_aoi_selection
+
+    agent_state = {
+        "aoi": {
+            "src_id": "BRA",
+            "name": "Brazil",
+            "subtype": "country",
+            "source": "gadm",
+        },
+        "subregion": "country",
+    }
+
+    result = evaluate_aoi_selection(
+        agent_state=agent_state,
+        expected_aoi_ids=["BRA"],
+        expected_subregion="",  # Empty - should return None
+        query="",
+    )
+
+    assert result["aoi_id_match_score"] == 1.0, "AOI ID should match"
+    assert result["subregion_match_score"] is None, (
+        "Subregion score should be None when expected is empty"
+    )
+    assert result["match_aoi_id"] is True, "AOI ID match flag should be True"
+
+
+def test_dataset_evaluator_missing_expected_context_layer():
+    """Test that missing expected_context_layer returns None for context_layer_match_score.
+
+    Missing "Expected" values should result in None scores, not positive scores.
+    """
+    from gnw_evals.evaluators import evaluate_dataset_selection
+
+    agent_state = {
+        "dataset": {
+            "dataset_id": "0",
+            "dataset_name": "DIST-ALERT",
+            "context_layer": "tree_cover",
+        },
+    }
+
+    result = evaluate_dataset_selection(
+        agent_state=agent_state,
+        expected_dataset_id="0",
+        expected_context_layer="",  # Empty - should return None
+        query="",
+    )
+
+    assert result["dataset_id_match_score"] == 1.0, "Dataset ID should match"
+    assert result["context_layer_match_score"] is None, (
+        "Context layer score should be None when expected is empty"
+    )
+
+
+def test_data_pull_evaluator_missing_expected_dates():
+    """Test that missing expected dates returns None for date_match_score.
+
+    Missing "Expected" values should result in None scores, not positive scores.
+    """
+    from gnw_evals.evaluators import evaluate_data_pull
+
+    agent_state = {
+        "raw_data": [{"value": 100}, {"value": 200}],
+        "start_date": "2023-01-01",
+        "end_date": "2023-12-31",
+    }
+
+    result = evaluate_data_pull(
+        agent_state=agent_state,
+        min_rows=1,
+        expected_start_date=None,  # Missing
+        expected_end_date=None,  # Missing
+        query="",
+    )
+
+    assert result["data_pull_exists_score"] == 1.0, "Data pull should succeed"
+    assert result["date_match_score"] is None, (
+        "Date score should be None when expected dates are missing"
+    )
+    assert result["data_pull_success"] is True, "Data pull success flag should be True"
+
+
+def test_overall_score_excludes_none_values():
+    """Test that overall score calculation excludes None values from averaging.
+
+    Overall score calculation should exclude None values (missing expected fields).
+    """
+    from gnw_evals.runners.api import APITestRunner
+    from gnw_evals.utils.eval_types import ExpectedData
+
+    runner = APITestRunner(api_base_url="http://test", api_token="test")
+
+    # Evaluations with some None scores (missing expected values)
+    evaluations = {
+        "aoi_id_match_score": 1.0,
+        "subregion_match_score": None,  # Not evaluated (missing expected)
+        "dataset_id_match_score": 1.0,
+        "context_layer_match_score": None,  # Not evaluated (missing expected)
+        "data_pull_exists_score": 1.0,
+        "date_match_score": None,  # Not evaluated (missing expected)
+        "charts_answer_score": 0.0,
+        "agent_answer_score": 1.0,
+    }
+
+    expected_data = ExpectedData(
+        expected_aoi_ids=["BRA"],
+        expected_subregion="",  # Empty
+        expected_dataset_id="0",
+        expected_context_layer="",  # Empty
+        expected_start_date="",  # Empty
+        expected_end_date="",  # Empty
+        expected_answer="Test",
+    )
+
+    score = runner._calculate_overall_score(evaluations, expected_data)
+
+    # Should average only: aoi_id (1.0), dataset_id (1.0), data_pull (1.0),
+    #                      charts_answer (0.0), agent_answer (1.0)
+    # = (1.0 + 1.0 + 1.0 + 0.0 + 1.0) / 5 = 0.8
+    assert score == 0.8, (
+        f"Expected 0.8, got {score}. None values should be excluded from average"
+    )
+
+
+def test_aoi_evaluator_all_fields_present():
+    """Test AOI evaluator with all expected fields present.
+
+    Validates that both scores are calculated when both expected values are provided.
+    """
+    from gnw_evals.evaluators import evaluate_aoi_selection
+
+    agent_state = {
+        "aoi": {
+            "src_id": "BRA",
+            "name": "Brazil",
+            "subtype": "country",
+            "source": "gadm",
+        },
+        "subregion": "country",
+    }
+
+    result = evaluate_aoi_selection(
+        agent_state=agent_state,
+        expected_aoi_ids=["BRA"],
+        expected_subregion="country",  # Provided
+        query="",
+    )
+
+    assert result["aoi_id_match_score"] == 1.0, "AOI ID should match"
+    assert result["subregion_match_score"] == 1.0, "Subregion should match"
+    assert result["match_aoi_id"] is True
+    assert result["match_subregion"] is True
+
+
+def test_dataset_evaluator_all_fields_present():
+    """Test dataset evaluator with all expected fields present.
+
+    Validates that both scores are calculated when both expected values are provided.
+    """
+    from gnw_evals.evaluators import evaluate_dataset_selection
+
+    agent_state = {
+        "dataset": {
+            "dataset_id": "0",
+            "dataset_name": "DIST-ALERT",
+            "context_layer": "tree_cover",
+        },
+    }
+
+    result = evaluate_dataset_selection(
+        agent_state=agent_state,
+        expected_dataset_id="0",
+        expected_context_layer="tree_cover",  # Provided
+        query="",
+    )
+
+    assert result["dataset_id_match_score"] == 1.0, "Dataset ID should match"
+    assert result["context_layer_match_score"] == 1.0, "Context layer should match"
+
+
+def test_data_pull_evaluator_all_fields_present():
+    """Test data pull evaluator with all expected fields present.
+
+    Validates that both scores are calculated when both expected values are provided.
+    """
+    from gnw_evals.evaluators import evaluate_data_pull
+
+    agent_state = {
+        "raw_data": [{"value": 100}, {"value": 200}],
+        "start_date": "2023-01-01",
+        "end_date": "2023-12-31",
+    }
+
+    result = evaluate_data_pull(
+        agent_state=agent_state,
+        min_rows=1,
+        expected_start_date="2023-01-01",  # Provided
+        expected_end_date="2023-12-31",  # Provided
+        query="",
+    )
+
+    assert result["data_pull_exists_score"] == 1.0, "Data pull should succeed"
+    assert result["date_match_score"] == 1.0, "Dates should match"
+    assert result["data_pull_success"] is True
+    assert result["date_success"] is True
+
+
+# ============================================================================
+# UNIT TESTS FOR CLARIFICATION SCORING
+# ============================================================================
+
+
+def test_clarification_expected_and_given_scores_1():
+    """Test that clarification request scores 1.0 when expected.
+
+    When expected_clarification=True AND agent requests clarification,
+    clarification_requested_score should be 1.0, and other scores should be None.
+    """
+    from unittest.mock import patch
+
+    from gnw_evals.evaluators import evaluate_aoi_selection
+
+    agent_state = {
+        "aoi": None,  # No AOI selected
+        "messages": [
+            type("obj", (object,), {"content": "Could you clarify which region?"})(),
+        ],
+    }
+
+    with patch(
+        "gnw_evals.evaluators.llm_judges.llm_judge_clarification",
+    ) as mock_judge:
+        mock_judge.return_value = {
+            "is_clarification": True,
+            "explanation": "Agent is asking for region clarification",
+        }
+
+        result = evaluate_aoi_selection(
+            agent_state=agent_state,
+            expected_aoi_ids=["BRA"],
+            expected_subregion="",
+            expected_clarification=True,
+            query="Show me data",
+        )
+
+        assert result["clarification_requested_score"] == 1.0, (
+            "Should score 1.0 when clarification is expected and given"
+        )
+        assert result["aoi_id_match_score"] is None, (
+            "AOI score should be None when clarification is given"
+        )
+        assert result["subregion_match_score"] is None, (
+            "Subregion score should be None when clarification is given"
+        )
+
+
+def test_clarification_not_expected_but_given_scores_0():
+    """Test that clarification request scores 0.0 when NOT expected.
+
+    When expected_clarification=False AND agent requests clarification,
+    clarification_requested_score should be 0.0.
+    """
+    from unittest.mock import patch
+
+    from gnw_evals.evaluators import evaluate_dataset_selection
+
+    agent_state = {
+        "dataset": None,  # No dataset selected
+        "messages": [
+            type("obj", (object,), {"content": "Which dataset did you mean?"})(),
+        ],
+    }
+
+    with patch(
+        "gnw_evals.evaluators.llm_judges.llm_judge_clarification",
+    ) as mock_judge:
+        mock_judge.return_value = {
+            "is_clarification": True,
+            "explanation": "Agent is asking which dataset",
+        }
+
+        result = evaluate_dataset_selection(
+            agent_state=agent_state,
+            expected_dataset_id="0",
+            expected_context_layer="",
+            expected_clarification=False,
+            query="Get forest data",
+        )
+
+        assert result["clarification_requested_score"] == 0.0, (
+            "Should score 0.0 when clarification is NOT expected but given"
+        )
+        assert result["dataset_id_match_score"] is None, (
+            "Dataset score should be None when clarification is given"
+        )
+
+
+def test_overall_score_with_clarification():
+    """Test that overall score calculation includes clarification_requested_score.
+
+    When expected_clarification=True, the overall score should include
+    clarification_requested_score in the average and exclude other None scores.
+    """
+    from gnw_evals.runners.api import APITestRunner
+    from gnw_evals.utils.eval_types import ExpectedData
+
+    runner = APITestRunner(api_base_url="http://test", api_token="test")
+
+    # Scenario: Clarification was expected and given (1.0), no other checks applicable
+    evaluations = {
+        "clarification_requested_score": 1.0,
+        "aoi_id_match_score": None,  # Not evaluated (clarification given)
+        "subregion_match_score": None,
+        "dataset_id_match_score": None,
+        "context_layer_match_score": None,
+        "data_pull_exists_score": None,
+        "date_match_score": None,
+        "answer_score": None,  # Not evaluated (no expected_answer)
+    }
+
+    expected_data = ExpectedData(
+        expected_aoi_ids=["BRA"],
+        expected_subregion="",
+        expected_dataset_id="",
+        expected_context_layer="",
+        expected_start_date="",
+        expected_end_date="",
+        expected_answer="",
+        expected_clarification=True,
+    )
+
+    score = runner._calculate_overall_score(evaluations, expected_data)
+
+    # Should only average clarification_requested_score: 1.0 / 1 = 1.0
+    assert score == 1.0, (
+        f"Expected 1.0, got {score}. Clarification score should be the only score"
+    )
+
+
+# ============================================================================
+# UNIT TESTS FOR ANSWER SCORE SPLIT
+# ============================================================================
+
+
+def test_answer_evaluator_both_answers_present():
+    """Test that both charts and agent answers are evaluated when both exist.
+
+    Verifies that we get two separate scores when both data sources exist.
+    Charts answer is correct (1.0), agent answer is wrong (0.0).
+    """
+    from unittest.mock import patch
+
+    from gnw_evals.evaluators import evaluate_final_answer
+
+    agent_state = {
+        "charts_data": [{"insight": "The answer is Brazil with 500 hectares."}],
+        "messages": [
+            type(
+                "obj",
+                (object,),
+                {"content": "Based on the data, Australia has more."},
+            )(),
+        ],
+    }
+
+    with patch("gnw_evals.evaluators.answer_evaluator.llm_judge") as mock_judge:
+        # First call for charts answer (correct), second call for agent answer (wrong)
+        mock_judge.side_effect = [1.0, 0.0]
+
+        result = evaluate_final_answer(
+            agent_state=agent_state,
+            expected_answer="Brazil",
+        )
+
+        assert result["charts_answer_score"] == 1.0, (
+            "Charts answer should score 1.0 (correct)"
+        )
+        assert result["agent_answer_score"] == 0.0, (
+            "Agent answer should score 0.0 (wrong)"
+        )
+        assert (
+            result["actual_charts_answer"] == "The answer is Brazil with 500 hectares."
+        ), "Should capture charts insight"
+        assert (
+            result["actual_agent_answer"] == "Based on the data, Australia has more."
+        ), "Should capture agent message"
+        # Verify LLM judge was called twice
+        assert mock_judge.call_count == 2, (
+            "Should call LLM judge twice (charts + agent)"
+        )
+
+
+def test_answer_evaluator_no_charts_data():
+    """Test that charts_answer_score is None when no charts_data exists.
+
+    when pipeline fails before charts generation, charts_answer_score should be
+    None (not applicable), not 0.
+    """
+    from unittest.mock import patch
+
+    from gnw_evals.evaluators import evaluate_final_answer
+
+    agent_state = {
+        "charts_data": [],  # No charts - pipeline failed earlier
+        "messages": [
+            type("obj", (object,), {"content": "I need more information to answer."})(),
+        ],
+    }
+
+    with patch("gnw_evals.evaluators.answer_evaluator.llm_judge") as mock_judge:
+        # Only agent answer is evaluated (returns 0 - wrong answer)
+        mock_judge.return_value = 0.0
+
+        result = evaluate_final_answer(
+            agent_state=agent_state,
+            expected_answer="Brazil",
+        )
+
+        assert result["charts_answer_score"] is None, (
+            "Charts score should be None when no charts_data exists (not applicable)"
+        )
+        assert result["agent_answer_score"] == 0.0, (
+            "Agent answer should still be evaluated and score 0.0"
+        )
+        assert result["actual_charts_answer"] is None, (
+            "No charts answer should be recorded"
+        )
+        assert result["actual_agent_answer"] == "I need more information to answer.", (
+            "Should capture agent message"
+        )
+        # Verify LLM judge was called only once (for agent answer)
+        assert mock_judge.call_count == 1, (
+            "Should call LLM judge only once (agent answer only)"
+        )
+
+
+def test_overall_score_with_both_answer_scores():
+    """Test that overall score calculation includes both answer scores.
+
+    When expected_answer exists, overall score should include both
+    charts_answer_score and agent_answer_score in the average.
+    """
+    from gnw_evals.runners.api import APITestRunner
+    from gnw_evals.utils.eval_types import ExpectedData
+
+    runner = APITestRunner(api_base_url="http://test", api_token="test")
+
+    # Scenario: Charts answer correct (1.0), agent answer wrong (0.0)
+    evaluations = {
+        "aoi_id_match_score": 1.0,
+        "subregion_match_score": None,  # Not evaluated (missing expected)
+        "dataset_id_match_score": 1.0,
+        "context_layer_match_score": None,  # Not evaluated (missing expected)
+        "data_pull_exists_score": 1.0,
+        "date_match_score": None,  # Not evaluated (missing expected)
+        "charts_answer_score": 1.0,  # Charts answer correct
+        "agent_answer_score": 0.0,  # Agent answer wrong
+        "clarification_requested_score": None,
+    }
+
+    expected_data = ExpectedData(
+        expected_aoi_ids=["BRA"],
+        expected_subregion="",  # Empty
+        expected_dataset_id="0",
+        expected_context_layer="",  # Empty
+        expected_start_date="",  # Empty
+        expected_end_date="",  # Empty
+        expected_answer="Brazil",  # Present - both answer scores should be included
+    )
+
+    score = runner._calculate_overall_score(evaluations, expected_data)
+
+    # Should average: aoi_id (1.0), dataset_id (1.0), data_pull (1.0),
+    #                 charts_answer (1.0), agent_answer (0.0)
+    # = (1.0 + 1.0 + 1.0 + 1.0 + 0.0) / 5 = 0.8
+    assert score == 0.8, (
+        f"Expected 0.8, got {score}. Both answer scores should be included in average"
+    )
+
+
+# ============================================================================
+# UNIT TESTS FOR DATE NORMALIZATION
+# ============================================================================
+
+
+def test_normalize_date_format_mismatch():
+    """Test that M/D/YYYY format matches YYYY-MM-DD format after normalization.
+
+    dates in different formats should normalize to the same string for comparison.
+    """
+    from gnw_evals.evaluators.utils import normalize_date
+
+    # CSV format (M/D/YYYY) should normalize to ISO format
+    assert normalize_date("1/1/2023") == "2023-01-01"
+    assert normalize_date("12/31/2023") == "2023-12-31"
+    assert normalize_date("8/1/2024") == "2024-08-01"
+
+    # ISO format should pass through unchanged
+    assert normalize_date("2023-01-01") == "2023-01-01"
+    assert normalize_date("2023-12-31") == "2023-12-31"
+    assert normalize_date("2024-08-01") == "2024-08-01"
+
+    # Year-only should convert to Jan 1
+    assert normalize_date("2023") == "2023-01-01"
+    assert normalize_date("2024") == "2024-01-01"
+
+    # Critical: Same date in different formats should produce same output
+    assert normalize_date("1/1/2023") == normalize_date("2023-01-01")
+    assert normalize_date("8/15/2024") == normalize_date("2024-08-15")
+
+
+def test_normalize_date_invalid_returns_empty():
+    """Test that invalid dates return empty string (treated as None/missing).
+
+    Invalid expected dates should result in None score (not 0),
+    """
+    from gnw_evals.evaluators.utils import normalize_date
+
+    # None, empty, and "None" string
+    assert normalize_date(None) == ""
+    assert normalize_date("") == ""
+    assert normalize_date("None") == ""
+    assert normalize_date("   ") == ""
+
+    # Invalid date formats
+    assert normalize_date("invalid-date") == ""
+    assert normalize_date("13/32/2023") == ""  # Invalid month/day
+    assert normalize_date("not a date") == ""
+    assert normalize_date("2023-13-45") == ""  # Invalid ISO date
+
+
+def test_evaluate_data_pull_with_date_format_mismatch():
+    """Test that evaluate_data_pull handles date format mismatches correctly.
+
+    Integration test - dates should match despite format differences,
+    and genuinely different dates should still fail.
+    """
+    from gnw_evals.evaluators import evaluate_data_pull
+
+    # Test 1: Format mismatch but same dates -> should PASS
+    agent_state_matching = {
+        "raw_data": [{"value": 100}],
+        "start_date": "2023-01-01",  # ISO format (agent)
+        "end_date": "2023-12-31",
+    }
+
+    result_matching = evaluate_data_pull(
+        agent_state=agent_state_matching,
+        min_rows=1,
+        expected_start_date="1/1/2023",  # Slash format (CSV)
+        expected_end_date="12/31/2023",
+        query="",
+    )
+
+    assert result_matching["date_match_score"] == 1.0, (
+        "Dates should match despite format difference"
+    )
+    assert result_matching["date_success"] is True
+
+    # Test 2: Different dates -> should FAIL
+    agent_state_different = {
+        "raw_data": [{"value": 100}],
+        "start_date": "2023-11-01",  # November (agent)
+        "end_date": "2023-11-30",
+    }
+
+    result_different = evaluate_data_pull(
+        agent_state=agent_state_different,
+        min_rows=1,
+        expected_start_date="1/1/2023",  # January (CSV)
+        expected_end_date="12/31/2023",  # December
+        query="",
+    )
+
+    assert result_different["date_match_score"] == 0.0, (
+        "Different dates should not match even after normalization"
+    )
+    assert result_different["date_success"] is False
+
+    # Test 3: Invalid expected dates -> should return None
+    agent_state_valid = {
+        "raw_data": [{"value": 100}],
+        "start_date": "2023-01-01",
+        "end_date": "2023-12-31",
+    }
+
+    result_invalid = evaluate_data_pull(
+        agent_state=agent_state_valid,
+        min_rows=1,
+        expected_start_date="invalid-date",  # Invalid
+        expected_end_date="also-invalid",
+        query="",
+    )
+
+    assert result_invalid["date_match_score"] is None, (
+        "Invalid expected dates should result in None score (not evaluated)"
+    )
+    assert result_invalid["date_success"] is None

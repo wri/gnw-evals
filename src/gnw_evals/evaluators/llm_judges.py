@@ -24,16 +24,26 @@ def llm_judge_clarification(agent_state: dict, query: str) -> dict:
 
         if messages:
             content = messages[-1].content
-            # For Gemini, content is a list, with thinking and query as separate messages
-            if isinstance(content, list):
-                final_response = content[-1]
-            else:
+
+            if isinstance(content, str):
+                # Claude format: direct string
                 final_response = content
+            elif isinstance(content, list) and content:
+                # Gemini format: list of content items
+                last_item = content[-1]
+                if isinstance(last_item, dict) and "text" in last_item:
+                    final_response = last_item["text"]
+                else:
+                    # Fallback for unexpected list items
+                    final_response = str(last_item)
+            else:
+                # Fallback for any other format
+                final_response = str(content) if content else ""
         else:
             final_response = ""
 
     if not final_response:
-        return False  # No response to evaluate
+        return {"is_clarification": False, "explanation": "No response to evaluate"}
 
     CLARIFICATION_JUDGE_PROMPT = ChatPromptTemplate.from_messages(
         [
@@ -69,7 +79,7 @@ def llm_judge_clarification(agent_state: dict, query: str) -> dict:
         result = judge_chain.invoke({"query": query, "response": final_response})
         return result.model_dump()
     except Exception:
-        return False  # Default to not clarification if LLM call fails
+        return {"is_clarification": False, "explanation": "LLM call failed"}
 
 
 def llm_judge(expected_answer: str, actual_answer: str):
@@ -77,6 +87,7 @@ def llm_judge(expected_answer: str, actual_answer: str):
 
     class Score(BaseModel):
         score: int
+        answer_eval_type: str  # "boolean", "numeric", "named_entity", "year"
 
     JUDGE_PROMPT = ChatPromptTemplate.from_messages(
         [
@@ -89,14 +100,73 @@ def llm_judge(expected_answer: str, actual_answer: str):
 
                 ACTUAL INSIGHT: {actual_answer}
 
-                Does the actual insight capture the key information and meaning of the expected answer?
+                Your task is to:
+                1. Detect the answer type
+                2. Apply the appropriate comparison logic
+                3. Return a score (0 or 1)
 
-                Consider:
-                - Similar factual content (numbers, dates, locations)
-                - Similar conclusions or findings
-                - Comparable level of detail and accuracy
+                ## Answer Type Detection & Scoring Rules
 
-                Respond with ONLY "1" if the insight adequately captures the expected answer, or "0" if it does not.
+                **BOOLEAN** (true/false, yes/no questions):
+                - Expected answer contains: "TRUE", "FALSE", "True", "False", "true", "false", "yes", "no", "Yes", "No"
+                - Scoring: Exact semantic match required
+                - **First, extract the boolean value from the actual answer** (usually at the start: "True", "False", "yes", "no")
+                - **Then compare**: TRUE matches with yes/true/affirmative, FALSE matches with no/false/negative
+                - Examples: 
+                  - Expected "TRUE" vs Actual "true" → MATCH (1)
+                  - Expected "TRUE" vs Actual "yes" → MATCH (1)
+                  - Expected "TRUE" vs Actual "False." → NO MATCH (0) [opposite values]
+                  - Expected "TRUE" vs Actual "no" → NO MATCH (0) [opposite values]
+                  - Expected "FALSE" vs Actual "TRUE" → NO MATCH (0) [opposite values]
+                  - Expected "FALSE" vs Actual "false" → MATCH (1)
+                  - Expected "TRUE" vs Actual "The statement is correct" → MATCH (1) [affirms without explicit FALSE]
+                - **CRITICAL**: If the actual answer contains "False", "false", "no", or "No", it CANNOT match "TRUE". Vice versa.                
+
+                **NUMERIC** (numbers with optional units):
+                - Expected answer contains numbers: "198.4 hectares", "0.20%", "211 kha", "924,000 km²"
+                - **Extraction rule**: Identify THE main answer number (usually stated as "total", "X hectares were", or the first/most prominent number directly answering the question)
+                - **Tolerance formula**: Calculate |actual - expected| / expected
+                  - If result <= 0.05 (5%), then MATCH (1)
+                  - If result > 0.05 (5%), then NO MATCH (0)
+                - Examples of MATCH (within 5% tolerance):
+                  - Expected "198.4 hectares" vs Actual "200 hectares" → MATCH (1) [0.8% difference]
+                  - Expected "0.20%" vs Actual "0.19%" → MATCH (1) [5% difference]
+                  - Expected "211 kha" vs Actual "220 kha" → MATCH (1) [4.3% difference]
+                  - Expected "200 kha" vs Actual "200,000 hectares" → MATCH (1) [same value, different units]
+                - Examples of NO MATCH (exceeds 5% tolerance):
+                  - Expected "198.4 hectares" vs Actual "232 hectares" → NO MATCH (0) [16.9% difference]
+                  - Expected "211 kha" vs Actual "235 kha" → NO MATCH (0) [11.4% difference]
+                  - Expected "100 hectares" vs Actual "120 hectares" → NO MATCH (0) [20% difference]
+                - For percentages, compare the percentage values directly
+                - **When multiple numbers present**: Use the number that directly answers the question, not breakdown/detail numbers
+                  - Example: "A total of 231.97 hectares were affected. Short vegetation had 176.36 ha..." → Use 231.97, not 176.36
+
+                **YEAR** (4-digit years):
+                - Expected answer is a year: "2015", "2023"
+                - Scoring: Exact match required
+                - Examples:
+                  - Expected "2015" vs Actual "2015" → MATCH (1)
+                  - Expected "2015" vs Actual "2016" → NO MATCH (0)
+
+                **NAMED_ENTITY** (countries, regions, places, land cover types):
+                - Expected answer is a proper noun or descriptive term: "Brazil", "South Dakota" 
+                - Scoring: Semantic similarity - the actual answer should clearly identify the same entity or category
+                - Examples:
+                  - Expected "Brazil" vs Actual "Brazil had the most" → MATCH (1)
+                  - Expected "South Dakota" vs Actual "S Dakota" → MATCH (1)
+                  - Expected "Brazil" vs Actual "Australia" → NO MATCH (0)
+
+                ## Instructions
+
+                1. First, identify which answer_eval_type the expected answer belongs to
+                2. Apply the appropriate scoring rule from above
+                3. Return:
+                   - score: 1 if it matches according to the rules, 0 if it does not
+                   - answer_eval_type: one of "boolean", "numeric", "year", "named_entity"
+
+                Be strict with the rules above, especially for boolean, numeric, and year types.
+
+                IMPORTANT: Respond with ONLY "1" if the insight adequately captures the expected answer, or "0" if it does not.
                 """,
             ),
         ],
@@ -104,10 +174,14 @@ def llm_judge(expected_answer: str, actual_answer: str):
 
     judge_chain = JUDGE_PROMPT | HAIKU.with_structured_output(Score)
 
-    score = judge_chain.invoke(
+    llm_judgement = judge_chain.invoke(
         {
             "expected_answer": expected_answer,
             "actual_answer": actual_answer,
         },
     )
-    return score.score
+
+    # Currently not doing anything with other structured output
+    # llm_judgement.answer_eval_type
+
+    return llm_judgement.score
