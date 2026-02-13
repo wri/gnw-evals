@@ -7,6 +7,7 @@ with app.setup(hide_code=True):
     import marimo as mo
     import numpy as np
     import os
+    import re
 
     import pandas as pd
     import altair as alt
@@ -28,19 +29,38 @@ def _():
 def _():
     eval_results_dir = "outputs/"
 
-    source_file_name_simple = "combined_20260212_205134_summary.csv"
-    source_file_name_detailed = "combined_20260212_205134_detailed.csv"
-    return eval_results_dir, source_file_name_detailed, source_file_name_simple
+    # source_file_name_simple = "staging_20260213_152400_summary.csv"
+    # source_file_name_detailed = "staging_20260213_152400_detailed.csv"
+
+    # source_file_name_simple = "outputs/"
+    # source_file_name_detailed = "staging_20260213_152400_detailed.csv"
+    return (eval_results_dir,)
 
 
 @app.cell
-def _():
-    # sorted(os.listdir(eval_results_dir))
-    return
+def _(eval_results_dir):
+
+    _ls_summary = [f for f in os.listdir(eval_results_dir) 
+                   if f.endswith('_summary.csv')]
+
+    all_sources = sorted([s.rstrip('_summary.csv') for s in _ls_summary])
+
+    _recent = locate_most_recent_file(all_sources)
+
+    file_select = mo.ui.dropdown(
+        options=all_sources, 
+        allow_select_none=False, 
+        value=_recent,
+    )
+    file_select
+    return (file_select,)
 
 
 @app.cell(hide_code=True)
-def _(eval_results_dir, source_file_name_simple):
+def _(eval_results_dir, file_select):
+    source_file_name_simple = file_select.value + "_summary.csv"
+    source_file_name_detailed = file_select.value + "_detailed.csv"
+
     _eval_path = os.path.join(eval_results_dir, source_file_name_simple)
     print (f"Loading {_eval_path}")
 
@@ -49,7 +69,7 @@ def _(eval_results_dir, source_file_name_simple):
     # add an id column
     results_simple = results_simple.reset_index(drop=True)
     results_simple["idx"] = results_simple.index
-    return (results_simple,)
+    return results_simple, source_file_name_detailed
 
 
 @app.cell(hide_code=True)
@@ -442,6 +462,14 @@ def _(selected_score):
         return gt
 
     return (render_diagnostic_table,)
+
+
+@app.function
+def locate_most_recent_file(all_sources):
+    """Returns the most recent"""
+    matches = [re.search("(20\d{2})(\d{2})(\d{2})", x) for x in all_sources]
+    dates = [int(''.join(d.groups())) for d in matches]
+    return all_sources[np.argmax(dates)]
 
 
 @app.cell(hide_code=True)
