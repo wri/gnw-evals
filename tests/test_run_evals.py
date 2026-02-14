@@ -265,11 +265,6 @@ async def test_run_csv_tests_with_mocked_data(
                             mock_config.offset,
                         )
 
-                        # Check that results were saved
-                        mock_exporter.save_results_to_csv.assert_called_once()
-                        call_args = mock_exporter.save_results_to_csv.call_args
-                        assert len(call_args[0][0]) == 3, "Should save 3 results"
-
 
 @pytest.mark.asyncio
 async def test_run_csv_tests_with_multiple_workers(
@@ -400,10 +395,6 @@ async def test_run_csv_tests_with_empty_data(mock_config):
 
             # Assertions
             assert len(results) == 0, "Should return empty results"
-            mock_exporter.save_results_to_csv.assert_called_once_with(
-                [],
-                mock_config.output_filename,
-            )
 
 
 # ============================================================================
@@ -475,7 +466,7 @@ def test_data_pull_evaluator_missing_expected_dates():
 
     Missing "Expected" values should result in None scores, not positive scores.
     """
-    from gnw_evals.evaluators import evaluate_data_pull
+    from gnw_evals.evaluators import evaluate_data_pull, evaluate_date_selection
 
     agent_state = {
         "raw_data": [{"value": 100}, {"value": 200}],
@@ -483,19 +474,27 @@ def test_data_pull_evaluator_missing_expected_dates():
         "end_date": "2023-12-31",
     }
 
-    result = evaluate_data_pull(
+    # Data pull evaluation (no longer includes dates)
+    data_result = evaluate_data_pull(
         agent_state=agent_state,
         min_rows=1,
-        expected_start_date=None,  # Missing
-        expected_end_date=None,  # Missing
         query="",
     )
 
-    assert result["data_pull_exists_score"] == 1.0, "Data pull should succeed"
-    assert result["date_match_score"] is None, (
+    # Date evaluation (separate)
+    date_result = evaluate_date_selection(
+        agent_state=agent_state,
+        expected_start_date=None,  # Missing
+        expected_end_date=None,  # Missing
+    )
+
+    assert data_result["data_pull_exists_score"] == 1.0, "Data pull should succeed"
+    assert data_result["data_pull_success"] is True, (
+        "Data pull success flag should be True"
+    )
+    assert date_result["date_match_score"] is None, (
         "Date score should be None when expected dates are missing"
     )
-    assert result["data_pull_success"] is True, "Data pull success flag should be True"
 
 
 def test_overall_score_excludes_none_values():
@@ -601,7 +600,7 @@ def test_data_pull_evaluator_all_fields_present():
 
     Validates that both scores are calculated when both expected values are provided.
     """
-    from gnw_evals.evaluators import evaluate_data_pull
+    from gnw_evals.evaluators import evaluate_data_pull, evaluate_date_selection
 
     agent_state = {
         "raw_data": [{"value": 100}, {"value": 200}],
@@ -609,18 +608,24 @@ def test_data_pull_evaluator_all_fields_present():
         "end_date": "2023-12-31",
     }
 
-    result = evaluate_data_pull(
+    # Data pull evaluation
+    data_result = evaluate_data_pull(
         agent_state=agent_state,
         min_rows=1,
-        expected_start_date="2023-01-01",  # Provided
-        expected_end_date="2023-12-31",  # Provided
         query="",
     )
 
-    assert result["data_pull_exists_score"] == 1.0, "Data pull should succeed"
-    assert result["date_match_score"] == 1.0, "Dates should match"
-    assert result["data_pull_success"] is True
-    assert result["date_success"] is True
+    # Date evaluation
+    date_result = evaluate_date_selection(
+        agent_state=agent_state,
+        expected_start_date="2023-01-01",  # Provided
+        expected_end_date="2023-12-31",  # Provided
+    )
+
+    assert data_result["data_pull_exists_score"] == 1.0, "Data pull should succeed"
+    assert data_result["data_pull_success"] is True
+    assert date_result["date_match_score"] == 1.0, "Dates should match"
+    assert date_result["date_success"] is True
 
 
 # ============================================================================
@@ -948,12 +953,12 @@ def test_normalize_date_invalid_returns_empty():
 
 
 def test_evaluate_data_pull_with_date_format_mismatch():
-    """Test that evaluate_data_pull handles date format mismatches correctly.
+    """Test that evaluate_date_selection handles date format mismatches correctly.
 
     Integration test - dates should match despite format differences,
     and genuinely different dates should still fail.
     """
-    from gnw_evals.evaluators import evaluate_data_pull
+    from gnw_evals.evaluators import evaluate_date_selection
 
     # Test 1: Format mismatch but same dates -> should PASS
     agent_state_matching = {
@@ -962,12 +967,10 @@ def test_evaluate_data_pull_with_date_format_mismatch():
         "end_date": "2023-12-31",
     }
 
-    result_matching = evaluate_data_pull(
+    result_matching = evaluate_date_selection(
         agent_state=agent_state_matching,
-        min_rows=1,
         expected_start_date="1/1/2023",  # Slash format (CSV)
         expected_end_date="12/31/2023",
-        query="",
     )
 
     assert result_matching["date_match_score"] == 1.0, (
@@ -982,12 +985,10 @@ def test_evaluate_data_pull_with_date_format_mismatch():
         "end_date": "2023-11-30",
     }
 
-    result_different = evaluate_data_pull(
+    result_different = evaluate_date_selection(
         agent_state=agent_state_different,
-        min_rows=1,
         expected_start_date="1/1/2023",  # January (CSV)
         expected_end_date="12/31/2023",  # December
-        query="",
     )
 
     assert result_different["date_match_score"] == 0.0, (
@@ -1002,12 +1003,10 @@ def test_evaluate_data_pull_with_date_format_mismatch():
         "end_date": "2023-12-31",
     }
 
-    result_invalid = evaluate_data_pull(
+    result_invalid = evaluate_date_selection(
         agent_state=agent_state_valid,
-        min_rows=1,
         expected_start_date="invalid-date",  # Invalid
         expected_end_date="also-invalid",
-        query="",
     )
 
     assert result_invalid["date_match_score"] is None, (

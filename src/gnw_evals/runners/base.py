@@ -7,6 +7,7 @@ from typing import Any
 from gnw_evals.evaluators import (
     evaluate_aoi_selection,
     evaluate_data_pull,
+    evaluate_date_selection,
     evaluate_dataset_selection,
     evaluate_final_answer,
 )
@@ -114,10 +115,13 @@ class BaseTestRunner(ABC):
             expected_data.expected_clarification,
             query,
         )
-        data_eval = evaluate_data_pull(
+        date_eval = evaluate_date_selection(
             agent_state,
             expected_start_date=expected_data.expected_start_date,
             expected_end_date=expected_data.expected_end_date,
+        )
+        data_eval = evaluate_data_pull(
+            agent_state,
             expected_clarification=expected_data.expected_clarification,
             query=query,
         )
@@ -130,6 +134,7 @@ class BaseTestRunner(ABC):
         return {
             **aoi_eval,
             **dataset_eval,
+            **date_eval,
             **data_eval,
             **answer_eval,
         }
