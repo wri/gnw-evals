@@ -952,6 +952,32 @@ def test_normalize_date_invalid_returns_empty():
     assert normalize_date("2023-13-45") == ""  # Invalid ISO date
 
 
+def test_normalize_start_date_yyyy_format():
+    """Test that normalize_start_date converts YYYY to beginning of year."""
+    from gnw_evals.evaluators.utils import normalize_start_date
+
+    # YYYY format -> Jan 1
+    assert normalize_start_date("2000") == "2000-01-01"
+    assert normalize_start_date("2015") == "2015-01-01"
+
+    # Other formats pass through standard normalization
+    assert normalize_start_date("1/1/2023") == "2023-01-01"
+    assert normalize_start_date("2023-01-01") == "2023-01-01"
+
+
+def test_normalize_end_date_yyyy_format():
+    """Test that normalize_end_date converts YYYY to end of year."""
+    from gnw_evals.evaluators.utils import normalize_end_date
+
+    # YYYY format -> Dec 31
+    assert normalize_end_date("2000") == "2000-12-31"
+    assert normalize_end_date("2016") == "2016-12-31"
+
+    # Other formats pass through standard normalization
+    assert normalize_end_date("12/31/2023") == "2023-12-31"
+    assert normalize_end_date("2023-12-31") == "2023-12-31"
+
+
 def test_evaluate_data_pull_with_date_format_mismatch():
     """Test that evaluate_date_selection handles date format mismatches correctly.
 

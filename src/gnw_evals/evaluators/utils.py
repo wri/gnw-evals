@@ -18,29 +18,12 @@ def normalize_value(value) -> str:
 
 
 def normalize_date(date_str: str | None) -> str:
-    """Normalize date strings to YYYY-MM-DD format for comparison.
+    """Normalize date strings to YYYY-MM-DD format.
 
-    Handles multiple input formats:
-    - M/D/YYYY or MM/DD/YYYY (e.g., 1/1/2023, 12/31/2023)
-    - YYYY-MM-DD (already normalized - pass through)
-    - YYYY (year only - converts to YYYY-01-01)
-    - None, empty string, or "None" -> returns ""
+    For YYYY format, defaults to January 1st. For start/end date pairs,
+    use normalize_start_date() and normalize_end_date() instead.
 
-    Args:
-        date_str: Date string in various formats
-
-    Returns:
-        Normalized date string in YYYY-MM-DD format, or empty string if invalid
-
-    Examples:
-        >>> normalize_date("1/1/2023")
-        "2023-01-01"
-        >>> normalize_date("2023-08-15")
-        "2023-08-15"
-        >>> normalize_date("2024")
-        "2024-01-01"
-        >>> normalize_date(None)
-        ""
+    Formats: M/D/YYYY, YYYY-MM-DD, YYYY. Returns empty string if invalid.
 
     """
     if date_str is None or date_str == "None" or str(date_str).strip() == "":
@@ -48,12 +31,7 @@ def normalize_date(date_str: str | None) -> str:
 
     date_str = str(date_str).strip()
 
-    # Try parsing different formats
-    formats = [
-        "%m/%d/%Y",  # M/D/YYYY or MM/DD/YYYY
-        "%Y-%m-%d",  # YYYY-MM-DD (already normalized)
-        "%Y",  # Year only
-    ]
+    formats = ["%m/%d/%Y", "%Y-%m-%d", "%Y"]
 
     for fmt in formats:
         try:
@@ -62,5 +40,42 @@ def normalize_date(date_str: str | None) -> str:
         except ValueError:
             continue
 
-    # Could not parse - treat as missing/invalid
     return ""
+
+
+def normalize_start_date(date_str: str | None) -> str:
+    """Normalize a start date to YYYY-MM-DD format.
+
+    YYYY format converts to beginning of year (YYYY-01-01).
+    Other formats normalized via normalize_date().
+
+    """
+    if not date_str or date_str == "None" or str(date_str).strip() == "":
+        return ""
+
+    date_str = str(date_str).strip()
+
+    # YYYY format -> beginning of year
+    if len(date_str) == 4 and date_str.isdigit():
+        return f"{date_str}-01-01"
+
+    return normalize_date(date_str)
+
+
+def normalize_end_date(date_str: str | None) -> str:
+    """Normalize an end date to YYYY-MM-DD format.
+
+    YYYY format converts to end of year (YYYY-12-31).
+    Other formats normalized via normalize_date().
+
+    """
+    if not date_str or date_str == "None" or str(date_str).strip() == "":
+        return ""
+
+    date_str = str(date_str).strip()
+
+    # YYYY format -> end of year
+    if len(date_str) == 4 and date_str.isdigit():
+        return f"{date_str}-12-31"
+
+    return normalize_date(date_str)

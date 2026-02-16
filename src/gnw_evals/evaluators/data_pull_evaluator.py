@@ -3,7 +3,7 @@
 from typing import Any
 
 from gnw_evals.evaluators.llm_judges import llm_judge_clarification
-from gnw_evals.evaluators.utils import normalize_date
+from gnw_evals.evaluators.utils import normalize_end_date, normalize_start_date
 
 
 def evaluate_date_selection(
@@ -43,8 +43,8 @@ def evaluate_date_selection(
         }
 
     # Normalize expected dates
-    expected_start_str = normalize_date(expected_start_date)
-    expected_end_str = normalize_date(expected_end_date)
+    expected_start_str = normalize_start_date(expected_start_date)
+    expected_end_str = normalize_end_date(expected_end_date)
 
     # If expected dates are invalid, skip evaluation
     if not expected_start_str or not expected_end_str:
@@ -65,8 +65,8 @@ def evaluate_date_selection(
         }
 
     # Normalize actual dates and compare
-    actual_start_str = normalize_date(actual_start_date)
-    actual_end_str = normalize_date(actual_end_date)
+    actual_start_str = normalize_start_date(actual_start_date)
+    actual_end_str = normalize_end_date(actual_end_date)
 
     # If actual dates failed to parse, score as 0
     if not actual_start_str or not actual_end_str:
