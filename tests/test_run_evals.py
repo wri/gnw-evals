@@ -99,21 +99,31 @@ def mock_test_cases():
 def mock_agent_state():
     """Create a mock agent state that would be returned from the API."""
     return {
-        "aoi": {
-            "src_id": "15060",
+        "aoi_selection": {
             "name": "Mount Hakusan",
-            "subtype": "kba",
-            "source": "kba",
+            "aois": [
+                {
+                    "src_id": "15060",
+                    "name": "Mount Hakusan",
+                    "subtype": "kba",
+                    "source": "kba",
+                },
+            ],
         },
         "dataset": {
             "dataset_id": "0",
             "dataset_name": "Global All Ecosystem Disturbance Alerts (DIST-ALERT)",
             "context_layer": "",
         },
-        "raw_data": [
-            {"date": "2023-08-01", "value": 100},
-            {"date": "2023-08-15", "value": 150},
-            {"date": "2024-08-01", "value": 80},
+        "statistics": [
+            {
+                "data": {
+                    "date": ["2023-08-01", "2023-08-15", "2024-08-01"],
+                    "value": [100, 150, 80],
+                },
+                "start_date": "8/1/2023",
+                "end_date": "8/31/2024",
+            },
         ],
         "start_date": "8/1/2023",
         "end_date": "8/31/2024",
@@ -410,11 +420,16 @@ def test_aoi_evaluator_missing_expected_subregion():
     from gnw_evals.evaluators import evaluate_aoi_selection
 
     agent_state = {
-        "aoi": {
-            "src_id": "BRA",
+        "aoi_selection": {
             "name": "Brazil",
-            "subtype": "country",
-            "source": "gadm",
+            "aois": [
+                {
+                    "src_id": "BRA",
+                    "name": "Brazil",
+                    "subtype": "country",
+                    "source": "gadm",
+                },
+            ],
         },
         "subregion": "country",
     }
@@ -469,7 +484,13 @@ def test_data_pull_evaluator_missing_expected_dates():
     from gnw_evals.evaluators import evaluate_data_pull, evaluate_date_selection
 
     agent_state = {
-        "raw_data": [{"value": 100}, {"value": 200}],
+        "statistics": [
+            {
+                "data": {"value": [100, 200]},
+                "start_date": "2023-01-01",
+                "end_date": "2023-12-31",
+            },
+        ],
         "start_date": "2023-01-01",
         "end_date": "2023-12-31",
     }
@@ -547,11 +568,16 @@ def test_aoi_evaluator_all_fields_present():
     from gnw_evals.evaluators import evaluate_aoi_selection
 
     agent_state = {
-        "aoi": {
-            "src_id": "BRA",
+        "aoi_selection": {
             "name": "Brazil",
-            "subtype": "country",
-            "source": "gadm",
+            "aois": [
+                {
+                    "src_id": "BRA",
+                    "name": "Brazil",
+                    "subtype": "country",
+                    "source": "gadm",
+                },
+            ],
         },
         "subregion": "country",
     }
@@ -603,7 +629,13 @@ def test_data_pull_evaluator_all_fields_present():
     from gnw_evals.evaluators import evaluate_data_pull, evaluate_date_selection
 
     agent_state = {
-        "raw_data": [{"value": 100}, {"value": 200}],
+        "statistics": [
+            {
+                "data": {"value": [100, 200]},
+                "start_date": "2023-01-01",
+                "end_date": "2023-12-31",
+            },
+        ],
         "start_date": "2023-01-01",
         "end_date": "2023-12-31",
     }
