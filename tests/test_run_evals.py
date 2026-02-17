@@ -1071,3 +1071,44 @@ def test_evaluate_data_pull_with_date_format_mismatch():
         "Invalid expected dates should result in None score (not evaluated)"
     )
     assert result_invalid["date_success"] is None
+
+
+# ============================================================================
+# UNIT TESTS FOR EXPECTED_CLARIFICATION STRING PARSING
+# ============================================================================
+
+
+def test_expected_data_clarification_string_parsing():
+    """Test that ExpectedData correctly parses string values for expected_clarification.
+
+    CSV files provide string values that need to be converted to booleans.
+    Empty strings from CSV should default to False.
+    """
+    from gnw_evals.utils.eval_types import ExpectedData
+
+    # Test empty string (most common case from CSV)
+    data_empty = ExpectedData(expected_clarification="")
+    assert data_empty.expected_clarification is False, (
+        "Empty string should be parsed as False"
+    )
+
+    # Test string "true" values
+    for true_val in ["true", "True", "TRUE", "1", "yes", "Yes"]:
+        data = ExpectedData(expected_clarification=true_val)
+        assert data.expected_clarification is True, (
+            f"'{true_val}' should be parsed as True"
+        )
+
+    # Test string "false" values
+    for false_val in ["false", "False", "FALSE", "0", "no", "No"]:
+        data = ExpectedData(expected_clarification=false_val)
+        assert data.expected_clarification is False, (
+            f"'{false_val}' should be parsed as False"
+        )
+
+    # Test actual boolean values pass through
+    data_true = ExpectedData(expected_clarification=True)
+    assert data_true.expected_clarification is True
+
+    data_false = ExpectedData(expected_clarification=False)
+    assert data_false.expected_clarification is False
