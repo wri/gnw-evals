@@ -107,6 +107,22 @@ class ExpectedData(BaseModel):
             return [item.strip() for item in v.split(";") if item.strip()]
         return []
 
+    @field_validator("expected_clarification", mode="before")
+    @classmethod
+    def parse_clarification(cls, v: str | bool) -> bool:
+        """Convert string input to boolean."""
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            # Handle empty strings as False
+            if not v or v.lower() in ("false", "0", "no", ""):
+                return False
+            if v.lower() in ("true", "1", "yes"):
+                return True
+            # Default to False for any other value
+            return False
+        return bool(v)
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return self.model_dump(exclude_none=False)
