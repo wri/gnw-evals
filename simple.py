@@ -83,7 +83,7 @@ def _(results_simple):
         "date_match_score": "Date Match",
         "context_layer_match_score": "Context Layer Match",
         "data_pull_exists_score": "Data Pull Exists",
-        #"clarification_requested_score": "Clarification Requested",
+        "clarification_requested_score": "Clarification Requested",
     }
 
     # Keep explicit ordering (and only columns that actually exist in df)
@@ -192,34 +192,13 @@ def _(df2, long, score_cols, score_map):
 
 
 @app.cell
-def _():
-    return
-
-
-@app.cell(hide_code=True)
-def _(eval_set_ui, results_simple, score_cols, score_map):
-    # Preprocessing for heatmap 
-
-    # create an id as there is none in the CSV
-    df2 = results_simple.reset_index(drop=True).copy()
-    df2["idx"] = df2.index
-
-    # filter to the eval_set selected by user
-    mask = df2['eval_set'] == eval_set_ui.value
-
-    # Long form 
-    long = df2[mask].melt(id_vars="idx", value_vars=score_cols, var_name="score", value_name="value")
-    long["state"] = long["value"].map({1: "pass", 0: "fail"}).fillna("missing")
-
-    # Add human-readable label for the x axis + tooltip
-    long["score_label"] = long["score"].map(score_map).fillna(long["score"])
-    return df2, long
-
-
-@app.cell
 def _(results_simple):
     # select which eval set to show in the heatmap
-    eval_sets_available = sorted(results_simple.eval_set.unique())
+    try: 
+        eval_sets_available = sorted(results_simple.eval_set.unique())
+    except AttributeError: 
+        eval_sets_available = ["custom"]
+        print ("WARNING: CSV generated from obsolete code, no eval_set column available.")
 
     # display "gold" by default
     _default = "gold" if ("gold" in eval_sets_available) else eval_sets_available[0]
@@ -231,6 +210,32 @@ def _(results_simple):
     )
     eval_set_ui
     return (eval_set_ui,)
+
+
+@app.cell(hide_code=True)
+def _(eval_set_ui, results_simple, score_cols, score_map):
+    # Preprocessing for heatmap 
+
+    # create an id as there is none in the CSV
+    df2 = results_simple.reset_index(drop=True).copy()
+    df2["idx"] = df2.index
+
+    # TEMP BYPASS for old code
+    if 'eval_set' not in df2.columns: 
+        mask = pd.Series(True, index=df2.index)
+        print ("WARNING: CSV generated from obsolete code, no eval_set column available.")
+    else: 
+
+        # filter to the eval_set selected by user
+        mask = df2['eval_set'] == eval_set_ui.value
+
+    # Long form 
+    long = df2[mask].melt(id_vars="idx", value_vars=score_cols, var_name="score", value_name="value")
+    long["state"] = long["value"].map({1: "pass", 0: "fail"}).fillna("missing")
+
+    # Add human-readable label for the x axis + tooltip
+    long["score_label"] = long["score"].map(score_map).fillna(long["score"])
+    return df2, long
 
 
 @app.cell(hide_code=True)
