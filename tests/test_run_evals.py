@@ -665,131 +665,212 @@ def test_data_pull_evaluator_all_fields_present():
 # ============================================================================
 
 
-def test_clarification_expected_and_given_scores_1():
-    """Test that clarification request scores 1.0 when expected.
+def test_clarification_evaluator_all_scenarios():
+    """Test all clarification scoring scenarios.
 
-    When expected_clarification=True AND agent requests clarification,
-    clarification_requested_score should be 1.0, and other scores should be None.
+    Tests the centralized clarification evaluator with all 6 cases:
+    1. expected=True, actual=True → score=1.0
+    2. expected=True, actual=False → score=0.0
+    3. expected=False, actual=True → score=0.0
+    4. expected=False, actual=False → score=1.0
+    5. expected=None (from empty ""), actual=True → score=0.0
+    6. expected=None (from empty ""), actual=False → score=None
     """
     from unittest.mock import patch
-
-    from gnw_evals.evaluators import evaluate_aoi_selection
+    from gnw_evals.evaluators.clarification_evaluator import evaluate_clarification
 
     agent_state = {
-        "aoi": None,  # No AOI selected
         "messages": [
-            type("obj", (object,), {"content": "Could you clarify which region?"})(),
+            type("obj", (object,), {"content": "Could you clarify?"})(),
         ],
     }
 
+    # Case 1: expected=True, actual=True → 1.0
     with patch(
-        "gnw_evals.evaluators.llm_judges.llm_judge_clarification",
-    ) as mock_judge:
-        mock_judge.return_value = {
-            "is_clarification": True,
-            "explanation": "Agent is asking for region clarification",
-        }
-
-        result = evaluate_aoi_selection(
-            agent_state=agent_state,
-            expected_aoi_ids=["BRA"],
-            expected_subregion="",
-            expected_clarification=True,
-            query="Show me data",
+        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification"
+    ) as mock:
+        mock.return_value = {"is_clarification": True, "explanation": "asking for info"}
+        result = evaluate_clarification(
+            agent_state, expected_clarification=True, query="test"
         )
-
+        assert result["actual_clarification_requested"] is True, (
+            "Case 1: Should detect clarification was requested"
+        )
         assert result["clarification_requested_score"] == 1.0, (
-            "Should score 1.0 when clarification is expected and given"
+            "Case 1: expected=True, actual=True should score 1.0"
         )
-        assert result["aoi_id_match_score"] is None, (
-            "AOI score should be None when clarification is given"
+
+    # Case 2: expected=True, actual=False → 0.0
+    with patch(
+        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification"
+    ) as mock:
+        mock.return_value = {"is_clarification": False, "explanation": "answered"}
+        result = evaluate_clarification(
+            agent_state, expected_clarification=True, query="test"
         )
-        assert result["subregion_match_score"] is None, (
-            "Subregion score should be None when clarification is given"
+        assert result["actual_clarification_requested"] is False, (
+            "Case 2: Should detect clarification was NOT requested"
+        )
+        assert result["clarification_requested_score"] == 0.0, (
+            "Case 2: expected=True, actual=False should score 0.0"
+        )
+
+    # Case 3: expected=False, actual=True → 0.0
+    with patch(
+        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification"
+    ) as mock:
+        mock.return_value = {"is_clarification": True, "explanation": "asking for info"}
+        result = evaluate_clarification(
+            agent_state, expected_clarification=False, query="test"
+        )
+        assert result["actual_clarification_requested"] is True, (
+            "Case 3: Should detect clarification was requested"
+        )
+        assert result["clarification_requested_score"] == 0.0, (
+            "Case 3: expected=False, actual=True should score 0.0"
+        )
+
+    # Case 4: expected=False, actual=False → 1.0
+    with patch(
+        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification"
+    ) as mock:
+        mock.return_value = {"is_clarification": False, "explanation": "answered"}
+        result = evaluate_clarification(
+            agent_state, expected_clarification=False, query="test"
+        )
+        assert result["actual_clarification_requested"] is False, (
+            "Case 4: Should detect clarification was NOT requested"
+        )
+        assert result["clarification_requested_score"] == 1.0, (
+            "Case 4: expected=False, actual=False should score 1.0"
+        )
+
+    # Case 5: expected=None (empty string), actual=True → 0.0
+    with patch(
+        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification"
+    ) as mock:
+        mock.return_value = {"is_clarification": True, "explanation": "asking for info"}
+        result = evaluate_clarification(
+            agent_state, expected_clarification=None, query="test"
+        )
+        assert result["actual_clarification_requested"] is True, (
+            "Case 5: Should detect clarification was requested"
+        )
+        assert result["clarification_requested_score"] == 0.0, (
+            "Case 5: expected=None, actual=True should score 0.0 (unsolicited clarification)"
+        )
+
+    # Case 6: expected=None (empty string), actual=False → None
+    with patch(
+        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification"
+    ) as mock:
+        mock.return_value = {"is_clarification": False, "explanation": "answered"}
+        result = evaluate_clarification(
+            agent_state, expected_clarification=None, query="test"
+        )
+        assert result["actual_clarification_requested"] is False, (
+            "Case 6: Should detect clarification was NOT requested"
+        )
+        assert result["clarification_requested_score"] is None, (
+            "Case 6: expected=None, actual=False should score None (not evaluated)"
         )
 
 
-def test_clarification_not_expected_but_given_scores_0():
-    """Test that clarification request scores 0.0 when NOT expected.
+def test_clarification_evaluator_no_query():
+    """Test clarification evaluator handles missing query gracefully."""
+    from gnw_evals.evaluators.clarification_evaluator import evaluate_clarification
 
-    When expected_clarification=False AND agent requests clarification,
-    clarification_requested_score should be 0.0.
+    agent_state = {"messages": []}
+
+    # No query provided - expected=False
+    result = evaluate_clarification(agent_state, expected_clarification=False, query="")
+    assert result["actual_clarification_requested"] is False, (
+        "No query should result in no clarification requested"
+    )
+    assert result["clarification_requested_score"] == 1.0, (
+        "expected=False, actual=False should score 1.0"
+    )
+
+    # No query provided - expected=True
+    result = evaluate_clarification(agent_state, expected_clarification=True, query="")
+    assert result["actual_clarification_requested"] is False
+    assert result["clarification_requested_score"] == 0.0, (
+        "expected=True, actual=False should score 0.0"
+    )
+
+    # No query provided - expected=None
+    result = evaluate_clarification(agent_state, expected_clarification=None, query="")
+    assert result["actual_clarification_requested"] is False
+    assert result["clarification_requested_score"] is None, (
+        "expected=None, actual=False should score None"
+    )
+
+
+def test_clarification_and_other_evaluations_run_together():
+    """Integration test: clarification detection doesn't block other evaluations.
+
+    When agent requests clarification AND selects an AOI, both should be evaluated.
+    All evaluations should run independently.
     """
     from unittest.mock import patch
-
-    from gnw_evals.evaluators import evaluate_dataset_selection
-
-    agent_state = {
-        "dataset": None,  # No dataset selected
-        "messages": [
-            type("obj", (object,), {"content": "Which dataset did you mean?"})(),
-        ],
-    }
-
-    with patch(
-        "gnw_evals.evaluators.llm_judges.llm_judge_clarification",
-    ) as mock_judge:
-        mock_judge.return_value = {
-            "is_clarification": True,
-            "explanation": "Agent is asking which dataset",
-        }
-
-        result = evaluate_dataset_selection(
-            agent_state=agent_state,
-            expected_dataset_id="0",
-            expected_context_layer="",
-            expected_clarification=False,
-            query="Get forest data",
-        )
-
-        assert result["clarification_requested_score"] == 0.0, (
-            "Should score 0.0 when clarification is NOT expected but given"
-        )
-        assert result["dataset_id_match_score"] is None, (
-            "Dataset score should be None when clarification is given"
-        )
-
-
-def test_overall_score_with_clarification():
-    """Test that overall score calculation includes clarification_requested_score.
-
-    When expected_clarification=True, the overall score should include
-    clarification_requested_score in the average and exclude other None scores.
-    """
     from gnw_evals.runners.api import APITestRunner
     from gnw_evals.utils.eval_types import ExpectedData
 
     runner = APITestRunner(api_base_url="http://test", api_token="test")
 
-    # Scenario: Clarification was expected and given (1.0), no other checks applicable
-    evaluations = {
-        "clarification_requested_score": 1.0,
-        "aoi_id_match_score": None,  # Not evaluated (clarification given)
-        "subregion_match_score": None,
-        "dataset_id_match_score": None,
-        "context_layer_match_score": None,
-        "data_pull_exists_score": None,
-        "date_match_score": None,
-        "answer_score": None,  # Not evaluated (no expected_answer)
+    # Agent state with both clarification AND AOI selection
+    agent_state = {
+        "aoi_selection": {
+            "aois": [
+                {
+                    "src_id": "BRA",
+                    "name": "Brazil",
+                    "subtype": "country",
+                    "source": "gadm",
+                }
+            ]
+        },
+        "messages": [
+            type(
+                "obj",
+                (object,),
+                {"content": "I found Brazil. By the way, which specific region?"},
+            )(),
+        ],
     }
 
     expected_data = ExpectedData(
         expected_aoi_ids=["BRA"],
-        expected_subregion="",
-        expected_dataset_id="",
-        expected_context_layer="",
-        expected_start_date="",
-        expected_end_date="",
-        expected_answer="",
         expected_clarification=True,
     )
 
-    score = runner._calculate_overall_score(evaluations, expected_data)
+    with patch(
+        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification"
+    ) as mock_clarif:
+        mock_clarif.return_value = {
+            "is_clarification": True,
+            "explanation": "asking for region",
+        }
 
-    # Should only average clarification_requested_score: 1.0 / 1 = 1.0
-    assert score == 1.0, (
-        f"Expected 1.0, got {score}. Clarification score should be the only score"
-    )
+        evaluations = runner._run_evaluations(
+            agent_state, expected_data, query="Show me Brazil"
+        )
+
+        # Verify clarification was detected and scored
+        assert evaluations["actual_clarification_requested"] is True, (
+            "Should detect that clarification was requested"
+        )
+        assert evaluations["clarification_requested_score"] == 1.0, (
+            "Clarification score should be 1.0 (expected and given)"
+        )
+
+        # Verify AOI evaluation still ran (not blocked by clarification)
+        assert evaluations["aoi_id_match_score"] == 1.0, (
+            "AOI evaluation should run and match even when clarification requested"
+        )
+        assert evaluations["actual_id"] == "['BRA']", (
+            "AOI ID should be extracted even when clarification requested"
+        )
 
 
 # ============================================================================
@@ -1081,15 +1162,15 @@ def test_evaluate_data_pull_with_date_format_mismatch():
 def test_expected_data_clarification_string_parsing():
     """Test that ExpectedData correctly parses string values for expected_clarification.
 
-    CSV files provide string values that need to be converted to booleans.
-    Empty strings from CSV should default to False.
+    CSV files provide string values that need to be converted to booleans or None.
+    Empty strings from CSV should become None (no expectation).
     """
     from gnw_evals.utils.eval_types import ExpectedData
 
-    # Test empty string (most common case from CSV)
+    # Test empty string (most common case from CSV) -> None
     data_empty = ExpectedData(expected_clarification="")
-    assert data_empty.expected_clarification is False, (
-        "Empty string should be parsed as False"
+    assert data_empty.expected_clarification is None, (
+        "Empty string should be parsed as None (no expectation)"
     )
 
     # Test string "true" values
@@ -1112,3 +1193,7 @@ def test_expected_data_clarification_string_parsing():
 
     data_false = ExpectedData(expected_clarification=False)
     assert data_false.expected_clarification is False
+
+    # Test None passes through
+    data_none = ExpectedData(expected_clarification=None)
+    assert data_none.expected_clarification is None
