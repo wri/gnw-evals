@@ -225,3 +225,34 @@ Date range checking in `evaluate_data_pull` was failing due to format mismatch b
   - Overall date match score: 1.00 (when dates are present and comparable)
 
 ---
+
+## Task 7: Centralized Clarification Detection
+
+**Priority:** High  
+**Status:** [x]  
+**Category:** Fix / Performance
+
+### Problem
+Clarification detection duplicated across 3 evaluators, causing up to 3 LLM calls per evaluation.
+
+### Old Behavior
+- `llm_judge_clarification()` called separately in AOI, dataset, and data pull evaluators
+- 1-3 LLM calls per evaluation depending on what was missing
+- No `actual_clarification_requested` field in output
+
+### Updated Behavior
+- New centralized `evaluate_clarification()` called once at start of evaluation pipeline
+- All evaluators run independently regardless of clarification
+- Field validator distinguishes empty string (`""` → `None`) from `False`
+- Added `actual_clarification_requested` field to CSV output
+- 6-case truth table implemented (True/True=1.0, True/False=0.0, False/True=0.0, False/False=1.0, None/True=0.0, None/False=None)
+
+### Performance Improvement
+- Reduced from up to 3 LLM calls to exactly 1 call per evaluation (~67% reduction)
+
+### Implementation Details
+- Created: `clarification_evaluator.py`
+- Modified: 8 files (models, evaluators, base runner, CSV exporter)
+- Tests: Added 3 new, removed 4 old, all 23 tests pass
+
+---
