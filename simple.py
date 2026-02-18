@@ -99,7 +99,7 @@ def _(results_simple):
 
     assert np.isin(vals, [0, 1]).all(), "Non-binary values detected in score columns"
 
-    print (f"The following columns are not being visualized: {[c for c in df_score_cols if c not in score_cols]}")
+    print (f"The following score-columns are not being visualized: {[c for c in df_score_cols if c not in score_cols]}")
     return score_cols, score_map
 
 
@@ -239,8 +239,25 @@ def _(eval_set_ui, results_simple, score_cols, score_map):
 
 
 @app.cell(hide_code=True)
-def _(heatmap, interpretation):
+def _(heatmap):
     # make interactive heatmap with clickable selection
+
+    interpretation=mo.md("""
+    ### How to read this chart:
+
+    **Each row reprents one eval test query.** <br>
+    If 50 tests were run, the heatmap will be 50 units tall.
+
+    **Each column reprents an eval score**<br>
+    For each score, the correct "expected" value is compared to GNW's "actual" response.
+    If no expected value is available, the score is not computed.
+
+    **Each cell represents a result.**<br>
+    Red/Green indicates passing or failing score.
+
+    **This heatmap is interactive.**<br>
+    Click on a cell to see the expected and actual values.
+    """)
 
     # Define single-cell click selection (captures idx + score)
     cell = alt.selection_point(
@@ -299,6 +316,7 @@ def _(
 
     _show_cols = get_columns(selected_score)
     _show_cols = [c for c in _show_cols if c in results_detailed.columns]
+    # print (_show_cols)
 
     # combine selection with dataframe from the "detailed" CSV
     diagnostic_info = results_detailed.iloc[[selected_idx]][_show_cols]
@@ -308,11 +326,15 @@ def _(
     return
 
 
-@app.cell(hide_code=True)
-def _():
+@app.cell
+def _(results_detailed, selected_idx):
     # print the dataframe without the fancy table
-    # commented out
-    #diagnostic_info
+    # diagnostic_info
+
+    # print out all the columns for the selection
+    _allcols = results_detailed.iloc[selected_idx]
+    _allcols.name = str(_allcols.name)
+    _allcols.dropna()
     return
 
 
@@ -383,10 +405,13 @@ def _():
         ],
         "clarification_requested_score": [
             "expected_clarification",
+            "actual_clarification_requested",
             "clarification_requested_score",
         ],
     }
+
     base_cols = [
+        "idx",
         "query", 
         "trace_url", 
         #"overall_score", 
@@ -431,13 +456,15 @@ def _(selected_score):
             urls = df_kv.loc[mask, "Value"].astype(str)
             _trace_id = (urls.values[-1].split('/')[-1])
 
-            df_kv.loc[mask, "Value"] = urls.map(lambda u: f"[Langfuse trace {_trace_id}]({u})")
+            #df_kv.loc[mask, "Value"] = urls.map(lambda u: f"[Langfuse trace {_trace_id}]({u})")
+            df_kv.loc[mask, "Value"] = urls.map(lambda u: f'<a href="{u}" target="_blank">Langfuse trace {_trace_id}</a>')
+
 
         gt = (
             GT(df_kv)
             .tab_header(title=title, subtitle=subtitle)
             #.cols_label(Field="Field", Value="Value")
-            .cols_width(cases={"Field": "150px", "Value": "800px"})  # tune as needed
+            .cols_width(cases={"Field": "180px", "Value": "800px"})  # tune as needed
 
             # Render markdown for answer and enable link with [trace](url)
             .fmt_markdown(columns="Value")
@@ -499,27 +526,6 @@ def locate_most_recent_file(all_sources):
     matches = [re.search("(20\d{2})(\d{2})(\d{2})", x) for x in all_sources]
     dates = [int(''.join(d.groups())) for d in matches]
     return all_sources[np.argmax(dates)]
-
-
-@app.cell(hide_code=True)
-def _():
-    interpretation=mo.md("""
-    ### How to read this chart:
-
-    **Each row reprents one eval test query.** <br>
-    If 50 tests were run, the heatmap will be 50 units tall.
-
-    **Each column reprents an eval score**<br>
-    For each score, the correct "expected" value is compared to GNW's "actual" response.
-    If no expected value is available, the score is not computed.
-
-    **Each cell represents a result.**<br>
-    Red/Green indicates passing or failing score.
-
-    **This heatmap is interactive.**<br>
-    Click on a cell to see the expected and actual values.
-    """)
-    return (interpretation,)
 
 
 if __name__ == "__main__":
