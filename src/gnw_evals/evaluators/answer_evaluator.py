@@ -24,16 +24,6 @@ def evaluate_final_answer(
         Dict with charts_answer_score, agent_answer_score, and actual values
 
     """
-    # If no expected answer, both scores are None (check not applicable)
-    if not expected_answer:
-        return {
-            "charts_answer_score": None,
-            "agent_answer_score": None,
-            "actual_charts_answer": None,
-            "actual_agent_answer": None,
-            "error": "Missing expected answer",
-        }
-
     # Extract charts insight
     charts_data = agent_state.get("charts_data", [])
     actual_charts_answer = charts_data[0].get("insight", "") if charts_data else ""
@@ -59,6 +49,15 @@ def evaluate_final_answer(
             # Fallback for any other format
             actual_agent_answer = str(content) if content else ""
 
+    # If no expected answer, both scores are None
+    if not expected_answer:
+        return {
+            "charts_answer_score": None,
+            "agent_answer_score": None,
+            "actual_charts_answer": actual_charts_answer,
+            "actual_agent_answer": actual_agent_answer,
+        }
+
     # Score charts answer
     charts_answer_score = None
     if actual_charts_answer:
@@ -79,5 +78,4 @@ def evaluate_final_answer(
         "agent_answer_score": agent_answer_score,
         "actual_charts_answer": actual_charts_answer or None,
         "actual_agent_answer": actual_agent_answer or None,
-        "error": "",
     }
