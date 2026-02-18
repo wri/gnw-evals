@@ -57,7 +57,7 @@ class TestResult(BaseModel):
     clarification_requested_score: float | None = None
 
     # Expected data fields
-    expected_aoi_ids: list[str] = []
+    expected_aoi_ids: list[str] | None = None
     expected_subregion: str = ""
     expected_aoi_source: str = ""
     expected_dataset_id: str = ""
@@ -83,7 +83,7 @@ class ExpectedData(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    expected_aoi_ids: list[str] = []
+    expected_aoi_ids: list[str] | None = None
     expected_subregion: str = ""
     expected_aoi_source: str = ""
     expected_dataset_id: str = ""
