@@ -6,6 +6,7 @@ from typing import Any
 
 from gnw_evals.evaluators import (
     evaluate_aoi_selection,
+    evaluate_clarification,
     evaluate_data_pull,
     evaluate_date_selection,
     evaluate_dataset_selection,
@@ -87,6 +88,7 @@ class BaseTestRunner(ABC):
             actual_charts_answer=None,
             actual_agent_answer=None,
             # Clarification evaluation fields
+            actual_clarification_requested=None,
             clarification_requested_score=None,
             # Expected data
             **kwargs,
@@ -100,19 +102,29 @@ class BaseTestRunner(ABC):
         expected_data: ExpectedData,
         query: str = "",
     ) -> dict[str, Any]:
-        """Run all evaluation functions on agent state."""
+        """Run all evaluation functions on agent state.
+
+        Clarification is checked once at the beginning, then all other
+        evaluations run independently regardless of clarification status.
+        """
+        # Check clarification ONCE centrally
+        clarification_eval = evaluate_clarification(
+            agent_state,
+            expected_data.expected_clarification,
+            query,
+        )
+
+        # Run all other evaluations (they no longer check for clarification)
         aoi_eval = evaluate_aoi_selection(
             agent_state,
             expected_data.expected_aoi_ids,
             expected_data.expected_subregion,
-            expected_data.expected_clarification,
             query,
         )
         dataset_eval = evaluate_dataset_selection(
             agent_state,
             expected_data.expected_dataset_id,
             expected_data.expected_context_layer,
-            expected_data.expected_clarification,
             query,
         )
         date_eval = evaluate_date_selection(
@@ -122,16 +134,15 @@ class BaseTestRunner(ABC):
         )
         data_eval = evaluate_data_pull(
             agent_state,
-            expected_clarification=expected_data.expected_clarification,
             query=query,
         )
         answer_eval = evaluate_final_answer(
             agent_state,
             expected_data.expected_answer,
-            expected_data.expected_clarification,
         )
 
         return {
+            **clarification_eval,
             **aoi_eval,
             **dataset_eval,
             **date_eval,

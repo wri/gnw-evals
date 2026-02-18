@@ -2,7 +2,6 @@
 
 from typing import Any
 
-from gnw_evals.evaluators.llm_judges import llm_judge_clarification
 from gnw_evals.evaluators.utils import normalize_end_date, normalize_start_date
 
 
@@ -94,24 +93,22 @@ def evaluate_date_selection(
 def evaluate_data_pull(
     agent_state: dict[str, Any],
     min_rows: int = 1,
-    expected_clarification: bool = False,
     query: str = "",
 ) -> dict[str, Any]:
-    """Check if data was successfully pulled, or if the agent asked for clarification.
+    """Check if data was successfully pulled.
 
+    Clarification detection is handled separately by evaluate_clarification().
     Date evaluation is handled separately by evaluate_date_selection().
 
     Args:
         agent_state: Final agent state after execution
         min_rows: Minimum number of rows expected
-        expected_clarification: Whether clarification request is expected
-        query: Original user query for clarification detection
+        query: Original user query (kept for compatibility but not used)
 
     Returns:
         Dict with:
-        - data_pull_exists_score (0/1/None): 1.0 if data pulled with sufficient rows,
-          0.0 if insufficient rows, None if clarification given
-        - clarification_requested_score (0/1/None): Score for clarification handling
+        - data_pull_exists_score (0/1): 1.0 if data pulled with sufficient rows,
+          0.0 if insufficient rows or no data
         - row_count (int): Number of rows in pulled data
         - data_pull_success (bool): Whether data pull met minimum row requirement
         - error (str): Error message if applicable
@@ -127,24 +124,9 @@ def evaluate_data_pull(
         actual_start_date = ""
         actual_end_date = ""
 
-    # Check if agent asked for clarification instead of pulling data
-    if not raw_data and query:
-        clarification = llm_judge_clarification(agent_state, query)
-        if clarification["is_clarification"]:
-            # Score clarification based on whether it was expected
-            clarification_score = 1.0 if expected_clarification else 0.0
-            return {
-                "clarification_requested_score": clarification_score,
-                "data_pull_exists_score": None,  # Not applicable when clarification given
-                "row_count": 0,
-                "data_pull_success": False,
-                "error": "",
-            }
-
     if not raw_data:
         return {
             "data_pull_exists_score": 0.0,
-            "clarification_requested_score": None,
             "row_count": 0,
             "data_pull_success": False,
             "error": "Error pulling data",
@@ -158,7 +140,6 @@ def evaluate_data_pull(
 
     return {
         "data_pull_exists_score": data_pull_exists_score,
-        "clarification_requested_score": None,  # No clarification when data pulled
         "row_count": row_count,
         "data_pull_success": data_pull_success,
         "error": "",

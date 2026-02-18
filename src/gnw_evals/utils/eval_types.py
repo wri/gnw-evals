@@ -53,6 +53,7 @@ class TestResult(BaseModel):
     actual_agent_answer: str | None = None
 
     # Clarification evaluation fields
+    actual_clarification_requested: bool | None = None
     clarification_requested_score: float | None = None
 
     # Expected data fields
@@ -65,7 +66,7 @@ class TestResult(BaseModel):
     expected_start_date: str = ""
     expected_end_date: str = ""
     expected_answer: str = ""
-    expected_clarification: bool = False
+    expected_clarification: bool | None = None
     test_group: str = "unknown"
     status: str = "ready"
 
@@ -91,7 +92,7 @@ class ExpectedData(BaseModel):
     expected_start_date: str = ""
     expected_end_date: str = ""
     expected_answer: str = ""
-    expected_clarification: bool = False
+    expected_clarification: bool | None = None
     test_group: str = "unknown"
     status: str = "ready"
     thread_id: str | None = None
@@ -109,19 +110,31 @@ class ExpectedData(BaseModel):
 
     @field_validator("expected_clarification", mode="before")
     @classmethod
-    def parse_clarification(cls, v: str | bool) -> bool:
-        """Convert string input to boolean."""
+    def parse_clarification(cls, v: str | bool | None) -> bool | None:
+        """Convert string input to boolean or None.
+
+        - Empty string "" -> None (no expectation)
+        - "false", "False", "0", "no" -> False
+        - "true", "True", "1", "yes" -> True
+        - Boolean values pass through unchanged
+        """
+        if v is None:
+            return None
         if isinstance(v, bool):
             return v
         if isinstance(v, str):
-            # Handle empty strings as False
-            if not v or v.lower() in ("false", "0", "no", ""):
+            # Empty string means no expectation
+            if not v or v.strip() == "":
+                return None
+            # Explicit false values
+            if v.lower() in ("false", "0", "no"):
                 return False
+            # Explicit true values
             if v.lower() in ("true", "1", "yes"):
                 return True
-            # Default to False for any other value
-            return False
-        return bool(v)
+            # Default to None for any other value
+            return None
+        return bool(v) if v else None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""

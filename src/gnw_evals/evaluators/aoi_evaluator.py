@@ -2,7 +2,6 @@
 
 from typing import Any
 
-from gnw_evals.evaluators.llm_judges import llm_judge_clarification
 from gnw_evals.evaluators.utils import normalize_gadm_id, normalize_value
 
 
@@ -10,28 +9,28 @@ def evaluate_aoi_selection(
     agent_state: dict[str, Any],
     expected_aoi_ids: list[str],
     expected_subregion: str | None,
-    expected_clarification: bool = False,
     query: str = "",
 ) -> dict[str, Any]:
-    """Check if the correct AOI was selected, or if agent appropriately asked for clarification.
+    """Check if the correct AOI was selected.
+
+    Clarification detection is handled separately by evaluate_clarification().
+    This function only evaluates AOI selection.
 
     Args:
         agent_state: Final agent state after execution
         expected_aoi_ids: Expected AOI IDs (e.g., ["BRA", "USA.5_1"])
         expected_subregion: Expected subregion (e.g., "state-province", "country")
-        expected_clarification: Whether clarification request is expected
-        query: Original user query for clarification detection
+        query: Original user query (kept for compatibility but not used)
+
     Returns:
         Dict with aoi_id_match_score (0/1/None), subregion_match_score (0/1/None),
-        clarification_requested_score (0/1/None), actual_id, actual_name, actual_subtype,
-        actual_source, actual_subregion
+        actual_id, actual_name, actual_subtype, actual_source, actual_subregion
 
     """
     if not expected_aoi_ids:
         return {
             "aoi_id_match_score": None,
             "subregion_match_score": None,
-            "clarification_requested_score": None,
             "actual_id": None,
             "actual_name": None,
             "actual_subtype": None,
@@ -40,6 +39,7 @@ def evaluate_aoi_selection(
             "match_aoi_id": False,
             "match_subregion": None,
         }
+
     aoi_selection = agent_state.get("aoi_selection", [])
     if aoi_selection:
         aois = aoi_selection.get("aois", [])
@@ -52,30 +52,10 @@ def evaluate_aoi_selection(
     if not subregion:
         subregion = agent_state.get("subtype")
 
-    # Check if agent asked for clarification instead of selecting AOI
-    if not aois and query:
-        clarification = llm_judge_clarification(agent_state, query)
-        if clarification["is_clarification"]:
-            # Score clarification based on whether it was expected
-            clarification_score = 1.0 if expected_clarification else 0.0
-            return {
-                "clarification_requested_score": clarification_score,
-                "aoi_id_match_score": None,  # Not applicable when clarification given
-                "subregion_match_score": None,  # Not applicable when clarification given
-                "actual_id": f"CLARIFICATION_REQUEST: {clarification['explanation']}",
-                "actual_name": "Agent requested clarification",
-                "actual_subtype": "clarification",
-                "actual_source": "agent",
-                "actual_subregion": "N/A",
-                "match_aoi_id": False,
-                "match_subregion": None,
-            }
-
-    if not aois or not expected_aoi_ids:
+    if not aois:
         return {
             "aoi_id_match_score": None,
             "subregion_match_score": None,
-            "clarification_requested_score": None,
             "actual_id": None,
             "actual_name": None,
             "actual_subtype": None,
@@ -125,7 +105,6 @@ def evaluate_aoi_selection(
     return {
         "aoi_id_match_score": aoi_id_match_score,
         "subregion_match_score": subregion_match_score,
-        "clarification_requested_score": None,  # No clarification when AOI selected
         "actual_id": str(actual_aoi_ids),
         "actual_name": str(actual_aoi_names),
         "actual_subtype": str(actual_aoi_subtypes),

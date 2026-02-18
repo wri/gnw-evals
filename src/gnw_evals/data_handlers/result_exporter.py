@@ -121,6 +121,7 @@ class ResultExporter:
             "agent_answer_score",
             # Clarification: Expected vs Actual
             "expected_clarification",
+            "actual_clarification_requested",
             "clarification_requested_score",
             # Metadata
             "test_group",
