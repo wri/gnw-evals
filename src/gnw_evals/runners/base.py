@@ -134,6 +134,7 @@ class BaseTestRunner(ABC):
         )
         data_eval = evaluate_data_pull(
             agent_state,
+            expected_clarification=expected_data.expected_clarification,
             query=query,
         )
         answer_eval = evaluate_final_answer(

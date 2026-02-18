@@ -510,9 +510,6 @@ def test_data_pull_evaluator_missing_expected_dates():
     )
 
     assert data_result["data_pull_exists_score"] == 1.0, "Data pull should succeed"
-    assert data_result["data_pull_success"] is True, (
-        "Data pull success flag should be True"
-    )
     assert date_result["date_match_score"] is None, (
         "Date score should be None when expected dates are missing"
     )
@@ -655,7 +652,6 @@ def test_data_pull_evaluator_all_fields_present():
     )
 
     assert data_result["data_pull_exists_score"] == 1.0, "Data pull should succeed"
-    assert data_result["data_pull_success"] is True
     assert date_result["date_match_score"] == 1.0, "Dates should match"
     assert date_result["date_success"] is True
 

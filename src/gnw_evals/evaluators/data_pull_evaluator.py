@@ -92,6 +92,7 @@ def evaluate_date_selection(
 
 def evaluate_data_pull(
     agent_state: dict[str, Any],
+    expected_clarification: bool | None = None,
     min_rows: int = 1,
     query: str = "",
 ) -> dict[str, Any]:
@@ -102,13 +103,14 @@ def evaluate_data_pull(
 
     Args:
         agent_state: Final agent state after execution
+        expected_clarification: Expected clarification behavior (True/False/None)
         min_rows: Minimum number of rows expected
         query: Original user query (kept for compatibility but not used)
 
     Returns:
         Dict with:
-        - data_pull_exists_score (0/1): 1.0 if data pulled with sufficient rows,
-          0.0 if insufficient rows or no data
+        - data_pull_exists_score (0/1/None): 1.0 if data pulled with sufficient rows,
+          0.0 if insufficient rows or no data, None if not applicable
         - row_count (int): Number of rows in pulled data
         - data_pull_success (bool): Whether data pull met minimum row requirement
         - error (str): Error message if applicable
@@ -117,30 +119,27 @@ def evaluate_data_pull(
     stats = agent_state.get("statistics", [])
     if stats:
         raw_data = stats[-1].get("data", [])
-        actual_start_date = stats[-1].get("start_date", "")
-        actual_end_date = stats[-1].get("end_date", "")
+        error = ""
     else:
         raw_data = []
-        actual_start_date = ""
-        actual_end_date = ""
-
-    if not raw_data:
-        return {
-            "data_pull_exists_score": 0.0,
-            "row_count": 0,
-            "data_pull_success": False,
-            "error": "Error pulling data",
-        }
+        error = "no data retrieved" 
 
     row_count = len(raw_data)
-    data_pull_success = row_count >= min_rows
 
-    # Binary scoring: Each component is 0 or 1 (or None if not evaluated)
-    data_pull_exists_score = 1.0 if data_pull_success else 0.0
+    if row_count < min_rows: 
+        data_pull_success = False
+        error = "insufficient rows of data retrieved"
+    else: 
+        data_pull_success = True
+
+    # If we expect clarification, data pull evaluation is not applicable
+    if expected_clarification is True:
+        data_pull_exists_score = None
+    else: 
+        data_pull_exists_score = 1.0 if data_pull_success else 0.0
 
     return {
         "data_pull_exists_score": data_pull_exists_score,
         "row_count": row_count,
-        "data_pull_success": data_pull_success,
-        "error": "",
+        "error": error,
     }
