@@ -111,12 +111,6 @@ def _():
     return
 
 
-@app.cell
-def _(chart_height):
-    chart_height
-    return
-
-
 @app.cell(hide_code=True)
 def _(evalset_mask, long, score_cols, score_map):
     # create basic heatmap
@@ -170,7 +164,7 @@ def _(evalset_mask, long, score_cols, score_map):
     # This is the basic (non-interactive) heatmap
     # commented out
     # heatmap
-    return chart_height, heatmap
+    return (heatmap,)
 
 
 @app.cell(hide_code=True)
@@ -338,13 +332,18 @@ def _(results_simple, score_cols, score_map):
 
 
 @app.cell
-def _(results_simple, score_cols, score_map):
+def _(file_select, results_simple, score_cols, score_map):
+    print(f"Run: {file_select.value}")
+    print("-"*50)
     for s in score_cols:
         stext = score_map[s] + " score"
         _mean = results_simple[s].mean()
         _count = results_simple[s].count()
         _sum = results_simple[s].sum()
         print(f"{stext:<30} :  {_mean:0.2f} ({int(_sum):>3} passing out of {int(_count):<3} tests)")
+    print("-"*50)
+    print(f"Total number of tests in this run: {len(results_simple)}")
+    print(f"Eval sets run: {", ".join(results_simple['eval_set'].unique())}")
     return
 
 
