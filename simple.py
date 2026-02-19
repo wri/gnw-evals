@@ -37,7 +37,7 @@ def _():
     return (eval_results_dir,)
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(eval_results_dir):
 
     _ls_summary = [f for f in os.listdir(eval_results_dir) 
@@ -331,7 +331,7 @@ def _(results_simple, score_cols, score_map):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(file_select, results_simple, score_cols, score_map):
     print(f"Run: {file_select.value}")
     print("-"*50)
@@ -359,7 +359,7 @@ def _(results_simple):
 @app.cell
 def _(results_simple, score_cols, score_map):
     # Average of each score, pivoted by eval_set
-    (
+    evp = (
         results_simple
         .groupby("eval_set")[score_cols]
         .mean()
@@ -367,6 +367,15 @@ def _(results_simple, score_cols, score_map):
         .round(2)
     ).T
 
+    _show_cols = [
+      "analysis_results",
+      "dataset_id",
+      #"dataset_interpretation",
+      #"date_selection",
+      "gold",
+      #"location_id"
+    ]
+    evp[_show_cols]
     return
 
 
