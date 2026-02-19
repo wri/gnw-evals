@@ -103,35 +103,6 @@ def _(results_simple):
     return score_cols, score_map
 
 
-@app.cell
-def _():
-    mo.md("""
-    ## Average Scores
-    """)
-    return
-
-
-@app.cell
-def _(results_simple, score_cols, score_map):
-    #results_simple
-    means = results_simple[score_cols].rename(columns=score_map).mean()
-    means.apply(lambda v: np.around(v, 2) or np.nan).rename_axis("Score").rename({"value": "mean"})
-    return
-
-
-@app.cell(hide_code=True)
-def _(results_simple, score_cols, score_map):
-    # Average of each score
-    print ("Average Scores")
-    print ("-----")
-    for s in score_cols: 
-        stext = score_map[s] + " score"
-        print(f"{stext:<30} :  {results_simple[s].mean():0.2f}")
-
-    #results_simple[score_cols].mean()
-    return
-
-
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
@@ -140,9 +111,17 @@ def _():
     return
 
 
+@app.cell
+def _(chart_height):
+    chart_height
+    return
+
+
 @app.cell(hide_code=True)
-def _(df2, long, score_cols, score_map):
+def _(evalset_mask, long, score_cols, score_map):
     # create basic heatmap
+    chart_height = min(800, 25 * sum(evalset_mask))
+
     heatmap = (
         alt.Chart(long)
         .mark_rect()
@@ -182,16 +161,19 @@ def _(df2, long, score_cols, score_map):
                 #alt.Tooltip("missing_scores:N", title="Missing scores"),
             ],
         )
-        .properties(width=25 * len(score_cols), height=12 * df2.shape[0])
+        .properties(
+            width=25 * len(score_cols), 
+            height=chart_height
+        )
     )
 
     # This is the basic (non-interactive) heatmap
     # commented out
     # heatmap
-    return (heatmap,)
+    return chart_height, heatmap
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(results_simple):
     # select which eval set to show in the heatmap
     try: 
@@ -222,20 +204,20 @@ def _(eval_set_ui, results_simple, score_cols, score_map):
 
     # TEMP BYPASS for old code
     if 'eval_set' not in df2.columns: 
-        mask = pd.Series(True, index=df2.index)
+        evalset_mask = pd.Series(True, index=df2.index)
         print ("WARNING: CSV generated from obsolete code, no eval_set column available.")
     else: 
 
         # filter to the eval_set selected by user
-        mask = df2['eval_set'] == eval_set_ui.value
+        evalset_mask = df2['eval_set'] == eval_set_ui.value
 
     # Long form 
-    long = df2[mask].melt(id_vars="idx", value_vars=score_cols, var_name="score", value_name="value")
+    long = df2[evalset_mask].melt(id_vars="idx", value_vars=score_cols, var_name="score", value_name="value")
     long["state"] = long["value"].map({1: "pass", 0: "fail"}).fillna("missing")
 
     # Add human-readable label for the x axis + tooltip
     long["score_label"] = long["score"].map(score_map).fillna(long["score"])
-    return df2, long
+    return evalset_mask, long
 
 
 @app.cell(hide_code=True)
@@ -290,13 +272,12 @@ def _(clickable_heatmap):
 
 
 @app.cell(hide_code=True)
-def _(score_map, selected, selected_idx, selected_score):
+def _(results_simple, score_map, selected, selected_idx, selected_score):
     # Display info about selection, if there is a selection
     mo.stop(selected.empty)
 
     mo.md(f"""
-    You have selected **{score_map[selected_score]} score** for eval **test #{selected_idx}**.
-    Details below.
+    You have selected **{score_map[selected_score]} score** for eval **test #{selected_idx}** from eval_set '**{results_simple.iloc[selected_idx]['eval_set']}**'.
     """)
     return
 
@@ -326,15 +307,75 @@ def _(
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(results_detailed, selected_idx):
     # print the dataframe without the fancy table
     # diagnostic_info
+    _allcols = None
+    if selected_idx:
+        # print out all the columns for the selection
+        _allcols = results_detailed.iloc[selected_idx]
+        _allcols.name = str(_allcols.name)
+        _allcols.dropna()
+    _allcols
+    return
 
-    # print out all the columns for the selection
-    _allcols = results_detailed.iloc[selected_idx]
-    _allcols.name = str(_allcols.name)
-    _allcols.dropna()
+
+@app.cell(hide_code=True)
+def _():
+    mo.md("""
+    ## Score Summary
+    """)
+    return
+
+
+@app.cell
+def _(results_simple, score_cols, score_map):
+    #results_simple
+    means = results_simple[score_cols].rename(columns=score_map).mean()
+    means.apply(lambda v: np.around(v, 2) or np.nan).rename_axis("Score").rename({"value": "mean"})
+    return
+
+
+@app.cell
+def _(results_simple, score_cols, score_map):
+    for s in score_cols:
+        stext = score_map[s] + " score"
+        _mean = results_simple[s].mean()
+        _count = results_simple[s].count()
+        _sum = results_simple[s].sum()
+        print(f"{stext:<30} :  {_mean:0.2f} ({int(_sum):>3} passing out of {int(_count):<3} tests)")
+    return
+
+
+@app.cell
+def _(results_simple):
+    # number of tests by eval_set
+    eval_count = results_simple['eval_set'].value_counts()
+    eval_count.name = "n_tests"
+    eval_count
+    return
+
+
+@app.cell
+def _(results_simple, score_cols, score_map):
+    # Average of each score, pivoted by eval_set
+    (
+        results_simple
+        .groupby("eval_set")[score_cols]
+        .mean()
+        .rename(columns=score_map)
+        .round(2)
+    ).T
+
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ## Helpers
+    """)
     return
 
 
@@ -411,7 +452,8 @@ def _():
     }
 
     base_cols = [
-        "idx",
+        #"idx",
+        #"eval_set",
         "query", 
         "trace_url", 
         #"overall_score", 
@@ -520,7 +562,7 @@ def _(selected_score):
     return (render_diagnostic_table,)
 
 
-@app.function
+@app.function(hide_code=True)
 def locate_most_recent_file(all_sources):
     """Returns the most recent"""
     matches = [re.search("(20\d{2})(\d{2})(\d{2})", x) for x in all_sources]
