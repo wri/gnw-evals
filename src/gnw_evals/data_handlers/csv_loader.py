@@ -37,7 +37,6 @@ class CSVLoader:
             project_root = Path(__file__).parent.parent.parent.parent
             csv_file = project_root / csv_file
 
-
         # load the eval data without the header row
         df_raw = pd.read_csv(csv_file, dtype=str, keep_default_na=False, header=None)
 
@@ -70,10 +69,10 @@ class CSVLoader:
         # Print summary (one-time per CSV load)
         if present_fields:
             print(f"✓ Expected fields detected: {', '.join(present_fields)}")
-        else: 
-            print(f"WARNING: No 'expected_' fields found.")
+        else:
+            print("WARNING: No 'expected_' fields found.")
 
-        # DEBUG 
+        # DEBUG
         # print(f"DEBUG: Expected fields not in CSV: {', '.join(missing_fields)}")
 
         # Simple cleanup: replace NaN/null with empty string
@@ -126,20 +125,21 @@ class CSVLoader:
         return test_cases
 
 
-def _set_header(df_raw: pd.DataFrame) -> pd.DataFrame: 
+def _set_header(df_raw: pd.DataFrame) -> pd.DataFrame:
     """Find the header row containing 'query' column and return properly formatted DataFrame.
-    
+
     Searches the first 5 rows of df_raw for a row containing 'query' in the first 10 columns.
     This handles CSV files that may have description/purpose rows before the actual headers.
-    
+
     Args:
         df_raw: Raw DataFrame read with header=None
-        
+
     Returns:
         DataFrame with proper column headers and data rows, reset index
-        
+
     Raises:
         ValueError: If 'query' column not found in first 5 rows
+
     """
     # Find the row containing "query" column (case-insensitive)
     header_row_idx = None
@@ -147,21 +147,21 @@ def _set_header(df_raw: pd.DataFrame) -> pd.DataFrame:
     # check first 5 rows, max
     search_range = min(5, len(df_raw))
     for i in range(search_range):
-        # Get row values 
+        # Get row values
         row_values = df_raw.iloc[i].astype(str).str.lower().tolist()
-        
+
         # Check if "query" appears in first 10 columns
         if "query" in row_values[:10]:
             header_row_idx = i
             break
 
-    if header_row_idx is None: 
+    if header_row_idx is None:
         # we didn't find "query" in the above search
         raise ValueError("No header row found")
 
-     # Set that row as header
-    df = df_raw.iloc[header_row_idx + 1:].copy()  # Data starts after header
-    df.columns = df_raw.iloc[header_row_idx]      # Set column names
+    # Set that row as header
+    df = df_raw.iloc[header_row_idx + 1 :].copy()  # Data starts after header
+    df.columns = df_raw.iloc[header_row_idx]  # Set column names
     df = df.reset_index(drop=True)
 
     # now we know the headers are in the right place

@@ -8,8 +8,8 @@ from gnw_evals.evaluators import (
     evaluate_aoi_selection,
     evaluate_clarification,
     evaluate_data_pull,
-    evaluate_date_selection,
     evaluate_dataset_selection,
+    evaluate_date_selection,
     evaluate_final_answer,
 )
 from gnw_evals.utils.eval_types import ExpectedData, TestResult

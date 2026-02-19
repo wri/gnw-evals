@@ -4,6 +4,7 @@ from typing import Any
 
 from gnw_evals.evaluators.utils import normalize_gadm_id, normalize_value
 
+
 def evaluate_aoi_selection(
     agent_state: dict[str, Any],
     expected_aoi_ids: list[str],
@@ -49,7 +50,7 @@ def evaluate_aoi_selection(
                 "actual_subtype": actual_data["subtypes"],
                 "actual_source": actual_data["sources"],
                 "actual_subregion": actual_data["subregion"],
-            }
+            },
         )
 
     # STEP 2: Early exit if we can't evaluate (no expected values or no actual data)
@@ -88,6 +89,7 @@ def _extract_actual_aoi_data(agent_state: dict[str, Any]) -> dict[str, Any] | No
 
     Returns:
         Dict with extracted data, or None if no AOI data available
+
     """
     aoi_selection = agent_state.get("aoi_selection", [])
     aois = aoi_selection.get("aois", []) if aoi_selection else []
@@ -131,6 +133,7 @@ def _normalize_aoi_ids(
 
     Returns:
         Tuple of (normalized_actual, normalized_expected)
+
     """
     if source == "gadm":
         return (
@@ -142,5 +145,3 @@ def _normalize_aoi_ids(
             [id.lower() for id in actual_ids],
             [id.lower() for id in expected_ids],
         )
-
-

@@ -10,7 +10,7 @@ SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
 if not SPREADSHEET_ID:
     raise ValueError(
         "SPREADSHEET_ID environment variable is required. "
-        "Please set it in your .env file."
+        "Please set it in your .env file.",
     )
 
 # Eval set name → GID mapping
@@ -42,6 +42,7 @@ def get_sheet_url(eval_set: str) -> str:
 
     Raises:
         ValueError: If eval_set is not recognized
+
     """
     if eval_set not in EVAL_SETS:
         available = ", ".join(EVAL_SETS.keys())

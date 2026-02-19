@@ -7,7 +7,7 @@ import dotenv
 from gnw_evals.data_handlers import CSVLoader, ResultExporter
 from gnw_evals.runners import APITestRunner
 from gnw_evals.utils.eval_types import ExpectedData, TestResult
-from gnw_evals.utils.sheet_registry import DEFAULT_GOLD_URL, EVAL_SETS, get_sheet_url
+from gnw_evals.utils.sheet_registry import EVAL_SETS, get_sheet_url
 
 dotenv.load_dotenv()
 
@@ -254,7 +254,7 @@ def _print_csv_summary(results: list[TestResult]) -> None:
 @click.option(
     "--eval-set",
     default="gold",
-    type=click.Choice(list(EVAL_SETS.keys()) + ["all"], case_sensitive=False),
+    type=click.Choice([*list(EVAL_SETS.keys()), "all"], case_sensitive=False),
     envvar="EVAL_SET",
     help="Which eval set to run: gold, location_id, dataset_id, dataset_interpretation, analysis_results, analysis_interpretation, guardrail, date_selection, or all (can also be set via EVAL_SET env var)",
 )
@@ -327,7 +327,7 @@ def run_evals(
     if test_file and eval_set != "gold":
         raise click.BadParameter(
             "Cannot specify both --test-file and --eval-set. "
-            "Use --eval-set to select a predefined sheet, or --test-file for a custom file."
+            "Use --eval-set to select a predefined sheet, or --test-file for a custom file.",
         )
 
     # Handle custom test file (bypass eval_set system)
@@ -388,12 +388,12 @@ def run_evals(
 
         # Print summary
         print(f"\n{'=' * 70}")
-        print(f"RESULTS SUMMARY")
+        print("RESULTS SUMMARY")
         print(f"{'=' * 70}")
         print(f"Total tests: {len(all_results)}")
 
         if len(eval_sets_to_run) > 1:
-            print(f"\nBreakdown by eval set:")
+            print("\nBreakdown by eval set:")
             for es in eval_sets_to_run:
                 count = sum(1 for r in all_results if r.eval_set == es)
                 if count > 0:
@@ -470,6 +470,7 @@ def _run_single_eval_set(
 
     Returns:
         List of TestResult objects, or empty list if error occurs
+
     """
     # Resolve test file for single eval set
     if test_file:

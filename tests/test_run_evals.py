@@ -673,6 +673,7 @@ def test_clarification_evaluator_all_scenarios():
     6. expected=None (from empty ""), actual=False → score=None
     """
     from unittest.mock import patch
+
     from gnw_evals.evaluators.clarification_evaluator import evaluate_clarification
 
     agent_state = {
@@ -683,11 +684,11 @@ def test_clarification_evaluator_all_scenarios():
 
     # Case 1: expected=True, actual=True → 1.0
     with patch(
-        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification"
+        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification",
     ) as mock:
         mock.return_value = {"is_clarification": True, "explanation": "asking for info"}
         result = evaluate_clarification(
-            agent_state, expected_clarification=True, query="test"
+            agent_state, expected_clarification=True, query="test",
         )
         assert result["actual_clarification_requested"] is True, (
             "Case 1: Should detect clarification was requested"
@@ -698,11 +699,11 @@ def test_clarification_evaluator_all_scenarios():
 
     # Case 2: expected=True, actual=False → 0.0
     with patch(
-        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification"
+        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification",
     ) as mock:
         mock.return_value = {"is_clarification": False, "explanation": "answered"}
         result = evaluate_clarification(
-            agent_state, expected_clarification=True, query="test"
+            agent_state, expected_clarification=True, query="test",
         )
         assert result["actual_clarification_requested"] is False, (
             "Case 2: Should detect clarification was NOT requested"
@@ -713,11 +714,11 @@ def test_clarification_evaluator_all_scenarios():
 
     # Case 3: expected=False, actual=True → 0.0
     with patch(
-        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification"
+        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification",
     ) as mock:
         mock.return_value = {"is_clarification": True, "explanation": "asking for info"}
         result = evaluate_clarification(
-            agent_state, expected_clarification=False, query="test"
+            agent_state, expected_clarification=False, query="test",
         )
         assert result["actual_clarification_requested"] is True, (
             "Case 3: Should detect clarification was requested"
@@ -728,11 +729,11 @@ def test_clarification_evaluator_all_scenarios():
 
     # Case 4: expected=False, actual=False → 1.0
     with patch(
-        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification"
+        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification",
     ) as mock:
         mock.return_value = {"is_clarification": False, "explanation": "answered"}
         result = evaluate_clarification(
-            agent_state, expected_clarification=False, query="test"
+            agent_state, expected_clarification=False, query="test",
         )
         assert result["actual_clarification_requested"] is False, (
             "Case 4: Should detect clarification was NOT requested"
@@ -743,11 +744,11 @@ def test_clarification_evaluator_all_scenarios():
 
     # Case 5: expected=None (empty string), actual=True → 0.0
     with patch(
-        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification"
+        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification",
     ) as mock:
         mock.return_value = {"is_clarification": True, "explanation": "asking for info"}
         result = evaluate_clarification(
-            agent_state, expected_clarification=None, query="test"
+            agent_state, expected_clarification=None, query="test",
         )
         assert result["actual_clarification_requested"] is True, (
             "Case 5: Should detect clarification was requested"
@@ -758,11 +759,11 @@ def test_clarification_evaluator_all_scenarios():
 
     # Case 6: expected=None (empty string), actual=False → None
     with patch(
-        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification"
+        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification",
     ) as mock:
         mock.return_value = {"is_clarification": False, "explanation": "answered"}
         result = evaluate_clarification(
-            agent_state, expected_clarification=None, query="test"
+            agent_state, expected_clarification=None, query="test",
         )
         assert result["actual_clarification_requested"] is False, (
             "Case 6: Should detect clarification was NOT requested"
@@ -809,6 +810,7 @@ def test_clarification_and_other_evaluations_run_together():
     All evaluations should run independently.
     """
     from unittest.mock import patch
+
     from gnw_evals.runners.api import APITestRunner
     from gnw_evals.utils.eval_types import ExpectedData
 
@@ -823,8 +825,8 @@ def test_clarification_and_other_evaluations_run_together():
                     "name": "Brazil",
                     "subtype": "country",
                     "source": "gadm",
-                }
-            ]
+                },
+            ],
         },
         "messages": [
             type(
@@ -841,7 +843,7 @@ def test_clarification_and_other_evaluations_run_together():
     )
 
     with patch(
-        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification"
+        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification",
     ) as mock_clarif:
         mock_clarif.return_value = {
             "is_clarification": True,
@@ -849,7 +851,7 @@ def test_clarification_and_other_evaluations_run_together():
         }
 
         evaluations = runner._run_evaluations(
-            agent_state, expected_data, query="Show me Brazil"
+            agent_state, expected_data, query="Show me Brazil",
         )
 
         # Verify clarification was detected and scored

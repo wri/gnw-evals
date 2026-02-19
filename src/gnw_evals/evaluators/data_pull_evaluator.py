@@ -122,20 +122,20 @@ def evaluate_data_pull(
         error = ""
     else:
         raw_data = []
-        error = "no data retrieved" 
+        error = "no data retrieved"
 
     row_count = len(raw_data)
 
-    if row_count < min_rows: 
+    if row_count < min_rows:
         data_pull_success = False
         error = "insufficient rows of data retrieved"
-    else: 
+    else:
         data_pull_success = True
 
     # If we expect clarification, data pull evaluation is not applicable
     if expected_clarification is True:
         data_pull_exists_score = None
-    else: 
+    else:
         data_pull_exists_score = 1.0 if data_pull_success else 0.0
 
     return {

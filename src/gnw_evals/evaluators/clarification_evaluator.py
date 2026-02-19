@@ -36,6 +36,7 @@ def evaluate_clarification(
         expected=False, actual=False → 1.0 (correct)
         expected=None,  actual=True  → 0.0 (unsolicited clarification)
         expected=None,  actual=False → None (not evaluated)
+
     """
     # If no query, can't detect clarification
     if not query:
