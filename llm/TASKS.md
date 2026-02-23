@@ -4,13 +4,15 @@
 - [ ] Not Started
 - [~] In Progress
 
----
-
 **Note:** Completed tasks have been moved to `COMPLETED_TASKS.md`
 
 ---
 
 ### Task: Create a new Overall Score
+
+**Priority:** Low  
+**Status:** [ ]  
+**Category:** Refactor
 
 Currently all scores get equal weight, but they are dependent. If AOI selection fails, answer will surely be wrong
 
@@ -78,26 +80,12 @@ Notes
 
 ---
 
-## Task: Column Name Changes in Spreadsheet
+
+## Task: simplify the unittests 
 
 **Priority:** Medium  
 **Status:** [ ]  
-**Category:** New Feature
-
-Before CSV export, need these column name changes in "GNW eval sets" spreadsheet:
-
-1. **GOLD:** okay (no change needed)
-2. **Loc:** `expected_id` → `expected_aoi_ids`
-3. **Dataset:** `expected_dataset` → `expected_dataset_id`
-4. **Analysis:** `expected_result_standardized` → `expected_answer` + add `expected_dataset_id`
-
-also
-* need a clarification expected column in the golden set. Add a few example rows 
-
---- 
-
-
-## Task: simplify the unittests 
+**Category:** Refactor
 
 * Simplify the unittests. 
 * They're getting unncessarily long, the coding agents like adding a ton of tests. 
@@ -108,8 +96,4 @@ also
 
 Things to look into later: 
 * Currently data pull is only evaluated if expected_dataset_id exists. Should we make data pull checks independent?
-* a bitmap style cheatsheet of results where each row is a eval row, and each column is a test score: neutral if None, green/red for pass/fail scores. 
 * write a file that explains all the scores and how they are calculated. input column from spreadsheet --> logic --> output score. remove this from the readme
-
-reminders: 
-* simplify the unittests. They're getting lengthy
