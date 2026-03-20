@@ -1232,7 +1232,7 @@ def test_status_filter_skips_matching_rows(tmp_path):
         {
             "query": ["q1", "q2", "q3", "q4", "q5", "q6"],
             "status": ["skip", "SKIP", "not doing", "rerun", "", "Not Doing"],
-        }
+        },
     ).to_csv(csv_file, index=False)
 
     results = CSVLoader.load_test_data(
@@ -1266,7 +1266,7 @@ def test_status_filter_none_keeps_all_rows(tmp_path):
         {
             "query": ["q1", "q2", "q3", "q4"],
             "status": ["skip", "not doing", "rerun", ""],
-        }
+        },
     ).to_csv(csv_file, index=False)
 
     results = CSVLoader.load_test_data(str(csv_file), status_filter=None)
