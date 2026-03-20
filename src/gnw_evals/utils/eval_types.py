@@ -14,6 +14,7 @@ class TestResult(BaseModel):
     trace_id: str | None = None
     trace_url: str | None = None
     query: str
+    eval_set: str = "custom"
     overall_score: float
     execution_time: str
 
@@ -52,10 +53,11 @@ class TestResult(BaseModel):
     actual_agent_answer: str | None = None
 
     # Clarification evaluation fields
+    actual_clarification_requested: bool | None = None
     clarification_requested_score: float | None = None
 
     # Expected data fields
-    expected_aoi_ids: list[str] = []
+    expected_aoi_ids: list[str] | None = None
     expected_subregion: str = ""
     expected_aoi_source: str = ""
     expected_dataset_id: str = ""
@@ -64,7 +66,7 @@ class TestResult(BaseModel):
     expected_start_date: str = ""
     expected_end_date: str = ""
     expected_answer: str = ""
-    expected_clarification: bool = False
+    expected_clarification: bool | None = None
     test_group: str = "unknown"
     status: str = "ready"
 
@@ -81,7 +83,7 @@ class ExpectedData(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    expected_aoi_ids: list[str] = []
+    expected_aoi_ids: list[str] | None = None
     expected_subregion: str = ""
     expected_aoi_source: str = ""
     expected_dataset_id: str = ""
@@ -90,7 +92,7 @@ class ExpectedData(BaseModel):
     expected_start_date: str = ""
     expected_end_date: str = ""
     expected_answer: str = ""
-    expected_clarification: bool = False
+    expected_clarification: bool | None = None
     test_group: str = "unknown"
     status: str = "ready"
     thread_id: str | None = None
@@ -105,6 +107,34 @@ class ExpectedData(BaseModel):
             # Split by comma and strip whitespace, filter out empty strings
             return [item.strip() for item in v.split(";") if item.strip()]
         return []
+
+    @field_validator("expected_clarification", mode="before")
+    @classmethod
+    def parse_clarification(cls, v: str | bool | None) -> bool | None:
+        """Convert string input to boolean or None.
+
+        - Empty string "" -> None (no expectation)
+        - "false", "False", "0", "no" -> False
+        - "true", "True", "1", "yes" -> True
+        - Boolean values pass through unchanged
+        """
+        if v is None:
+            return None
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            # Empty string means no expectation
+            if not v or v.strip() == "":
+                return None
+            # Explicit false values
+            if v.lower() in ("false", "0", "no"):
+                return False
+            # Explicit true values
+            if v.lower() in ("true", "1", "yes"):
+                return True
+            # Default to None for any other value
+            return None
+        return bool(v) if v else None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""

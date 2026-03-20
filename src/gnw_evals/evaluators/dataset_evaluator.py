@@ -2,7 +2,6 @@
 
 from typing import Any
 
-from gnw_evals.evaluators.llm_judges import llm_judge_clarification
 from gnw_evals.evaluators.utils import normalize_value
 
 
@@ -10,57 +9,40 @@ def evaluate_dataset_selection(
     agent_state: dict[str, Any],
     expected_dataset_id: Any,
     expected_context_layer: Any,
-    expected_clarification: bool = False,
     query: str = "",
 ) -> dict[str, Any]:
-    """Check if the correct dataset was selected, or if the agent asked for clarification.
+    """Check if the correct dataset was selected.
+
+    Clarification detection is handled separately by evaluate_clarification().
+    This function only evaluates dataset selection.
 
     Args:
         agent_state: Final agent state after execution
         expected_dataset_id: Expected dataset id as string
         expected_context_layer: Expected context layer as string
-        expected_clarification: Whether clarification request is expected
-        query: Original user query for clarification detection
+        query: Original user query (kept for compatibility but not used)
 
     Returns:
         Dict with dataset_id_match_score (0/1/None), context_layer_match_score (0/1/None),
-        clarification_requested_score (0/1/None), actual_dataset_id, actual_dataset_name,
-        actual_context_layer
+        actual_dataset_id, actual_dataset_name, actual_context_layer
 
     """
     if not expected_dataset_id:
         return {
             "dataset_id_match_score": None,
             "context_layer_match_score": None,
-            "clarification_requested_score": None,
             "actual_dataset_id": None,
             "actual_dataset_name": None,
             "actual_context_layer": None,
             "error": "Missing dataset data",
         }
-    dataset = agent_state.get("dataset")
 
-    # Check if agent asked for clarification instead of selecting a dataset
-    if not dataset and query:
-        clarification = llm_judge_clarification(agent_state, query)
-        if clarification["is_clarification"]:
-            # Score clarification based on whether it was expected
-            clarification_score = 1.0 if expected_clarification else 0.0
-            return {
-                "clarification_requested_score": clarification_score,
-                "dataset_id_match_score": None,  # Not applicable when clarification given
-                "context_layer_match_score": None,  # Not applicable when clarification given
-                "actual_dataset_id": f"CLARIFICATION_REQUEST: {clarification['explanation']}",
-                "actual_dataset_name": "Agent requested clarification",
-                "actual_context_layer": "N/A",
-                "error": "",
-            }
+    dataset = agent_state.get("dataset")
 
     if not dataset:
         return {
             "dataset_id_match_score": 0.0,
             "context_layer_match_score": None,
-            "clarification_requested_score": None,
             "actual_dataset_id": None,
             "actual_dataset_name": None,
             "actual_context_layer": None,
@@ -92,7 +74,6 @@ def evaluate_dataset_selection(
     return {
         "dataset_id_match_score": dataset_id_match_score,
         "context_layer_match_score": context_layer_match_score,
-        "clarification_requested_score": None,  # No clarification when dataset selected
         "actual_dataset_id": actual_dataset_id,
         "actual_dataset_name": actual_dataset_name,
         "actual_context_layer": actual_context_layer,

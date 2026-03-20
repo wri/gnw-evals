@@ -6,9 +6,11 @@ from gnw_evals.evaluators.llm_judges import llm_judge
 def evaluate_final_answer(
     agent_state: dict[str, Any],
     expected_answer: str,
-    expected_clarification: bool = False,
 ) -> dict[str, Any]:
     """Check if final answer contains key information from expected answer using LLM-as-a-judge.
+
+    Clarification detection is handled separately by evaluate_clarification().
+    This function only evaluates answers.
 
     Returns TWO separate "answer" scores:
     - charts_answer_score: Compares expected_answer to charts_data[0]["insight"]
@@ -17,22 +19,11 @@ def evaluate_final_answer(
     Args:
         agent_state: Final agent state after execution
         expected_answer: Expected answer text
-        expected_clarification: Whether clarification is expected (kept for consistency)
 
     Returns:
         Dict with charts_answer_score, agent_answer_score, and actual values
 
     """
-    # If no expected answer, both scores are None (check not applicable)
-    if not expected_answer:
-        return {
-            "charts_answer_score": None,
-            "agent_answer_score": None,
-            "actual_charts_answer": None,
-            "actual_agent_answer": None,
-            "error": "Missing expected answer",
-        }
-
     # Extract charts insight
     charts_data = agent_state.get("charts_data", [])
     actual_charts_answer = charts_data[0].get("insight", "") if charts_data else ""
@@ -58,6 +49,15 @@ def evaluate_final_answer(
             # Fallback for any other format
             actual_agent_answer = str(content) if content else ""
 
+    # If no expected answer, both scores are None
+    if not expected_answer:
+        return {
+            "charts_answer_score": None,
+            "agent_answer_score": None,
+            "actual_charts_answer": actual_charts_answer,
+            "actual_agent_answer": actual_agent_answer,
+        }
+
     # Score charts answer
     charts_answer_score = None
     if actual_charts_answer:
@@ -78,5 +78,4 @@ def evaluate_final_answer(
         "agent_answer_score": agent_answer_score,
         "actual_charts_answer": actual_charts_answer or None,
         "actual_agent_answer": actual_agent_answer or None,
-        "error": "",
     }

@@ -7,6 +7,7 @@ import dotenv
 from gnw_evals.data_handlers import CSVLoader, ResultExporter
 from gnw_evals.runners import APITestRunner
 from gnw_evals.utils.eval_types import ExpectedData, TestResult
+from gnw_evals.utils.sheet_registry import EVAL_SETS, get_sheet_url
 
 dotenv.load_dotenv()
 
@@ -109,10 +110,6 @@ async def run_csv_tests(config) -> list[TestResult]:
 
     total_duration = time.time() - start_time
     print(f"\nAll tests completed in {total_duration:.1f} seconds")
-
-    # Save results
-    exporter = ResultExporter()
-    exporter.save_results_to_csv(results, config.output_filename)
 
     # Print summary
     _print_csv_summary(results)
@@ -255,8 +252,15 @@ def _print_csv_summary(results: list[TestResult]) -> None:
     help="Sample size: 1 means run single test (CI/CD friendly), -1 means run all rows (can also be set via SAMPLE_SIZE env var)",
 )
 @click.option(
+    "--eval-set",
+    default="gold",
+    type=click.Choice([*list(EVAL_SETS.keys()), "all"], case_sensitive=False),
+    envvar="EVAL_SET",
+    help="Which eval set to run: gold, location_id, dataset_id, dataset_interpretation, analysis_results, analysis_interpretation, guardrail, date_selection, or all (can also be set via EVAL_SET env var)",
+)
+@click.option(
     "--test-file",
-    default="https://docs.google.com/spreadsheets/d/1_G1aq2fSCPqhT6w55_Od6VU7sov76t1lHQTBeZZxbdM/export?format=csv&gid=0",
+    default=None,
     envvar="TEST_FILE",
     help="Path or URL to test dataset CSV file (relative to project root) (can also be set via TEST_FILE env var)",
 )
@@ -303,7 +307,8 @@ def run_evals(
     api_base_url: str,
     api_token: str | None,
     sample_size: int,
-    test_file: str,
+    eval_set: str,
+    test_file: str | None,
     test_group_filter: str | None,
     status_filter: str | None,
     output_filename: str | None,
@@ -312,14 +317,180 @@ def run_evals(
     offset: int,
 ):
     """Run main E2E test function for CSV based evaluation."""
+    # Validate API token
+    if not api_token:
+        raise click.BadParameter(
+            "API token is required. Provide --api-token or set API_TOKEN environment variable.",
+        )
+
+    # Validate: user cannot specify both --eval-set (non-default) and --test-file (custom)
+    if test_file and eval_set != "gold":
+        raise click.BadParameter(
+            "Cannot specify both --test-file and --eval-set. "
+            "Use --eval-set to select a predefined sheet, or --test-file for a custom file.",
+        )
+
+    # Handle custom test file (bypass eval_set system)
+    if test_file:
+        _run_custom_test_file(
+            api_base_url=api_base_url,
+            api_token=api_token,
+            sample_size=sample_size,
+            test_file=test_file,
+            test_group_filter=test_group_filter,
+            status_filter=status_filter,
+            output_filename=output_filename,
+            num_workers=num_workers,
+            random_seed=random_seed,
+            offset=offset,
+        )
+        return
+
+    # Determine which eval sets to run
+    eval_sets_to_run = list(EVAL_SETS.keys()) if eval_set == "all" else [eval_set]
+
+    # Collect results from all eval sets
+    all_results = []
+
+    for i, current_eval_set in enumerate(eval_sets_to_run, 1):
+        # Print header for multi-set runs
+        if len(eval_sets_to_run) > 1:
+            print(f"\n{'=' * 70}")
+            print(f"EVAL SET {i}/{len(eval_sets_to_run)}: {current_eval_set}")
+            print(f"{'=' * 70}\n")
+
+        # Run this eval set
+        results = _run_single_eval_set(
+            api_base_url=api_base_url,
+            api_token=api_token,
+            sample_size=sample_size,
+            eval_set=current_eval_set,
+            test_file=None,
+            test_group_filter=test_group_filter,
+            status_filter=status_filter,
+            output_filename=None,
+            num_workers=num_workers,
+            random_seed=random_seed,
+            offset=offset,
+        )
+
+        # Tag results with eval_set and accumulate
+        if results:
+            for result in results:
+                result.eval_set = current_eval_set
+            all_results.extend(results)
+
+    # Write combined CSV
+    if all_results:
+        exporter = ResultExporter()
+        final_output = output_filename or "eval_results"
+        exporter.save_results_to_csv(all_results, final_output)
+
+        # Print summary
+        print(f"\n{'=' * 70}")
+        print("RESULTS SUMMARY")
+        print(f"{'=' * 70}")
+        print(f"Total tests: {len(all_results)}")
+
+        if len(eval_sets_to_run) > 1:
+            print("\nBreakdown by eval set:")
+            for es in eval_sets_to_run:
+                count = sum(1 for r in all_results if r.eval_set == es)
+                if count > 0:
+                    avg = (
+                        sum(r.overall_score for r in all_results if r.eval_set == es)
+                        / count
+                    )
+                    print(f"  {es:30} | Tests: {count:3} | Avg Score: {avg:.2f}")
+    else:
+        print("\n❌ No results collected from any eval set")
+
+
+def _run_custom_test_file(
+    api_base_url: str,
+    api_token: str,
+    sample_size: int,
+    test_file: str,
+    test_group_filter: str | None,
+    status_filter: str | None,
+    output_filename: str | None,
+    num_workers: int,
+    random_seed: int,
+    offset: int,
+) -> None:
+    """Run evals with a custom test file (not from standard eval sets).
+
+    This function handles the case where user provides --test-file directly.
+    Results are tagged with eval_set = "custom".
+    """
+    print("\nRunning with custom test file...")
+
+    results = _run_single_eval_set(
+        api_base_url=api_base_url,
+        api_token=api_token,
+        sample_size=sample_size,
+        eval_set="custom",
+        test_file=test_file,
+        test_group_filter=test_group_filter,
+        status_filter=status_filter,
+        output_filename=None,
+        num_workers=num_workers,
+        random_seed=random_seed,
+        offset=offset,
+    )
+
+    # Tag results with eval_set = "custom"
+    for result in results:
+        result.eval_set = "custom"
+
+    # Write CSV
+    if results:
+        exporter = ResultExporter()
+        final_output = output_filename or "eval_results"
+        exporter.save_results_to_csv(results, final_output)
+        print(f"\n✓ Results saved: {len(results)} tests")
+    else:
+        print("\n❌ No results collected")
+
+
+def _run_single_eval_set(
+    api_base_url: str,
+    api_token: str,
+    sample_size: int,
+    eval_set: str,
+    test_file: str | None,
+    test_group_filter: str | None,
+    status_filter: str | None,
+    output_filename: str | None,
+    num_workers: int,
+    random_seed: int,
+    offset: int,
+) -> list[TestResult]:
+    """Run evals for a single eval set. Internal helper function.
+
+    Returns:
+        List of TestResult objects, or empty list if error occurs
+
+    """
+    # Resolve test file for single eval set
+    if test_file:
+        # User provided a custom test file
+        resolved_test_file = test_file
+        resolved_eval_set = "custom"
+    else:
+        # Use eval_set to determine which sheet
+        resolved_test_file = get_sheet_url(eval_set)
+        resolved_eval_set = eval_set
+
     print(
         f"""
 ========================
 EVALUATION CONFIGURATION
 ========================
   API Base URL:      {api_base_url}
+  Eval Set:          {resolved_eval_set}
+  Test File:         {resolved_test_file}
   Sample Size:       {sample_size}
-  Test File:         {test_file}
   Test Group Filter: {test_group_filter or "None"}
   Status Filter:     {status_filter or "None"}
   Output Filename:   {output_filename or "Auto-generated"}
@@ -329,11 +500,6 @@ EVALUATION CONFIGURATION
 ========================
 """,
     )
-    # Validate API token
-    if not api_token:
-        raise click.BadParameter(
-            "API token is required. Provide --api-token or set API_TOKEN environment variable.",
-        )
 
     # Validate inputs
     if sample_size < -1:
@@ -352,7 +518,7 @@ EVALUATION CONFIGURATION
             self.api_base_url = api_base_url
             self.api_token = api_token
             self.sample_size = sample_size
-            self.test_file = test_file
+            self.test_file = resolved_test_file
             self.test_group_filter = test_group_filter
             self.status_filter = status_filter_list
             self.output_filename = output_filename
@@ -361,8 +527,13 @@ EVALUATION CONFIGURATION
             self.offset = offset
 
     config = Config()
-    results = asyncio.run(run_csv_tests(config))
-    assert len(results) > 0, "No test results from CSV"
+    try:
+        results = asyncio.run(run_csv_tests(config))
+        print(f"Processed {len(results)} tests.")
+        return results
+    except ValueError as e:
+        print(f"❌ ERROR: {e}")
+        return []  # Return empty list on error
 
 
 if __name__ == "__main__":
