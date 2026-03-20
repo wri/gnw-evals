@@ -4,7 +4,7 @@ from langchain_anthropic import ChatAnthropic
 load_dotenv()
 
 HAIKU = ChatAnthropic(
-    model="claude-3-5-haiku-latest",
+    model="claude-haiku-4-5",
     temperature=0,
-    max_tokens=8_192,  # Haiku has a limit of max 8192 tokens
+    max_tokens=8_192,
 )
