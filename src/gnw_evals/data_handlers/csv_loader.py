@@ -15,7 +15,7 @@ class CSVLoader:
         csv_file: str,
         sample_size: int = 0,
         test_group_filter: str | None = None,
-        status_filter: str | None = None,
+        status_filter: list[str] | None = None,
         random_seed: int = 42,
         offset: int = 0,
     ) -> list[ExpectedData]:
@@ -25,7 +25,7 @@ class CSVLoader:
             csv_file: Path or URL to CSV test file
             sample_size: Number of test cases to load (0 means all)
             test_group_filter: Filter by test_group column (optional)
-            status_filter: Filter by status column (optional)
+            status_filter: List of status values to skip (case-insensitive, optional)
             random_seed: Random seed for sampling (optional)
             offset: Offset for sampling (optional)
 
@@ -57,6 +57,9 @@ class CSVLoader:
             else:
                 missing_fields.append(field)
                 # Add missing field with default value
+                # TODO: fields with list defaults (e.g. expected_aoi_ids=[]) will
+                # cause a pandas error here. Fix by falling back to "" for list defaults
+                # and letting the field validator handle the conversion.
                 default_value = ExpectedData.model_fields[field].default
                 # Convert default to appropriate string for CSV
                 if default_value is None or default_value == "":
@@ -83,15 +86,16 @@ class CSVLoader:
             df[col] = df[col].astype(str).str.strip()
             df[col] = df[col].replace(["nan", "NaN", "null", "NULL", "None"], "")
 
-        # Filter by status - only include tests that should be run
-        # Skip tests with status: done, fail, skip
-        if "status" in df.columns and status_filter:
+        # Filter by status - skip rows with matching status values (case-insensitive)
+        if status_filter and "status" in df.columns:
             original_count = len(df)
-            df = df[df["status"].str.lower().isin([s.lower() for s in status_filter])]
+            skip_statuses = [s.strip().lower() for s in status_filter]
+            # Skip rows where status matches; keep rows where status is empty or doesn't match
+            df = df[~df["status"].str.lower().isin(skip_statuses)]
             filtered_count = len(df)
             if filtered_count < original_count:
                 print(
-                    f"Filtered {original_count - filtered_count} tests based on status (keeping only: {', '.join(status_filter)})",
+                    f"Skipped {original_count - filtered_count} tests based on status (skipping: {', '.join(skip_statuses)})",
                 )
 
         # Filter by test_group if specified

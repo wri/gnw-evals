@@ -688,7 +688,9 @@ def test_clarification_evaluator_all_scenarios():
     ) as mock:
         mock.return_value = {"is_clarification": True, "explanation": "asking for info"}
         result = evaluate_clarification(
-            agent_state, expected_clarification=True, query="test",
+            agent_state,
+            expected_clarification=True,
+            query="test",
         )
         assert result["actual_clarification_requested"] is True, (
             "Case 1: Should detect clarification was requested"
@@ -703,7 +705,9 @@ def test_clarification_evaluator_all_scenarios():
     ) as mock:
         mock.return_value = {"is_clarification": False, "explanation": "answered"}
         result = evaluate_clarification(
-            agent_state, expected_clarification=True, query="test",
+            agent_state,
+            expected_clarification=True,
+            query="test",
         )
         assert result["actual_clarification_requested"] is False, (
             "Case 2: Should detect clarification was NOT requested"
@@ -718,7 +722,9 @@ def test_clarification_evaluator_all_scenarios():
     ) as mock:
         mock.return_value = {"is_clarification": True, "explanation": "asking for info"}
         result = evaluate_clarification(
-            agent_state, expected_clarification=False, query="test",
+            agent_state,
+            expected_clarification=False,
+            query="test",
         )
         assert result["actual_clarification_requested"] is True, (
             "Case 3: Should detect clarification was requested"
@@ -733,7 +739,9 @@ def test_clarification_evaluator_all_scenarios():
     ) as mock:
         mock.return_value = {"is_clarification": False, "explanation": "answered"}
         result = evaluate_clarification(
-            agent_state, expected_clarification=False, query="test",
+            agent_state,
+            expected_clarification=False,
+            query="test",
         )
         assert result["actual_clarification_requested"] is False, (
             "Case 4: Should detect clarification was NOT requested"
@@ -748,7 +756,9 @@ def test_clarification_evaluator_all_scenarios():
     ) as mock:
         mock.return_value = {"is_clarification": True, "explanation": "asking for info"}
         result = evaluate_clarification(
-            agent_state, expected_clarification=None, query="test",
+            agent_state,
+            expected_clarification=None,
+            query="test",
         )
         assert result["actual_clarification_requested"] is True, (
             "Case 5: Should detect clarification was requested"
@@ -763,7 +773,9 @@ def test_clarification_evaluator_all_scenarios():
     ) as mock:
         mock.return_value = {"is_clarification": False, "explanation": "answered"}
         result = evaluate_clarification(
-            agent_state, expected_clarification=None, query="test",
+            agent_state,
+            expected_clarification=None,
+            query="test",
         )
         assert result["actual_clarification_requested"] is False, (
             "Case 6: Should detect clarification was NOT requested"
@@ -851,7 +863,9 @@ def test_clarification_and_other_evaluations_run_together():
         }
 
         evaluations = runner._run_evaluations(
-            agent_state, expected_data, query="Show me Brazil",
+            agent_state,
+            expected_data,
+            query="Show me Brazil",
         )
 
         # Verify clarification was detected and scored
@@ -1195,3 +1209,66 @@ def test_expected_data_clarification_string_parsing():
     # Test None passes through
     data_none = ExpectedData(expected_clarification=None)
     assert data_none.expected_clarification is None
+
+
+# ============================================================================
+# UNIT TESTS FOR STATUS FILTER
+# ============================================================================
+
+
+def test_status_filter_skips_matching_rows(tmp_path):
+    """Test that rows with a matching status value are skipped.
+
+    Rows with status "skip" or "not doing" should be excluded;
+    rows with empty status or other values should be kept.
+    Case-insensitive: "SKIP", "Skip", "skip" all match.
+    """
+    import pandas as pd
+
+    from gnw_evals.data_handlers.csv_loader import CSVLoader
+
+    csv_file = tmp_path / "test.csv"
+    pd.DataFrame(
+        {
+            "query": ["q1", "q2", "q3", "q4", "q5", "q6"],
+            "status": ["skip", "SKIP", "not doing", "rerun", "", "Not Doing"],
+        }
+    ).to_csv(csv_file, index=False)
+
+    results = CSVLoader.load_test_data(
+        str(csv_file),
+        status_filter=["skip", "not doing"],
+    )
+
+    queries = [r.query for r in results]
+    assert "q1" not in queries, "status='skip' should be skipped"
+    assert "q2" not in queries, "status='SKIP' should be skipped (case-insensitive)"
+    assert "q3" not in queries, "status='not doing' should be skipped"
+    assert "q6" not in queries, (
+        "status='Not Doing' should be skipped (case-insensitive)"
+    )
+    assert "q4" in queries, "status='rerun' should be kept"
+    assert "q5" in queries, "empty status should be kept"
+
+
+def test_status_filter_none_keeps_all_rows(tmp_path):
+    """Test that no rows are filtered when status_filter is None.
+
+    All rows should be included regardless of their status value
+    when status_filter is not set.
+    """
+    import pandas as pd
+
+    from gnw_evals.data_handlers.csv_loader import CSVLoader
+
+    csv_file = tmp_path / "test.csv"
+    pd.DataFrame(
+        {
+            "query": ["q1", "q2", "q3", "q4"],
+            "status": ["skip", "not doing", "rerun", ""],
+        }
+    ).to_csv(csv_file, index=False)
+
+    results = CSVLoader.load_test_data(str(csv_file), status_filter=None)
+
+    assert len(results) == 4, "All rows should be kept when status_filter is None"
