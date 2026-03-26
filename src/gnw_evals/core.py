@@ -206,6 +206,13 @@ def _print_csv_summary(results: list[TestResult]) -> None:
     ]
     print(_metric_line("Charts Answer", charts_scores))
 
+    clarification_scores = [
+        r.clarification_requested_score
+        for r in results
+        if r.clarification_requested_score is not None
+    ]
+    print(_metric_line("Clarification Requested", clarification_scores))
+
     # Experimental section
     print()
     print("(warning: overall_score is experimental and untested)")
