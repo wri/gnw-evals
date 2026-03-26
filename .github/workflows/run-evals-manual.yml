@@ -26,6 +26,21 @@ on:
           - guardrail
           - date_selection
           - all
+      sample_size:
+        description: "Sample size (-1 for all rows)"
+        required: false
+        default: "-1"
+        type: string
+      num_workers:
+        description: "Number of worker processes"
+        required: false
+        default: "2"
+        type: string
+      offset:
+        description: "Sampling offset"
+        required: false
+        default: "0"
+        type: string
 
 permissions:
   contents: read
@@ -34,8 +49,9 @@ jobs:
   run-evals:
     runs-on: ubuntu-latest
     env:
-      SAMPLE_SIZE: "5"
-      NUM_WORKERS: "1"
+      SAMPLE_SIZE: ${{ inputs.sample_size }}
+      NUM_WORKERS: ${{ inputs.num_workers }}
+      OFFSET: ${{ inputs.offset }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -98,6 +114,7 @@ jobs:
             --api-base-url "$API_BASE_URL" \
             --sample-size "$SAMPLE_SIZE" \
             --num-workers "$NUM_WORKERS" \
+            --offset "$OFFSET" \
             --eval-set "${{ inputs.eval_set }}" \
             --output-filename "gha_${{ inputs.target_env }}_${{ inputs.eval_set }}"
 
