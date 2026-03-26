@@ -138,7 +138,7 @@ def _print_csv_summary(results: list[TestResult]) -> None:
     passed = sum(1 for r in results if r.overall_score >= 0.7)
 
     # Label column width based on longest label ("Context Layer Match" = 18 chars)
-    LABEL_WIDTH = 22
+    LABEL_WIDTH = 25
 
     def _metric_line(label: str, scores: list) -> str:
         label_col = f"{label}:"
