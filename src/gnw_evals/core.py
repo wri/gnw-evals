@@ -137,93 +137,84 @@ def _print_csv_summary(results: list[TestResult]) -> None:
     if total_tests == 0:
         return
 
-    avg_score = sum(r.overall_score for r in results) / total_tests
     passed = sum(1 for r in results if r.overall_score >= 0.7)
+
+    # Label column width based on longest label ("Context Layer Match" = 18 chars)
+    LABEL_WIDTH = 22
+
+    def _metric_line(label: str, scores: list) -> str:
+        label_col = f"{label}:"
+        evaluated = len(scores)
+        passed = sum(1 for s in scores if s == 1.0)
+        if evaluated > 0:
+            avg = passed / evaluated
+            return (
+                f"{label_col:<{LABEL_WIDTH}} {passed:>3} / {evaluated:>3} ({avg:.2f})"
+            )
+        return f"{label_col:<{LABEL_WIDTH}} {0:>3} / {0:>3}"
 
     print(f"\n{'=' * 50}")
     print("SIMPLE E2E TEST SUMMARY")
     print(f"{'=' * 50}")
     print(f"Tests Run (after filters): {total_tests}")
-    print(f"Average Score: {avg_score:.2f}")
-    print(f"Passed (≥0.7): {passed}/{total_tests} ({passed / total_tests:.1%})")
+    print()
 
-    # Component-specific stats (separate binary scores)
+    # Agent Answer first - most important metric
+    agent_answer_scores = [
+        r.agent_answer_score for r in results if r.agent_answer_score is not None
+    ]
+    print(_metric_line("Agent Answer", agent_answer_scores))
+    print()
 
-    def _metric_line(label: str, scores: list) -> str:
-        count = len(scores)
-        if count > 0:
-            avg = sum(scores) / count
-            return f"{label}: {count} / {total_tests} ({avg:.2f})"
-        return f"{label}: 0 / {total_tests}"
+    # Component-specific stats
+    aoi_scores = [
+        r.aoi_id_match_score for r in results if r.aoi_id_match_score is not None
+    ]
+    print(_metric_line("AOI ID Match", aoi_scores))
 
+    subregion_scores = [
+        r.subregion_match_score for r in results if r.subregion_match_score is not None
+    ]
+    print(_metric_line("Subregion Match", subregion_scores))
+
+    dataset_id_scores = [
+        r.dataset_id_match_score
+        for r in results
+        if r.dataset_id_match_score is not None
+    ]
+    print(_metric_line("Dataset ID Match", dataset_id_scores))
+
+    context_scores = [
+        r.context_layer_match_score
+        for r in results
+        if r.context_layer_match_score is not None
+    ]
+    print(_metric_line("Context Layer Match", context_scores))
+
+    data_pull_scores = [
+        r.data_pull_exists_score
+        for r in results
+        if r.data_pull_exists_score is not None
+    ]
+    print(_metric_line("Data Pull Exists", data_pull_scores))
+
+    date_scores = [
+        r.date_match_score for r in results if r.date_match_score is not None
+    ]
+    print(_metric_line("Date Match", date_scores))
+
+    charts_scores = [
+        r.charts_answer_score for r in results if r.charts_answer_score is not None
+    ]
+    print(_metric_line("Charts Answer", charts_scores))
+
+    # Experimental section
+    print()
+    print("(warning: overall_score is experimental and untested)")
     print(
-        _metric_line(
-            "AOI ID Match",
-            [r.aoi_id_match_score for r in results if r.aoi_id_match_score is not None],
-        )
+        f"Tests with overall score ≥0.7:  {passed:>{3}} / {total_tests:>{3}} ({passed / total_tests:.1%})"
     )
-    print(
-        _metric_line(
-            "Subregion Match",
-            [
-                r.subregion_match_score
-                for r in results
-                if r.subregion_match_score is not None
-            ],
-        )
-    )
-    print(
-        _metric_line(
-            "Dataset ID Match",
-            [
-                r.dataset_id_match_score
-                for r in results
-                if r.dataset_id_match_score is not None
-            ],
-        )
-    )
-    print(
-        _metric_line(
-            "Context Layer Match",
-            [
-                r.context_layer_match_score
-                for r in results
-                if r.context_layer_match_score is not None
-            ],
-        )
-    )
-    print(
-        _metric_line(
-            "Data Pull Exists",
-            [
-                r.data_pull_exists_score
-                for r in results
-                if r.data_pull_exists_score is not None
-            ],
-        )
-    )
-    print(
-        _metric_line(
-            "Date Match",
-            [r.date_match_score for r in results if r.date_match_score is not None],
-        )
-    )
-    print(
-        _metric_line(
-            "Charts Answer",
-            [
-                r.charts_answer_score
-                for r in results
-                if r.charts_answer_score is not None
-            ],
-        )
-    )
-    print(
-        _metric_line(
-            "Agent Answer",
-            [r.agent_answer_score for r in results if r.agent_answer_score is not None],
-        )
-    )
+    print()
 
 
 @click.command()
