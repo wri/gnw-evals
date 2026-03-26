@@ -1,0 +1,135 @@
+name: Run Evals (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: "API environment to target"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - prod
+      eval_set:
+        description: "Eval set to run"
+        required: true
+        default: "gold"
+        type: choice
+        options:
+          - gold
+          - location_id
+          - dataset_id
+          - dataset_interpretation
+          - analysis_results
+          - analysis_interpretation
+          - guardrail
+          - date_selection
+          - all
+
+permissions:
+  contents: read
+
+jobs:
+  run-evals:
+    runs-on: ubuntu-latest
+    env:
+      SAMPLE_SIZE: "5"
+      NUM_WORKERS: "1"
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+      AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          version: "latest"
+
+      - name: Select API base URL
+        run: |
+          if [ "${{ inputs.target_env }}" = "prod" ]; then
+            echo "API_BASE_URL=https://api.globalnaturewatch.org" >> "$GITHUB_ENV"
+          else
+            echo "API_BASE_URL=https://api.staging.globalnaturewatch.org" >> "$GITHUB_ENV"
+          fi
+
+      - name: Select API token for environment
+        run: |
+          if [ "${{ inputs.target_env }}" = "prod" ]; then
+            echo "API_TOKEN=${{ secrets.API_TOKEN_PROD }}" >> "$GITHUB_ENV"
+          else
+            echo "API_TOKEN=${{ secrets.API_TOKEN_STAGING }}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Validate required secrets
+        run: |
+          missing=0
+          for key in API_TOKEN ANTHROPIC_API_KEY SPREADSHEET_ID; do
+            if [ -z "${!key}" ]; then
+              echo "Missing required secret: $key"
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -ne 0 ]; then
+            echo "Required secrets are missing."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run evals
+        run: |
+          uv run gnw_evals \
+            --api-base-url "$API_BASE_URL" \
+            --sample-size "$SAMPLE_SIZE" \
+            --num-workers "$NUM_WORKERS" \
+            --eval-set "${{ inputs.eval_set }}" \
+            --output-filename "gha_${{ inputs.target_env }}_${{ inputs.eval_set }}"
+
+      - name: Upload CSV artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-csv-${{ inputs.target_env }}-${{ github.run_id }}
+          path: outputs/*.csv
+          if-no-files-found: error
+
+      - name: Check optional S3 upload readiness
+        id: s3_ready
+        run: |
+          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ] || [ -z "$AWS_S3_BUCKET" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "AWS credentials or AWS_S3_BUCKET missing; S3 upload will be skipped."
+            exit 0
+          fi
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials
+        if: ${{ steps.s3_ready.outputs.enabled == 'true' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION || 'us-east-1' }}
+
+      - name: Upload CSV files to S3 (optional)
+        if: ${{ steps.s3_ready.outputs.enabled == 'true' }}
+        run: |
+          run_date="$(date -u +%Y-%m-%d)"
+          dest="s3://$AWS_S3_BUCKET/${{ inputs.target_env }}/${run_date}/${{ github.run_id }}/"
+          echo "Uploading outputs/*.csv to $dest"
+          uv run --with awscli aws s3 cp outputs/ "$dest" --recursive --exclude "*" --include "*.csv"
