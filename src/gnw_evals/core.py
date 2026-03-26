@@ -143,107 +143,87 @@ def _print_csv_summary(results: list[TestResult]) -> None:
     print(f"\n{'=' * 50}")
     print("SIMPLE E2E TEST SUMMARY")
     print(f"{'=' * 50}")
-    print(f"Total Tests: {total_tests}")
+    print(f"Tests Run (after filters): {total_tests}")
     print(f"Average Score: {avg_score:.2f}")
     print(f"Passed (≥0.7): {passed}/{total_tests} ({passed / total_tests:.1%})")
 
     # Component-specific stats (separate binary scores)
 
-    # AOI ID Match
-    aoi_id_nones = len([r for r in results if r.aoi_id_match_score is None])
-    if total_tests - aoi_id_nones > 0:
-        aoi_id_avg = sum(
-            r.aoi_id_match_score for r in results if r.aoi_id_match_score is not None
-        ) / (total_tests - aoi_id_nones)
-        aoi_id_avg = f"{aoi_id_avg:.2f}"
-    else:
-        aoi_id_avg = None
-    print(f"AOI ID Match: {aoi_id_avg} ({aoi_id_nones} None)")
+    def _metric_line(label: str, scores: list) -> str:
+        count = len(scores)
+        if count > 0:
+            avg = sum(scores) / count
+            return f"{label}: {count} / {total_tests} ({avg:.2f})"
+        return f"{label}: 0 / {total_tests}"
 
-    # Subregion Match
-    subregion_nones = len([r for r in results if r.subregion_match_score is None])
-    if total_tests - subregion_nones > 0:
-        subregion_avg = sum(
-            r.subregion_match_score
-            for r in results
-            if r.subregion_match_score is not None
-        ) / (total_tests - subregion_nones)
-        subregion_avg = f"{subregion_avg:.2f}"
-    else:
-        subregion_avg = None
-    print(f"Subregion Match: {subregion_avg} ({subregion_nones} None)")
-
-    # Dataset ID Match
-    dataset_id_nones = len([r for r in results if r.dataset_id_match_score is None])
-    if total_tests - dataset_id_nones > 0:
-        dataset_id_avg = sum(
-            r.dataset_id_match_score
-            for r in results
-            if r.dataset_id_match_score is not None
-        ) / (total_tests - dataset_id_nones)
-        dataset_id_avg = f"{dataset_id_avg:.2f}"
-    else:
-        dataset_id_avg = None
-    print(f"Dataset ID Match: {dataset_id_avg} ({dataset_id_nones} None)")
-
-    # Context Layer Match
-    context_nones = len([r for r in results if r.context_layer_match_score is None])
-    if total_tests - context_nones > 0:
-        context_avg = sum(
-            r.context_layer_match_score
-            for r in results
-            if r.context_layer_match_score is not None
-        ) / (total_tests - context_nones)
-        context_avg = f"{context_avg:.2f}"
-    else:
-        context_avg = None
-    print(f"Context Layer Match: {context_avg} ({context_nones} None)")
-
-    # Data Pull Exists
-    data_pull_nones = len([r for r in results if r.data_pull_exists_score is None])
-    if total_tests - data_pull_nones > 0:
-        data_pull_avg = sum(
-            r.data_pull_exists_score
-            for r in results
-            if r.data_pull_exists_score is not None
-        ) / (total_tests - data_pull_nones)
-        data_pull_avg = f"{data_pull_avg:.2f}"
-    else:
-        data_pull_avg = None
-    print(f"Data Pull Exists: {data_pull_avg} ({data_pull_nones} None)")
-
-    # Date Match
-    date_nones = len([r for r in results if r.date_match_score is None])
-    if total_tests - date_nones > 0:
-        date_avg = sum(
-            r.date_match_score for r in results if r.date_match_score is not None
-        ) / (total_tests - date_nones)
-        date_avg = f"{date_avg:.2f}"
-    else:
-        date_avg = None
-    print(f"Date Match: {date_avg} ({date_nones} None)")
-
-    # Charts Answer
-    charts_answer_nones = len([r for r in results if r.charts_answer_score is None])
-    if total_tests - charts_answer_nones > 0:
-        charts_answer_avg = sum(
-            r.charts_answer_score for r in results if r.charts_answer_score is not None
-        ) / (total_tests - charts_answer_nones)
-        charts_answer_avg = f"{charts_answer_avg:.2f}"
-    else:
-        charts_answer_avg = None
-    print(f"Charts Answer: {charts_answer_avg} ({charts_answer_nones} None)")
-
-    # Agent Answer
-    agent_answer_nones = len([r for r in results if r.agent_answer_score is None])
-    if total_tests - agent_answer_nones > 0:
-        agent_answer_avg = sum(
-            r.agent_answer_score for r in results if r.agent_answer_score is not None
-        ) / (total_tests - agent_answer_nones)
-        agent_answer_avg = f"{agent_answer_avg:.2f}"
-    else:
-        agent_answer_avg = None
-    print(f"Agent Answer: {agent_answer_avg} ({agent_answer_nones} None)")
+    print(
+        _metric_line(
+            "AOI ID Match",
+            [r.aoi_id_match_score for r in results if r.aoi_id_match_score is not None],
+        )
+    )
+    print(
+        _metric_line(
+            "Subregion Match",
+            [
+                r.subregion_match_score
+                for r in results
+                if r.subregion_match_score is not None
+            ],
+        )
+    )
+    print(
+        _metric_line(
+            "Dataset ID Match",
+            [
+                r.dataset_id_match_score
+                for r in results
+                if r.dataset_id_match_score is not None
+            ],
+        )
+    )
+    print(
+        _metric_line(
+            "Context Layer Match",
+            [
+                r.context_layer_match_score
+                for r in results
+                if r.context_layer_match_score is not None
+            ],
+        )
+    )
+    print(
+        _metric_line(
+            "Data Pull Exists",
+            [
+                r.data_pull_exists_score
+                for r in results
+                if r.data_pull_exists_score is not None
+            ],
+        )
+    )
+    print(
+        _metric_line(
+            "Date Match",
+            [r.date_match_score for r in results if r.date_match_score is not None],
+        )
+    )
+    print(
+        _metric_line(
+            "Charts Answer",
+            [
+                r.charts_answer_score
+                for r in results
+                if r.charts_answer_score is not None
+            ],
+        )
+    )
+    print(
+        _metric_line(
+            "Agent Answer",
+            [r.agent_answer_score for r in results if r.agent_answer_score is not None],
+        )
+    )
 
 
 @click.command()
@@ -554,7 +534,6 @@ EVALUATION CONFIGURATION
     config = Config()
     try:
         results = asyncio.run(run_csv_tests(config))
-        print(f"Processed {len(results)} tests.")
         return results
     except ValueError as e:
         print(f"❌ ERROR: {e}")
