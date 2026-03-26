@@ -12,6 +12,21 @@ from gnw_evals.utils.sheet_registry import EVAL_SETS, get_sheet_url
 dotenv.load_dotenv()
 
 
+def _build_default_output_filename(
+    eval_set: str,
+    sample_size: int,
+    num_workers: int,
+    offset: int,
+) -> str:
+    """Build default output filename prefix from run configuration."""
+    return (
+        f"eval_results_{eval_set}"
+        f"_sample_{sample_size}"
+        f"_workers_{num_workers}"
+        f"_offset_{offset}"
+    )
+
+
 async def run_single_test(
     runner,
     test_case,
@@ -383,7 +398,12 @@ def run_evals(
     # Write combined CSV
     if all_results:
         exporter = ResultExporter()
-        final_output = output_filename or "eval_results"
+        final_output = output_filename or _build_default_output_filename(
+            eval_set=eval_set,
+            sample_size=sample_size,
+            num_workers=num_workers,
+            offset=offset,
+        )
         exporter.save_results_to_csv(all_results, final_output)
 
         # Print summary
@@ -446,7 +466,12 @@ def _run_custom_test_file(
     # Write CSV
     if results:
         exporter = ResultExporter()
-        final_output = output_filename or "eval_results"
+        final_output = output_filename or _build_default_output_filename(
+            eval_set="custom",
+            sample_size=sample_size,
+            num_workers=num_workers,
+            offset=offset,
+        )
         exporter.save_results_to_csv(results, final_output)
         print(f"\n✓ Results saved: {len(results)} tests")
     else:

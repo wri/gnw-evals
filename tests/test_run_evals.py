@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from gnw_evals.core import run_csv_tests
+from gnw_evals.core import _build_default_output_filename, run_csv_tests
 from gnw_evals.utils.eval_types import ExpectedData
 
 
@@ -1272,3 +1272,25 @@ def test_status_filter_none_keeps_all_rows(tmp_path):
     results = CSVLoader.load_test_data(str(csv_file), status_filter=None)
 
     assert len(results) == 4, "All rows should be kept when status_filter is None"
+
+
+def test_default_output_filename_builder_for_single_eval_set():
+    """Default filename should include eval_set and key run parameters."""
+    filename = _build_default_output_filename(
+        eval_set="gold",
+        sample_size=-1,
+        num_workers=2,
+        offset=0,
+    )
+    assert filename == "eval_results_gold_sample_-1_workers_2_offset_0"
+
+
+def test_default_output_filename_builder_for_all_eval_sets():
+    """Default filename should preserve eval_set='all' label."""
+    filename = _build_default_output_filename(
+        eval_set="all",
+        sample_size=5,
+        num_workers=4,
+        offset=10,
+    )
+    assert filename == "eval_results_all_sample_5_workers_4_offset_10"

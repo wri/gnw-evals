@@ -115,8 +115,7 @@ jobs:
             --sample-size "$SAMPLE_SIZE" \
             --num-workers "$NUM_WORKERS" \
             --offset "$OFFSET" \
-            --eval-set "${{ inputs.eval_set }}" \
-            --output-filename "gha_${{ inputs.target_env }}_${{ inputs.eval_set }}"
+            --eval-set "${{ inputs.eval_set }}"
 
       - name: Upload CSV artifacts
         uses: actions/upload-artifact@v4
