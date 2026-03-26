@@ -35,9 +35,7 @@ async def run_single_test(
 ) -> TestResult:
     """Run a single test case."""
     start_time = time.time()
-    print(
-        f"[STARTED] Test {test_index + 1}/{total_tests}: {test_case.query[:60]}...",
-    )
+    print(f"[STARTED]   Test {test_index + 1}/{total_tests}: {test_case.query[:60]}...")
 
     # Convert test case to ExpectedData (remove query field)
     test_dict = test_case.model_dump()
@@ -48,15 +46,15 @@ async def run_single_test(
 
     # Print completion with timing
     duration = time.time() - start_time
-    score = result.overall_score
+    all_scores = [
+        v
+        for k, v in result.model_dump().items()
+        if k.endswith("_score") and k != "overall_score" and v is not None
+    ]
+    checks_passed = sum(1 for s in all_scores if s == 1.0)
+    checks_total = len(all_scores)
     print(
-        f"[COMPLETED] Test {test_index + 1}/{total_tests}: Score {score:.2f} ({duration:.1f}s)",
-    )
-    print(
-        f"  AOI_ID: {result.aoi_id_match_score} | Subregion: {result.subregion_match_score} | Dataset_ID: {result.dataset_id_match_score} | Context: {result.context_layer_match_score}",
-    )
-    print(
-        f"  Data_Pull: {result.data_pull_exists_score} | Date: {result.date_match_score} | Charts_Answer: {result.charts_answer_score} | Agent_Answer: {result.agent_answer_score}",
+        f"[COMPLETED] Test {test_index + 1}/{total_tests}: {checks_passed} out of {checks_total} checks passed ({duration:.1f}s)"
     )
 
     return result
