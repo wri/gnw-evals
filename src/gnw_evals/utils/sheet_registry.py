@@ -25,6 +25,20 @@ EVAL_SETS = {
     "date_selection": "1962457177",
 }
 
+# Primary metric field per eval set.
+# Used in the RESULTS SUMMARY breakdown to show the most meaningful score for each eval set.
+# If an eval set is not listed here, agent_answer_score is used as the default.
+EVAL_SET_PRIMARY_METRIC: dict[str, str] = {
+    "gold": "agent_answer_score",
+    "location_id": "aoi_id_match_score",
+    "dataset_id": "dataset_id_match_score",
+    "dataset_interpretation": "agent_answer_score",
+    "analysis_results": "agent_answer_score",
+    "analysis_interpretation": "agent_answer_score",
+    "guardrail": "clarification_requested_score",
+    "date_selection": "date_match_score",
+}
+
 # Default gold sheet URL (for backward compatibility checking)
 DEFAULT_GOLD_URL = (
     f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid=0"

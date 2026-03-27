@@ -7,7 +7,11 @@ import dotenv
 from gnw_evals.data_handlers import CSVLoader, ResultExporter
 from gnw_evals.runners import APITestRunner
 from gnw_evals.utils.eval_types import ExpectedData, TestResult
-from gnw_evals.utils.sheet_registry import EVAL_SETS, get_sheet_url
+from gnw_evals.utils.sheet_registry import (
+    EVAL_SET_PRIMARY_METRIC,
+    EVAL_SETS,
+    get_sheet_url,
+)
 
 dotenv.load_dotenv()
 
@@ -389,15 +393,27 @@ def run_evals(
         print(f"Total tests: {len(all_results)}")
 
         if len(eval_sets_to_run) > 1:
+            # Longest field name is "dataset_id_match_score" = 22 chars, +1 for colon
+            METRIC_COL_WIDTH = 23
             print("\nBreakdown by eval set:")
             for es in eval_sets_to_run:
-                count = sum(1 for r in all_results if r.eval_set == es)
-                if count > 0:
-                    avg = (
-                        sum(r.overall_score for r in all_results if r.eval_set == es)
-                        / count
-                    )
-                    print(f"  {es:30} | Tests: {count:3} | Avg Score: {avg:.2f}")
+                es_results = [r for r in all_results if r.eval_set == es]
+                if not es_results:
+                    continue
+                metric_field = EVAL_SET_PRIMARY_METRIC.get(es, "agent_answer_score")
+                metric_label = f"{metric_field}:"
+                scores = [
+                    v
+                    for r in es_results
+                    if (v := getattr(r, metric_field, None)) is not None
+                ]
+                evaluated = len(scores)
+                passed = sum(1 for s in scores if s == 1.0)
+                if evaluated > 0:
+                    metric_str = f"{metric_label:<{METRIC_COL_WIDTH}} {passed:>3} / {evaluated:>3} ({passed / evaluated:.2f})"
+                else:
+                    metric_str = f"{metric_label:<{METRIC_COL_WIDTH}} {0:>3} / {0:>3}"
+                print(f"  {es:30} | Tests: {len(es_results):3} | {metric_str}")
     else:
         print("\n❌ No results collected from any eval set")
 
