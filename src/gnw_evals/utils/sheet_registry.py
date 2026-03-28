@@ -6,13 +6,6 @@ import dotenv
 
 dotenv.load_dotenv()
 
-SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
-if not SPREADSHEET_ID:
-    raise ValueError(
-        "SPREADSHEET_ID environment variable is required. "
-        "Please set it in your .env file.",
-    )
-
 # Eval set name → GID mapping
 EVAL_SETS = {
     "gold": "0",
@@ -39,10 +32,24 @@ EVAL_SET_PRIMARY_METRIC: dict[str, str] = {
     "date_selection": "date_match_score",
 }
 
-# Default gold sheet URL (for backward compatibility checking)
-DEFAULT_GOLD_URL = (
-    f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid=0"
-)
+
+def _get_spreadsheet_id() -> str:
+    """Retrieve and validate the SPREADSHEET_ID environment variable.
+
+    Returns:
+        The spreadsheet ID string.
+
+    Raises:
+        ValueError: If SPREADSHEET_ID is not set.
+
+    """
+    spreadsheet_id = os.getenv("SPREADSHEET_ID")
+    if not spreadsheet_id:
+        raise ValueError(
+            "SPREADSHEET_ID environment variable is required. "
+            "Please set it in your .env file.",
+        )
+    return spreadsheet_id
 
 
 def get_sheet_url(eval_set: str) -> str:
@@ -62,8 +69,9 @@ def get_sheet_url(eval_set: str) -> str:
         available = ", ".join(EVAL_SETS.keys())
         raise ValueError(f"Unknown eval set: '{eval_set}'. Available: {available}")
 
+    spreadsheet_id = _get_spreadsheet_id()
     gid = EVAL_SETS[eval_set]
     return (
-        f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/"
+        f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/"
         f"export?format=csv&gid={gid}"
     )
