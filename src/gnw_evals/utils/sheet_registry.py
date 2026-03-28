@@ -6,13 +6,6 @@ import dotenv
 
 dotenv.load_dotenv()
 
-SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
-if not SPREADSHEET_ID:
-    raise ValueError(
-        "SPREADSHEET_ID environment variable is required. "
-        "Please set it in your .env file.",
-    )
-
 # Eval set name → GID mapping
 EVAL_SETS = {
     "gold": "0",
@@ -25,10 +18,38 @@ EVAL_SETS = {
     "date_selection": "1962457177",
 }
 
-# Default gold sheet URL (for backward compatibility checking)
-DEFAULT_GOLD_URL = (
-    f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid=0"
-)
+# Primary metric field per eval set.
+# Used in the RESULTS SUMMARY breakdown to show the most meaningful score for each eval set.
+# If an eval set is not listed here, agent_answer_score is used as the default.
+EVAL_SET_PRIMARY_METRIC: dict[str, str] = {
+    "gold": "agent_answer_score",
+    "location_id": "aoi_id_match_score",
+    "dataset_id": "dataset_id_match_score",
+    "dataset_interpretation": "agent_answer_score",
+    "analysis_results": "agent_answer_score",
+    "analysis_interpretation": "agent_answer_score",
+    "guardrail": "clarification_requested_score",
+    "date_selection": "date_match_score",
+}
+
+
+def _get_spreadsheet_id() -> str:
+    """Retrieve and validate the SPREADSHEET_ID environment variable.
+
+    Returns:
+        The spreadsheet ID string.
+
+    Raises:
+        ValueError: If SPREADSHEET_ID is not set.
+
+    """
+    spreadsheet_id = os.getenv("SPREADSHEET_ID")
+    if not spreadsheet_id:
+        raise ValueError(
+            "SPREADSHEET_ID environment variable is required. "
+            "Please set it in your .env file.",
+        )
+    return spreadsheet_id
 
 
 def get_sheet_url(eval_set: str) -> str:
@@ -48,8 +69,9 @@ def get_sheet_url(eval_set: str) -> str:
         available = ", ".join(EVAL_SETS.keys())
         raise ValueError(f"Unknown eval set: '{eval_set}'. Available: {available}")
 
+    spreadsheet_id = _get_spreadsheet_id()
     gid = EVAL_SETS[eval_set]
     return (
-        f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/"
+        f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/"
         f"export?format=csv&gid={gid}"
     )

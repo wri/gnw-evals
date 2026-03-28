@@ -7,7 +7,11 @@ import dotenv
 from gnw_evals.data_handlers import CSVLoader, ResultExporter
 from gnw_evals.runners import APITestRunner
 from gnw_evals.utils.eval_types import ExpectedData, TestResult
-from gnw_evals.utils.sheet_registry import EVAL_SETS, get_sheet_url
+from gnw_evals.utils.sheet_registry import (
+    EVAL_SET_PRIMARY_METRIC,
+    EVAL_SETS,
+    get_sheet_url,
+)
 
 dotenv.load_dotenv()
 
@@ -35,9 +39,7 @@ async def run_single_test(
 ) -> TestResult:
     """Run a single test case."""
     start_time = time.time()
-    print(
-        f"[STARTED] Test {test_index + 1}/{total_tests}: {test_case.query[:60]}...",
-    )
+    print(f"[STARTED]   Test {test_index + 1}/{total_tests}: {test_case.query[:60]}...")
 
     # Convert test case to ExpectedData (remove query field)
     test_dict = test_case.model_dump()
@@ -48,15 +50,15 @@ async def run_single_test(
 
     # Print completion with timing
     duration = time.time() - start_time
-    score = result.overall_score
+    all_scores = [
+        v
+        for k, v in result.model_dump().items()
+        if k.endswith("_score") and k != "overall_score" and v is not None
+    ]
+    checks_passed = sum(1 for s in all_scores if s == 1.0)
+    checks_total = len(all_scores)
     print(
-        f"[COMPLETED] Test {test_index + 1}/{total_tests}: Score {score:.2f} ({duration:.1f}s)",
-    )
-    print(
-        f"  AOI_ID: {result.aoi_id_match_score} | Subregion: {result.subregion_match_score} | Dataset_ID: {result.dataset_id_match_score} | Context: {result.context_layer_match_score}",
-    )
-    print(
-        f"  Data_Pull: {result.data_pull_exists_score} | Date: {result.date_match_score} | Charts_Answer: {result.charts_answer_score} | Agent_Answer: {result.agent_answer_score}",
+        f"[COMPLETED] Test {test_index + 1}/{total_tests}: {checks_passed} out of {checks_total} checks passed ({duration:.1f}s)",
     )
 
     return result
@@ -137,113 +139,91 @@ def _print_csv_summary(results: list[TestResult]) -> None:
     if total_tests == 0:
         return
 
-    avg_score = sum(r.overall_score for r in results) / total_tests
     passed = sum(1 for r in results if r.overall_score >= 0.7)
+
+    # Label column width based on longest label ("Context Layer Match" = 18 chars)
+    LABEL_WIDTH = 25
+
+    def _metric_line(label: str, scores: list) -> str:
+        label_col = f"{label}:"
+        evaluated = len(scores)
+        passed = sum(1 for s in scores if s == 1.0)
+        if evaluated > 0:
+            avg = passed / evaluated
+            return (
+                f"{label_col:<{LABEL_WIDTH}} {passed:>3} / {evaluated:>3} ({avg:.2f})"
+            )
+        return f"{label_col:<{LABEL_WIDTH}} {0:>3} / {0:>3}"
 
     print(f"\n{'=' * 50}")
     print("SIMPLE E2E TEST SUMMARY")
     print(f"{'=' * 50}")
-    print(f"Total Tests: {total_tests}")
-    print(f"Average Score: {avg_score:.2f}")
-    print(f"Passed (≥0.7): {passed}/{total_tests} ({passed / total_tests:.1%})")
+    print(f"Tests Run (after filters): {total_tests}")
+    print()
 
-    # Component-specific stats (separate binary scores)
+    # Agent Answer first - most important metric
+    agent_answer_scores = [
+        r.agent_answer_score for r in results if r.agent_answer_score is not None
+    ]
+    print(_metric_line("Agent Answer", agent_answer_scores))
+    print()
 
-    # AOI ID Match
-    aoi_id_nones = len([r for r in results if r.aoi_id_match_score is None])
-    if total_tests - aoi_id_nones > 0:
-        aoi_id_avg = sum(
-            r.aoi_id_match_score for r in results if r.aoi_id_match_score is not None
-        ) / (total_tests - aoi_id_nones)
-        aoi_id_avg = f"{aoi_id_avg:.2f}"
-    else:
-        aoi_id_avg = None
-    print(f"AOI ID Match: {aoi_id_avg} ({aoi_id_nones} None)")
+    # Component-specific stats
+    aoi_scores = [
+        r.aoi_id_match_score for r in results if r.aoi_id_match_score is not None
+    ]
+    print(_metric_line("AOI ID Match", aoi_scores))
 
-    # Subregion Match
-    subregion_nones = len([r for r in results if r.subregion_match_score is None])
-    if total_tests - subregion_nones > 0:
-        subregion_avg = sum(
-            r.subregion_match_score
-            for r in results
-            if r.subregion_match_score is not None
-        ) / (total_tests - subregion_nones)
-        subregion_avg = f"{subregion_avg:.2f}"
-    else:
-        subregion_avg = None
-    print(f"Subregion Match: {subregion_avg} ({subregion_nones} None)")
+    subregion_scores = [
+        r.subregion_match_score for r in results if r.subregion_match_score is not None
+    ]
+    print(_metric_line("Subregion Match", subregion_scores))
 
-    # Dataset ID Match
-    dataset_id_nones = len([r for r in results if r.dataset_id_match_score is None])
-    if total_tests - dataset_id_nones > 0:
-        dataset_id_avg = sum(
-            r.dataset_id_match_score
-            for r in results
-            if r.dataset_id_match_score is not None
-        ) / (total_tests - dataset_id_nones)
-        dataset_id_avg = f"{dataset_id_avg:.2f}"
-    else:
-        dataset_id_avg = None
-    print(f"Dataset ID Match: {dataset_id_avg} ({dataset_id_nones} None)")
+    dataset_id_scores = [
+        r.dataset_id_match_score
+        for r in results
+        if r.dataset_id_match_score is not None
+    ]
+    print(_metric_line("Dataset ID Match", dataset_id_scores))
 
-    # Context Layer Match
-    context_nones = len([r for r in results if r.context_layer_match_score is None])
-    if total_tests - context_nones > 0:
-        context_avg = sum(
-            r.context_layer_match_score
-            for r in results
-            if r.context_layer_match_score is not None
-        ) / (total_tests - context_nones)
-        context_avg = f"{context_avg:.2f}"
-    else:
-        context_avg = None
-    print(f"Context Layer Match: {context_avg} ({context_nones} None)")
+    context_scores = [
+        r.context_layer_match_score
+        for r in results
+        if r.context_layer_match_score is not None
+    ]
+    print(_metric_line("Context Layer Match", context_scores))
 
-    # Data Pull Exists
-    data_pull_nones = len([r for r in results if r.data_pull_exists_score is None])
-    if total_tests - data_pull_nones > 0:
-        data_pull_avg = sum(
-            r.data_pull_exists_score
-            for r in results
-            if r.data_pull_exists_score is not None
-        ) / (total_tests - data_pull_nones)
-        data_pull_avg = f"{data_pull_avg:.2f}"
-    else:
-        data_pull_avg = None
-    print(f"Data Pull Exists: {data_pull_avg} ({data_pull_nones} None)")
+    data_pull_scores = [
+        r.data_pull_exists_score
+        for r in results
+        if r.data_pull_exists_score is not None
+    ]
+    print(_metric_line("Data Pull Exists", data_pull_scores))
 
-    # Date Match
-    date_nones = len([r for r in results if r.date_match_score is None])
-    if total_tests - date_nones > 0:
-        date_avg = sum(
-            r.date_match_score for r in results if r.date_match_score is not None
-        ) / (total_tests - date_nones)
-        date_avg = f"{date_avg:.2f}"
-    else:
-        date_avg = None
-    print(f"Date Match: {date_avg} ({date_nones} None)")
+    date_scores = [
+        r.date_match_score for r in results if r.date_match_score is not None
+    ]
+    print(_metric_line("Date Match", date_scores))
 
-    # Charts Answer
-    charts_answer_nones = len([r for r in results if r.charts_answer_score is None])
-    if total_tests - charts_answer_nones > 0:
-        charts_answer_avg = sum(
-            r.charts_answer_score for r in results if r.charts_answer_score is not None
-        ) / (total_tests - charts_answer_nones)
-        charts_answer_avg = f"{charts_answer_avg:.2f}"
-    else:
-        charts_answer_avg = None
-    print(f"Charts Answer: {charts_answer_avg} ({charts_answer_nones} None)")
+    charts_scores = [
+        r.charts_answer_score for r in results if r.charts_answer_score is not None
+    ]
+    print(_metric_line("Charts Answer", charts_scores))
 
-    # Agent Answer
-    agent_answer_nones = len([r for r in results if r.agent_answer_score is None])
-    if total_tests - agent_answer_nones > 0:
-        agent_answer_avg = sum(
-            r.agent_answer_score for r in results if r.agent_answer_score is not None
-        ) / (total_tests - agent_answer_nones)
-        agent_answer_avg = f"{agent_answer_avg:.2f}"
-    else:
-        agent_answer_avg = None
-    print(f"Agent Answer: {agent_answer_avg} ({agent_answer_nones} None)")
+    clarification_scores = [
+        r.clarification_requested_score
+        for r in results
+        if r.clarification_requested_score is not None
+    ]
+    print(_metric_line("Clarification Requested", clarification_scores))
+
+    # Experimental section
+    print()
+    print("(warning: overall_score is experimental and untested)")
+    print(
+        f"Tests with overall score ≥0.7:  {passed:>{3}} / {total_tests:>{3}} ({passed / total_tests:.1%})",
+    )
+    print()
 
 
 @click.command()
@@ -413,15 +393,27 @@ def run_evals(
         print(f"Total tests: {len(all_results)}")
 
         if len(eval_sets_to_run) > 1:
+            # Longest field name is "dataset_id_match_score" = 22 chars, +1 for colon
+            METRIC_COL_WIDTH = 23
             print("\nBreakdown by eval set:")
             for es in eval_sets_to_run:
-                count = sum(1 for r in all_results if r.eval_set == es)
-                if count > 0:
-                    avg = (
-                        sum(r.overall_score for r in all_results if r.eval_set == es)
-                        / count
-                    )
-                    print(f"  {es:30} | Tests: {count:3} | Avg Score: {avg:.2f}")
+                es_results = [r for r in all_results if r.eval_set == es]
+                if not es_results:
+                    continue
+                metric_field = EVAL_SET_PRIMARY_METRIC.get(es, "agent_answer_score")
+                metric_label = f"{metric_field}:"
+                scores = [
+                    v
+                    for r in es_results
+                    if (v := getattr(r, metric_field, None)) is not None
+                ]
+                evaluated = len(scores)
+                passed = sum(1 for s in scores if s == 1.0)
+                if evaluated > 0:
+                    metric_str = f"{metric_label:<{METRIC_COL_WIDTH}} {passed:>3} / {evaluated:>3} ({passed / evaluated:.2f})"
+                else:
+                    metric_str = f"{metric_label:<{METRIC_COL_WIDTH}} {0:>3} / {0:>3}"
+                print(f"  {es:30} | Tests: {len(es_results):3} | {metric_str}")
     else:
         print("\n❌ No results collected from any eval set")
 
@@ -554,7 +546,6 @@ EVALUATION CONFIGURATION
     config = Config()
     try:
         results = asyncio.run(run_csv_tests(config))
-        print(f"Processed {len(results)} tests.")
         return results
     except ValueError as e:
         print(f"❌ ERROR: {e}")
