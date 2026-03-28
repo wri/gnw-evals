@@ -58,7 +58,7 @@ async def run_single_test(
     checks_passed = sum(1 for s in all_scores if s == 1.0)
     checks_total = len(all_scores)
     print(
-        f"[COMPLETED] Test {test_index + 1}/{total_tests}: {checks_passed} out of {checks_total} checks passed ({duration:.1f}s)"
+        f"[COMPLETED] Test {test_index + 1}/{total_tests}: {checks_passed} out of {checks_total} checks passed ({duration:.1f}s)",
     )
 
     return result
@@ -221,7 +221,7 @@ def _print_csv_summary(results: list[TestResult]) -> None:
     print()
     print("(warning: overall_score is experimental and untested)")
     print(
-        f"Tests with overall score ≥0.7:  {passed:>{3}} / {total_tests:>{3}} ({passed / total_tests:.1%})"
+        f"Tests with overall score ≥0.7:  {passed:>{3}} / {total_tests:>{3}} ({passed / total_tests:.1%})",
     )
     print()
 
