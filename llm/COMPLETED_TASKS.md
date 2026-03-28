@@ -256,3 +256,34 @@ Clarification detection duplicated across 3 evaluators, causing up to 3 LLM call
 - Tests: Added 3 new, removed 4 old, all 23 tests pass
 
 ---
+
+## Task 8: Column Name Changes in Spreadsheet
+
+**Priority:** Medium  
+**Status:** [x]  
+**Category:** New Feature
+
+### Changes Required
+Before CSV export, these column name changes were needed in "GNW eval sets" spreadsheet:
+
+1. **GOLD:** okay (no change needed)
+2. **Loc:** `expected_id` → `expected_aoi_ids`
+3. **Dataset:** `expected_dataset` → `expected_dataset_id`
+4. **Analysis:** `expected_result_standardized` → `expected_answer` + add `expected_dataset_id`
+
+Also added clarification expected column in the golden set with example rows.
+
+---
+
+## Task 9: Bitmap Style Cheatsheet
+
+**Priority:** Medium
+**Status:** [x]  
+**Category:** New Feature
+
+### Implementation
+Created a bitmap style cheatsheet of results where each row is an eval row, and each column is a test score: neutral if None, green/red for pass/fail scores.
+* prototype implemented in notebook/simple.py, 
+* branch: `notebook`
+
+---
