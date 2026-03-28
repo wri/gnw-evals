@@ -91,30 +91,26 @@ def _extract_actual_aoi_data(agent_state: dict[str, Any]) -> dict[str, Any] | No
         Dict with extracted data, or None if no AOI data available
 
     """
-    aoi_selection = agent_state.get("aoi_selection", [])
-    aois = aoi_selection.get("aois", []) if aoi_selection else []
-
-    if not aois:
+    # Agent state stores the selected AOI as a single dict under "aoi"
+    aoi = agent_state.get("aoi")
+    if not aoi or not isinstance(aoi, dict):
         return None
 
-    # Extract lists
-    raw_ids = [aoi.get("src_id", "") for aoi in aois]
-    names = [aoi.get("name", "") for aoi in aois]
-    subtypes = [aoi.get("subtype", "") for aoi in aois]
-    sources = [aoi.get("source", "") for aoi in aois]
+    src_id = aoi.get("src_id", "")
+    name = aoi.get("name", "")
+    subtype = aoi.get("subtype", "")
+    source = aoi.get("source", "")
 
     # Get subregion (from subregion field or fall back to subtype)
-    subregion = agent_state.get("subregion")
-    if not subregion:
-        subregion = agent_state.get("subtype")
+    subregion = agent_state.get("subregion") or agent_state.get("subtype")
 
     return {
-        "raw_ids": raw_ids,
-        "ids": str(raw_ids),
-        "names": str(names),
-        "subtypes": str(subtypes),
-        "sources": str(sources),
-        "source": sources[0] if sources else "",
+        "raw_ids": [src_id],
+        "ids": str([src_id]),
+        "names": str([name]),
+        "subtypes": str([subtype]),
+        "sources": str([source]),
+        "source": source,
         "subregion": normalize_value(subregion),
     }
 

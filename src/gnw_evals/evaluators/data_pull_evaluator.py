@@ -116,15 +116,22 @@ def evaluate_data_pull(
         - error (str): Error message if applicable
 
     """
-    stats = agent_state.get("statistics", [])
-    if stats:
-        raw_data = stats[-1].get("data", [])
+    # Data is stored in raw_data as {src_id: {dataset_id: {col: [values]}}}
+    raw_data_state = agent_state.get("raw_data", {})
+    if raw_data_state:
+        # Count rows from the first column array found
+        row_count = 0
+        for src_data in raw_data_state.values():
+            if isinstance(src_data, dict):
+                for dataset_data in src_data.values():
+                    if isinstance(dataset_data, dict) and dataset_data:
+                        first_col = next(iter(dataset_data.values()))
+                        if isinstance(first_col, list):
+                            row_count += len(first_col)
         error = ""
     else:
-        raw_data = []
+        row_count = 0
         error = "no data retrieved"
-
-    row_count = len(raw_data)
 
     if row_count < min_rows:
         data_pull_success = False
