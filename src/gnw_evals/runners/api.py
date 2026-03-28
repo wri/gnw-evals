@@ -14,10 +14,11 @@ from gnw_evals.utils.eval_types import ExpectedData, TestResult
 class APITestRunner(BaseTestRunner):
     """Test runner for API endpoint execution."""
 
-    def __init__(self, api_base_url: str, api_token: str | None = None):
+    def __init__(self, api_base_url: str, api_token: str | None = None, timeout: int = 240):
         """Initialize with API configuration."""
         self.api_base_url = api_base_url
         self.api_token = api_token
+        self.timeout = timeout
 
     async def run_test(self, query: str, expected_data: ExpectedData) -> TestResult:
         """Run a single agent test using API endpoint.
@@ -52,7 +53,7 @@ class APITestRunner(BaseTestRunner):
                 headers["Authorization"] = f"Bearer {self.api_token}"
 
             # Use httpx async client for streaming
-            async with httpx.AsyncClient(timeout=240.0) as client:
+            async with httpx.AsyncClient(timeout=float(self.timeout)) as client:
                 if not expected_data.thread_id:
                     async with client.stream(
                         "POST",
@@ -108,6 +109,16 @@ class APITestRunner(BaseTestRunner):
                 **kwargs,
             )
 
+        except httpx.TimeoutException:
+            print("[TIMEOUT]")
+            return self._create_empty_evaluation_result(
+                thread_id,
+                trace_url or "",
+                query,
+                expected_data,
+                error=f"request timed out after {self.timeout}s",
+                timed_out=True,
+            )
         except Exception as e:
             print(f"Error: {e}")
             return self._create_empty_evaluation_result(

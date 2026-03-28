@@ -185,3 +185,52 @@ def llm_judge(expected_answer: str, actual_answer: str):
     # llm_judgement.answer_eval_type
 
     return llm_judgement.score
+
+
+def llm_judge_text_quality(expected_answer: str, actual_answer: str) -> int:
+    """Judge free-text factual answers (citations, metadata, methodology descriptions).
+
+    Unlike llm_judge, this does not apply numeric/boolean/year rules.
+    It checks whether the actual answer contains the key factual content
+    from the expected answer — suitable for metadata and guardrail queries.
+    """
+
+    class Score(BaseModel):
+        score: int
+        explanation: str
+
+    JUDGE_PROMPT = ChatPromptTemplate.from_messages(
+        [
+            (
+                "user",
+                """
+You are evaluating whether an AI-generated response correctly answers a metadata or guardrail question.
+
+EXPECTED ANSWER (key facts that must be present):
+{expected_answer}
+
+ACTUAL RESPONSE:
+{actual_answer}
+
+Does the actual response contain the key factual content from the expected answer?
+
+Scoring rules:
+- Score 1 if the actual response conveys the same essential facts, even if worded differently
+- Score 0 if key facts from the expected answer are missing, contradicted, or significantly wrong
+- Partial credit is not allowed — return 0 or 1 only
+
+Return your score and a brief explanation.
+                """,
+            ),
+        ],
+    )
+
+    judge_chain = JUDGE_PROMPT | HAIKU.with_structured_output(Score)
+
+    try:
+        result = judge_chain.invoke(
+            {"expected_answer": expected_answer, "actual_answer": actual_answer}
+        )
+        return result.score
+    except Exception:
+        return 0

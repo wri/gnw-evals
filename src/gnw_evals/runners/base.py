@@ -11,6 +11,7 @@ from gnw_evals.evaluators import (
     evaluate_dataset_selection,
     evaluate_date_selection,
     evaluate_final_answer,
+    evaluate_guardrail_answer,
 )
 from gnw_evals.utils.eval_types import ExpectedData, TestResult
 
@@ -39,6 +40,7 @@ class BaseTestRunner(ABC):
         query: str,
         expected_data: ExpectedData,
         error: str,
+        timed_out: bool = False,
     ) -> TestResult:
         """Create empty evaluation result for error cases."""
         kwargs = expected_data.to_dict()
@@ -55,7 +57,8 @@ class BaseTestRunner(ABC):
             trace_id=None,
             trace_url=trace_url,
             query=query,
-            overall_score=0.0,
+            overall_score=None,
+            timed_out=timed_out,
             execution_time=datetime.now().isoformat(),
             # AOI evaluation fields
             aoi_id_match_score=None,
@@ -142,6 +145,11 @@ class BaseTestRunner(ABC):
             expected_data.expected_answer,
         )
 
+        guardrail_eval = evaluate_guardrail_answer(
+            agent_state,
+            expected_data.expected_guardrail_answer,
+        )
+
         return {
             **clarification_eval,
             **aoi_eval,
@@ -149,13 +157,14 @@ class BaseTestRunner(ABC):
             **date_eval,
             **data_eval,
             **answer_eval,
+            **guardrail_eval,
         }
 
     def _calculate_overall_score(
         self,
         evaluations: dict[str, Any],
         expected_data: ExpectedData,
-    ) -> float:
+    ) -> float | None:
         """Calculate overall score from individual evaluation scores.
 
         Each check (AOI ID, subregion, dataset ID, context layer, data pull,
@@ -195,10 +204,14 @@ class BaseTestRunner(ABC):
             scores.append(evaluations.get("charts_answer_score"))
             scores.append(evaluations.get("agent_answer_score"))
 
+        # Guardrail / metadata answer check
+        if expected_data.expected_guardrail_answer:
+            scores.append(evaluations.get("guardrail_answer_score"))
+
         # Filter out None values (checks that weren't applicable)
         valid_scores = [s for s in scores if s is not None]
 
         if not valid_scores:
-            return 0.0
+            return None
 
         return round(sum(valid_scores) / len(valid_scores), 2)

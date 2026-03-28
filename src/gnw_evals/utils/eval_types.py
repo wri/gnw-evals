@@ -15,7 +15,7 @@ class TestResult(BaseModel):
     trace_url: str | None = None
     query: str
     eval_set: str = "custom"
-    overall_score: float
+    overall_score: float | None = None
     execution_time: str
 
     # AOI evaluation fields - separate binary scores (0/1/None)
@@ -66,12 +66,21 @@ class TestResult(BaseModel):
     expected_start_date: str = ""
     expected_end_date: str = ""
     expected_answer: str = ""
+    expected_guardrail_answer: str = ""
     expected_clarification: bool | None = None
     test_group: str = "unknown"
     status: str = "ready"
 
+    # Guardrail / metadata answer evaluation
+    guardrail_answer_score: float | None = None
+    actual_guardrail_answer: str | None = None
+
     # Error handling
     error: str | None = None
+    timed_out: bool = False
+
+    # Execution metadata
+    latency: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for CSV export."""
@@ -92,6 +101,7 @@ class ExpectedData(BaseModel):
     expected_start_date: str = ""
     expected_end_date: str = ""
     expected_answer: str = ""
+    expected_guardrail_answer: str = ""
     expected_clarification: bool | None = None
     test_group: str = "unknown"
     status: str = "ready"

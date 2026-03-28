@@ -98,6 +98,14 @@ class CSVLoader:
                     f"Skipped {original_count - filtered_count} tests based on status (skipping: {', '.join(skip_statuses)})",
                 )
 
+        # Skip rows with empty or missing query column
+        if "query" in df.columns:
+            original_count = len(df)
+            df = df[df["query"].str.strip().ne("")]
+            skipped = original_count - len(df)
+            if skipped > 0:
+                print(f"Skipped {skipped} tests with empty query column")
+
         # Filter by test_group if specified
         if test_group_filter and "test_group" in df.columns:
             original_count = len(df)

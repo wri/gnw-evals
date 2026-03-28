@@ -15,6 +15,11 @@ from gnw_evals.utils.sheet_registry import (
 
 dotenv.load_dotenv()
 
+ENV_URLS: dict[str, str] = {
+    "prod": "https://api.globalnaturewatch.org",
+    "staging": "https://api.staging.globalnaturewatch.org",
+}
+
 
 def _build_default_output_filename(
     eval_set: str,
@@ -36,6 +41,7 @@ async def run_single_test(
     test_case,
     test_index,
     total_tests,
+    verbose: bool = False,
 ) -> TestResult:
     """Run a single test case."""
     start_time = time.time()
@@ -50,6 +56,7 @@ async def run_single_test(
 
     # Print completion with timing
     duration = time.time() - start_time
+    result = result.model_copy(update={"latency": round(duration, 1)})
     all_scores = [
         v
         for k, v in result.model_dump().items()
@@ -61,7 +68,77 @@ async def run_single_test(
         f"[COMPLETED] Test {test_index + 1}/{total_tests}: {checks_passed} out of {checks_total} checks passed ({duration:.1f}s)",
     )
 
+    if verbose:
+        _print_verbose_result(result, test_case)
+
     return result
+
+
+def _print_verbose_result(result: TestResult, test_case) -> None:
+    """Print detailed per-test diagnostics."""
+    indent = "    "
+    print()
+
+    if result.timed_out:
+        print(f"{indent}[TIMEOUT] {result.error}")
+    elif result.error:
+        print(f"{indent}ERROR: {result.error}")
+
+    # AOI
+    if result.actual_name or test_case.expected_aoi_ids:
+        actual_aoi = result.actual_name or "(none)"
+        expected_aoi = ", ".join(test_case.expected_aoi_ids or []) or "(none)"
+        score_str = _fmt_score(result.aoi_id_match_score)
+        print(f"{indent}AOI       {score_str}  actual='{actual_aoi}'  expected='{expected_aoi}'")
+
+    # Dataset
+    if result.actual_dataset_id is not None or test_case.expected_dataset_id:
+        actual_ds = f"id={result.actual_dataset_id} ({result.actual_dataset_name or '?'})"
+        expected_ds = f"id={test_case.expected_dataset_id or '?'}"
+        score_str = _fmt_score(result.dataset_id_match_score)
+        print(f"{indent}Dataset   {score_str}  actual={actual_ds}  expected={expected_ds}")
+
+    # Data pull
+    if result.data_pull_exists_score is not None:
+        score_str = _fmt_score(result.data_pull_exists_score)
+        print(f"{indent}Data pull {score_str}  rows={result.row_count}")
+
+    # Dates
+    if result.actual_start_date or test_case.expected_start_date:
+        actual_dates = f"{result.actual_start_date} → {result.actual_end_date}"
+        expected_dates = f"{test_case.expected_start_date} → {test_case.expected_end_date}"
+        score_str = _fmt_score(result.date_match_score)
+        print(f"{indent}Dates     {score_str}  actual={actual_dates}  expected={expected_dates}")
+
+    # Answer
+    if result.agent_answer_score is not None or test_case.expected_answer:
+        score_str = _fmt_score(result.agent_answer_score)
+        actual_ans = (result.actual_agent_answer or "")[:120]
+        expected_ans = (test_case.expected_answer or "")[:80]
+        print(f"{indent}Answer    {score_str}")
+        print(f"{indent}  expected : {expected_ans}")
+        print(f"{indent}  actual   : {actual_ans}")
+
+    # Guardrail / metadata answer
+    if result.guardrail_answer_score is not None or test_case.expected_guardrail_answer:
+        score_str = _fmt_score(result.guardrail_answer_score)
+        actual_ans = (result.actual_guardrail_answer or "")[:120]
+        expected_ans = (test_case.expected_guardrail_answer or "")[:80]
+        print(f"{indent}Guardrail {score_str}")
+        print(f"{indent}  expected : {expected_ans}")
+        print(f"{indent}  actual   : {actual_ans}")
+
+    # Trace
+    if result.trace_url:
+        print(f"{indent}Trace     {result.trace_url}")
+
+    print()
+
+
+def _fmt_score(score: float | None) -> str:
+    if score is None:
+        return "[ -- ]"
+    return "[PASS]" if score == 1.0 else "[FAIL]"
 
 
 async def run_csv_tests(config) -> list[TestResult]:
@@ -86,6 +163,7 @@ async def run_csv_tests(config) -> list[TestResult]:
     runner = APITestRunner(
         api_base_url=config.api_base_url,
         api_token=config.api_token,
+        timeout=config.timeout,
     )
     print(f"Using API endpoint: {config.api_base_url}")
 
@@ -101,6 +179,7 @@ async def run_csv_tests(config) -> list[TestResult]:
                 test_case,
                 i,
                 len(test_cases),
+                verbose=config.verbose,
             )
             results.append(result)
     else:
@@ -114,6 +193,7 @@ async def run_csv_tests(config) -> list[TestResult]:
                     test_case,
                     test_index,
                     len(test_cases),
+                    verbose=config.verbose,
                 )
 
         # Create tasks for all tests
@@ -139,7 +219,8 @@ def _print_csv_summary(results: list[TestResult]) -> None:
     if total_tests == 0:
         return
 
-    passed = sum(1 for r in results if r.overall_score >= 0.7)
+    evaluated = [r for r in results if r.overall_score is not None]
+    passed = sum(1 for r in evaluated if r.overall_score >= 0.7)
 
     # Label column width based on longest label ("Context Layer Match" = 18 chars)
     LABEL_WIDTH = 25
@@ -158,7 +239,10 @@ def _print_csv_summary(results: list[TestResult]) -> None:
     print(f"\n{'=' * 50}")
     print("SIMPLE E2E TEST SUMMARY")
     print(f"{'=' * 50}")
+    timed_out_count = sum(1 for r in results if r.timed_out)
     print(f"Tests Run (after filters): {total_tests}")
+    if timed_out_count:
+        print(f"Timed out:                 {timed_out_count}")
     print()
 
     # Agent Answer first - most important metric
@@ -217,21 +301,39 @@ def _print_csv_summary(results: list[TestResult]) -> None:
     ]
     print(_metric_line("Clarification Requested", clarification_scores))
 
+    guardrail_scores = [
+        r.guardrail_answer_score
+        for r in results
+        if r.guardrail_answer_score is not None
+    ]
+    print(_metric_line("Guardrail Answer", guardrail_scores))
+
     # Experimental section
     print()
     print("(warning: overall_score is experimental and untested)")
-    print(
-        f"Tests with overall score ≥0.7:  {passed:>{3}} / {total_tests:>{3}} ({passed / total_tests:.1%})",
-    )
+    n_evaluated = len(evaluated)
+    if n_evaluated > 0:
+        print(
+            f"Tests with overall score ≥0.7:  {passed:>{3}} / {n_evaluated:>{3}} ({passed / n_evaluated:.1%})  [{total_tests - n_evaluated} tests had no applicable metrics]",
+        )
+    else:
+        print("Tests with overall score ≥0.7:  no tests had applicable metrics")
     print()
 
 
 @click.command()
 @click.option(
+    "--env",
+    default="prod",
+    type=click.Choice(["prod", "staging"], case_sensitive=False),
+    envvar="ENV",
+    help="Target environment: prod or staging (can also be set via ENV env var). Overridden by --api-base-url.",
+)
+@click.option(
     "--api-base-url",
-    default="https://api.staging.globalnaturewatch.org",
+    default=None,
     envvar="API_BASE_URL",
-    help="Base URL for API tests (can also be set via API_BASE_URL env var)",
+    help="Custom API base URL, overrides --env (can also be set via API_BASE_URL env var)",
 )
 @click.option(
     "--api-token",
@@ -298,8 +400,23 @@ def _print_csv_summary(results: list[TestResult]) -> None:
     envvar="OFFSET",
     help="Offset for getting subset. Ignored if random_seed is not 0 (can also be set via OFFSET env var)",
 )
+@click.option(
+    "--timeout",
+    default=240,
+    type=int,
+    envvar="TIMEOUT",
+    help="Request timeout in seconds (can also be set via TIMEOUT env var)",
+)
+@click.option(
+    "--verbose",
+    is_flag=True,
+    default=False,
+    envvar="VERBOSE",
+    help="Print detailed per-test diagnostics (AOI, dataset, dates, answer, trace URL)",
+)
 def run_evals(
-    api_base_url: str,
+    env: str,
+    api_base_url: str | None,
     api_token: str | None,
     sample_size: int,
     eval_set: str,
@@ -310,8 +427,14 @@ def run_evals(
     num_workers: int,
     random_seed: int,
     offset: int,
+    timeout: int,
+    verbose: bool,
 ):
     """Run main E2E test function for CSV based evaluation."""
+    # Resolve API base URL: explicit --api-base-url > --env mapping
+    if not api_base_url:
+        api_base_url = ENV_URLS[env]
+
     # Validate API token
     if not api_token:
         raise click.BadParameter(
@@ -338,6 +461,8 @@ def run_evals(
             num_workers=num_workers,
             random_seed=random_seed,
             offset=offset,
+            timeout=timeout,
+            verbose=verbose,
         )
         return
 
@@ -367,6 +492,8 @@ def run_evals(
             num_workers=num_workers,
             random_seed=random_seed,
             offset=offset,
+            timeout=timeout,
+            verbose=verbose,
         )
 
         # Tag results with eval_set and accumulate
@@ -429,6 +556,8 @@ def _run_custom_test_file(
     num_workers: int,
     random_seed: int,
     offset: int,
+    timeout: int = 240,
+    verbose: bool = False,
 ) -> None:
     """Run evals with a custom test file (not from standard eval sets).
 
@@ -449,6 +578,8 @@ def _run_custom_test_file(
         num_workers=num_workers,
         random_seed=random_seed,
         offset=offset,
+        timeout=timeout,
+        verbose=verbose,
     )
 
     # Tag results with eval_set = "custom"
@@ -482,6 +613,8 @@ def _run_single_eval_set(
     num_workers: int,
     random_seed: int,
     offset: int,
+    timeout: int = 240,
+    verbose: bool = False,
 ) -> list[TestResult]:
     """Run evals for a single eval set. Internal helper function.
 
@@ -512,6 +645,7 @@ EVALUATION CONFIGURATION
   Status Filter:     {status_filter or "None"}
   Output Filename:   {output_filename or "Auto-generated"}
   Num Workers:       {num_workers}
+  Timeout (s):       {timeout}
   Random Seed:       {random_seed}
   Offset:            {offset}
 ========================
@@ -542,6 +676,8 @@ EVALUATION CONFIGURATION
             self.num_workers = num_workers
             self.random_seed = random_seed
             self.offset = offset
+            self.timeout = timeout
+            self.verbose = verbose
 
     config = Config()
     try:

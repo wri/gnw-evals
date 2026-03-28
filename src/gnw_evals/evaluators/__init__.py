@@ -1,4 +1,4 @@
-from .answer_evaluator import evaluate_final_answer
+from .answer_evaluator import evaluate_final_answer, evaluate_guardrail_answer
 from .aoi_evaluator import evaluate_aoi_selection
 from .clarification_evaluator import evaluate_clarification
 from .data_pull_evaluator import evaluate_data_pull, evaluate_date_selection
@@ -11,4 +11,5 @@ __all__ = [
     "evaluate_dataset_selection",
     "evaluate_date_selection",
     "evaluate_final_answer",
+    "evaluate_guardrail_answer",
 ]
