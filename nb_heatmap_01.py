@@ -1,6 +1,13 @@
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#     "marimo>=0.22.5",
+# ]
+# ///
+
 import marimo
 
-__generated_with = "0.19.9"
+__generated_with = "0.20.4"
 app = marimo.App(width="medium")
 
 with app.setup(hide_code=True):
@@ -201,26 +208,48 @@ def _(results_simple):
     return (eval_set_ui,)
 
 
+@app.cell
+def _(results_simple):
+    # Manual Filters! 
+    # Use this cell to define any filter masks on results_simple
+    mask_noexpans = results_simple['agent_answer_score'].isna()
+    mask_clar = (results_simple['clarification_requested_score'] == 0)
+
+    # set filter
+    filter_mask = ~(mask_noexpans | mask_clar)
+
+    # disable filter -- Comment this out to use the filter above
+    filter_mask = pd.Series(True, index=results_simple.index)
+
+    print(f"ntests before filtering: ", len(results_simple))
+    print(f"ntests after  filtering: ", sum(filter_mask))
+    return (filter_mask,)
+
+
 @app.cell(hide_code=True)
-def _(eval_set_ui, results_simple, score_cols, score_map):
+def _(eval_set_ui, filter_mask, results_simple, score_cols, score_map):
     # Preprocessing for heatmap
 
     # create an id as there is none in the CSV
-    df2 = results_simple.reset_index(drop=True).copy()
-    df2["idx"] = df2.index
+    # #TODO : NOW THERE IS, update accordingly. 
+    results_filtered = results_simple.reset_index(drop=True).copy()
+    results_filtered["idx"] = results_filtered.index
 
-    # TEMP BYPASS for old code
-    if "eval_set" not in df2.columns:
-        evalset_mask = pd.Series(True, index=df2.index)
+    # apply mask
+    results_filtered = results_filtered[filter_mask]
+
+    # TEMP BYPASS for old format CSVs
+    if "eval_set" not in results_filtered.columns:
+        evalset_mask = pd.Series(True, index=results_filtered.index)
         print(
             "WARNING: CSV generated from obsolete code, no eval_set column available.",
         )
     else:
         # filter to the eval_set selected by user
-        evalset_mask = df2["eval_set"] == eval_set_ui.value
+        evalset_mask = results_filtered["eval_set"] == eval_set_ui.value
 
     # Long form
-    long = df2[evalset_mask].melt(
+    long = results_filtered[evalset_mask].melt(
         id_vars="idx",
         value_vars=score_cols,
         var_name="score",
@@ -230,7 +259,7 @@ def _(eval_set_ui, results_simple, score_cols, score_map):
 
     # Add human-readable label for the x axis + tooltip
     long["score_label"] = long["score"].map(score_map).fillna(long["score"])
-    return evalset_mask, long
+    return evalset_mask, long, results_filtered
 
 
 @app.cell(hide_code=True)
@@ -350,9 +379,9 @@ def _():
 
 
 @app.cell
-def _(results_simple, score_cols, score_map):
+def _(results_filtered, score_cols, score_map):
     # results_simple
-    means = results_simple[score_cols].rename(columns=score_map).mean()
+    means = results_filtered[score_cols].rename(columns=score_map).mean()
     means.apply(lambda v: np.around(v, 2) or np.nan).rename_axis("Score").rename(
         {"value": "mean"},
     )
@@ -360,20 +389,24 @@ def _(results_simple, score_cols, score_map):
 
 
 @app.cell(hide_code=True)
-def _(file_select, results_simple, score_cols, score_map):
+def _(file_select, results_filtered, results_simple, score_cols, score_map):
     print(f"Run: {file_select.value}")
+    print(f"Eval sets that were run: {', '.join(results_simple['eval_set'].unique())}")
+    print(f"Total number of tests in this run: {len(results_simple)}")
+    print(f"Number of tests after filters: {len(results_filtered)}")
+
     print("-" * 50)
     for s in score_cols:
         stext = score_map[s] + " score"
-        _mean = results_simple[s].mean()
-        _count = results_simple[s].count()
-        _sum = results_simple[s].sum()
+        _mean = results_filtered[s].mean()
+        _count = results_filtered[s].count()
+        _sum = results_filtered[s].sum()
         print(
             f"{stext:<30} :  {_mean:0.2f} ({int(_sum):>3} passing out of {int(_count):<3} tests)",
         )
     print("-" * 50)
-    print(f"Total number of tests in this run: {len(results_simple)}")
-    print(f"Eval sets run: {', '.join(results_simple['eval_set'].unique())}")
+
+
     return
 
 
@@ -387,24 +420,28 @@ def _(results_simple):
 
 
 @app.cell
-def _(results_simple, score_cols, score_map):
+def _(results_filtered, score_cols, score_map):
     # Average of each score, pivoted by eval_set
-    evp = (
-        results_simple.groupby("eval_set")[score_cols]
+    pivot_by_set = (
+        results_filtered.groupby("eval_set")[score_cols]
         .mean()
         .rename(columns=score_map)
         .round(2)
     ).T
 
-    _show_cols = [
-        "analysis_results",
-        "dataset_id",
-        # "dataset_interpretation",
-        # "date_selection",
-        "gold",
-        # "location_id"
-    ]
-    evp[_show_cols]
+    # show all eval sets
+    pivot_by_set
+
+    # show only selected eval sets
+    # _show_cols = [
+    #     #"analysis_results",
+    #     #"dataset_id",
+    #     # "dataset_interpretation",
+    #     # "date_selection",
+    #     "gold",
+    #     # "location_id"
+    # ]
+    # pivot_by_set[_show_cols]
     return
 
 
