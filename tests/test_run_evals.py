@@ -505,8 +505,7 @@ def test_dataset_evaluator_none_expected_context_layer():
 
 
 def test_dataset_evaluator_incorrect_expected_context_layer():
-    """Test that incorrect context layer returns 0.0 for context_layer_match_score.
-    """
+    """Test that incorrect context layer returns 0.0 for context_layer_match_score."""
     from gnw_evals.evaluators import evaluate_dataset_selection
 
     agent_state = {
