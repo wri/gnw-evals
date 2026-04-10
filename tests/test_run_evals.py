@@ -494,13 +494,39 @@ def test_dataset_evaluator_none_expected_context_layer():
     result = evaluate_dataset_selection(
         agent_state=agent_state,
         expected_dataset_id="0",
-        expected_context_layer="no_selection",  # Empty - should return None
+        expected_context_layer="no_selection",  # should assert no_selection
         query="",
     )
 
     assert result["dataset_id_match_score"] == 1.0, "Dataset ID should match"
     assert result["context_layer_match_score"] == 1.0, (
         "Context layer score should be 1.0 if no context_layer is selected."
+    )
+
+
+def test_dataset_evaluator_incorrect_expected_context_layer():
+    """Test that incorrect context layer returns 0.0 for context_layer_match_score.
+    """
+    from gnw_evals.evaluators import evaluate_dataset_selection
+
+    agent_state = {
+        "dataset": {
+            "dataset_id": "0",
+            "dataset_name": "DIST-ALERT",
+            "context_layer": "land_cover",
+        },
+    }
+
+    result = evaluate_dataset_selection(
+        agent_state=agent_state,
+        expected_dataset_id="0",
+        expected_context_layer="driver",  # Empty - should return None
+        query="",
+    )
+
+    assert result["dataset_id_match_score"] == 1.0, "Dataset ID should match"
+    assert result["context_layer_match_score"] == 0.0, (
+        "Context layer score should be 0.0 if since context layers don't match."
     )
 
 
