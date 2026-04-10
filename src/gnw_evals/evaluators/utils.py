@@ -14,7 +14,7 @@ def normalize_value(value) -> str:
     """Normalize values for comparison, handling None, empty strings, and 'None' strings."""
     if value is None or value == "None" or str(value).strip() == "":
         return ""
-    return str(value).strip()
+    return str(value).strip().lower()
 
 
 def normalize_date(date_str: str | None) -> str:

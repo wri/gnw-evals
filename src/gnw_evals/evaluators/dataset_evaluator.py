@@ -67,7 +67,7 @@ def evaluate_dataset_selection(
     # Context layer matching: if expected is empty, return None (not evaluated)
     if not expected_context_str:
         context_layer_match_score = None
-    elif expected_context_str == "none":
+    elif expected_context_str == "no_selection":
         context_layer_match_score = 1.0 if not actual_context_str else 0.0
     else:
         context_layer_match = expected_context_str == actual_context_str

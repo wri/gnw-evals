@@ -494,7 +494,7 @@ def test_dataset_evaluator_none_expected_context_layer():
     result = evaluate_dataset_selection(
         agent_state=agent_state,
         expected_dataset_id="0",
-        expected_context_layer="none",  # Empty - should return None
+        expected_context_layer="no_selection",  # Empty - should return None
         query="",
     )
 

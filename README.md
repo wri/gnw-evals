@@ -72,7 +72,7 @@ For the corresponding score to be computed, expected values must be provided. Th
 - `expected_aoi_ids`  - Expected AOI identifier / GADM id. 
 - `expected_subregion` - Expected subregion 
 - `expected_dataset_id` - Expected dataset ID (0-8 for current datasets). For queries that may match multiple datasets, separate IDs with semicolons (e.g., "0;1" for DIST-ALERT and another dataset). Can be empty if not applicable.
-- `expected_context_layer` - Expected context layer (varies by dataset). Multiple values can be separated by semicolons if multiple layers are acceptable. Can be empty if not applicable.
+- `expected_context_layer` - Expected context layer (varies by dataset). Multiple values can be separated by semicolons if multiple layers are acceptable. Can be empty if not applicable. Can put `no_selection` to enforce context layer value is empty.
 - `expected_dataset_name` - Expected dataset name (for reference, not evaluated)
 - `expected_start_date` - Expected start date (YYYY-MM-DD or YYYY). For date ranges, use the earliest expected date.
 - `expected_end_date` - Expected end date (YYYY-MM-DD or YYYY). For date ranges, use the latest expected date.
