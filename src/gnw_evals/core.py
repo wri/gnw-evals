@@ -78,8 +78,9 @@ async def run_csv_tests(config) -> list[TestResult]:
         config.random_seed,
         config.offset,
     )
+    effective_num_workers = min(config.num_workers, 5, len(test_cases))
     print(
-        f"Running {len(test_cases)} tests with {config.num_workers} workers...",
+        f"Running {len(test_cases)} tests with {effective_num_workers} workers...",
     )
 
     # Setup test runner
@@ -92,7 +93,7 @@ async def run_csv_tests(config) -> list[TestResult]:
     # Run tests in parallel
     start_time = time.time()
 
-    if config.num_workers == 1:
+    if effective_num_workers <= 1:
         # Sequential execution for single worker
         results = []
         for i, test_case in enumerate(test_cases):
@@ -105,7 +106,7 @@ async def run_csv_tests(config) -> list[TestResult]:
             results.append(result)
     else:
         # Parallel execution with semaphore
-        semaphore = asyncio.Semaphore(config.num_workers)
+        semaphore = asyncio.Semaphore(effective_num_workers)
 
         async def run_test_with_semaphore(test_case, test_index):
             async with semaphore:

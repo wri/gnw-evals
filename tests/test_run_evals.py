@@ -343,6 +343,29 @@ async def test_run_csv_tests_with_multiple_workers(
 
 
 @pytest.mark.asyncio
+async def test_run_csv_tests_caps_workers_to_five_and_sample_size(mock_config):
+    """Worker count should be min(5, requested workers, loaded test count)."""
+    mock_config.num_workers = 20
+    mock_config.sample_size = 2
+
+    with patch("gnw_evals.core.CSVLoader") as mock_loader_class:
+        mock_loader = MagicMock()
+        mock_loader.load_test_data.return_value = [MagicMock(), MagicMock()]
+        mock_loader_class.return_value = mock_loader
+
+        with patch("gnw_evals.core.APITestRunner"):
+            with patch("gnw_evals.core._print_csv_summary"):
+                with patch("gnw_evals.core.asyncio.Semaphore") as mock_semaphore:
+                    with patch(
+                        "gnw_evals.core.run_single_test",
+                        new=AsyncMock(return_value=MagicMock()),
+                    ):
+                        await run_csv_tests(mock_config)
+
+                        mock_semaphore.assert_called_once_with(2)
+
+
+@pytest.mark.asyncio
 async def test_run_csv_tests_with_api_error(mock_test_cases, mock_config):
     """Test run_csv_tests handles API errors gracefully."""
     with patch("gnw_evals.core.CSVLoader") as mock_loader_class:
