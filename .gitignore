@@ -219,5 +219,5 @@ uv.lock
 # debug and temp
 temp*
 
-# Amplify build artifact from scripts/package_amplify.sh
-amplify-deploy.zip
+# GitHub Pages packaging artifact from scripts/package_gh_pages.sh
+gh-pages-deploy.zip

@@ -3,27 +3,24 @@ set -euo pipefail
 
 # ---------------------------------------------------------------------------
 # Package index.html (+ optional local CSV data) into a zip for manual
-# Amplify deployment — no Git connection needed.
+# GitHub Pages deployment.
 #
 # Usage:
 #   # Self-contained: bundle CSVs from outputs/ so the app works standalone
-#   ./scripts/package_amplify.sh
+#   ./scripts/package_gh_pages.sh
 #
 #   # With CloudFront: index.html fetches data from CloudFront at runtime
-#   ./scripts/package_amplify.sh --cloudfront-url https://dXXXXXXXXXX.cloudfront.net/
+#   ./scripts/package_gh_pages.sh --cloudfront-url https://dXXXXXXXXXX.cloudfront.net/
 #
 #   # Custom CSV source directory
-#   ./scripts/package_amplify.sh --outputs-dir /path/to/csvs
-#
-# The resulting zip can be uploaded directly via:
-#   Amplify Console > New app > Deploy without Git provider > Upload zip
+#   ./scripts/package_gh_pages.sh --outputs-dir /path/to/csvs
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 INDEX_SRC="$REPO_ROOT/index.html"
 OUT_DIR="$REPO_ROOT/dist"
-OUT_ZIP="$REPO_ROOT/amplify-deploy.zip"
+OUT_ZIP="$REPO_ROOT/gh-pages-deploy.zip"
 
 CLOUDFRONT_URL=""
 OUTPUTS_DIR="$REPO_ROOT/outputs"
@@ -35,13 +32,13 @@ while [[ $# -gt 0 ]]; do
     -h|--help)
       echo "Usage: $0 [--cloudfront-url <url>] [--outputs-dir <path>]"
       echo ""
-      echo "Packages index.html into a zip for manual Amplify deployment."
+      echo "Packages index.html into a zip for GitHub Pages deployment."
       echo ""
       echo "Without --cloudfront-url, CSV files from outputs/ are bundled into"
       echo "the zip under data/ with a generated manifest.json, so the app"
       echo "works fully standalone."
       echo ""
-      echo "With --cloudfront-url, no CSV data is bundled — the app fetches"
+      echo "With --cloudfront-url, no CSV data is bundled - the app fetches"
       echo "data from CloudFront at runtime."
       echo ""
       echo "Options:"
@@ -68,23 +65,20 @@ mkdir -p "$OUT_DIR"
 cp "$INDEX_SRC" "$OUT_DIR/index.html"
 
 if [[ -n "$CLOUDFRONT_URL" ]]; then
-  # ── CloudFront mode: just index.html with the URL baked in ──
-  # Ensure trailing slash
+  # CloudFront mode: just index.html with the URL baked in.
   [[ "$CLOUDFRONT_URL" != */ ]] && CLOUDFRONT_URL="${CLOUDFRONT_URL}/"
-
   sed -i.bak "s|https://XXXXXXXXXX.cloudfront.net/|${CLOUDFRONT_URL}|g" "$OUT_DIR/index.html"
   rm -f "$OUT_DIR/index.html.bak"
   echo "Mode: CloudFront"
   echo "CloudFront URL set to: $CLOUDFRONT_URL"
 else
-  # ── Self-contained mode: bundle CSVs + manifest into data/ ──
+  # Self-contained mode: bundle CSVs + manifest into data/.
   if [[ ! -d "$OUTPUTS_DIR" ]]; then
     echo "Error: outputs directory not found at $OUTPUTS_DIR"
     echo "Either provide CSVs in outputs/ or use --cloudfront-url"
     exit 1
   fi
 
-  # Find CSV files
   CSV_COUNT=$(find "$OUTPUTS_DIR" -maxdepth 1 -name '*.csv' | wc -l | tr -d ' ')
   if [[ "$CSV_COUNT" -eq 0 ]]; then
     echo "Error: no CSV files found in $OUTPUTS_DIR"
@@ -94,7 +88,6 @@ else
   mkdir -p "$OUT_DIR/data"
   cp "$OUTPUTS_DIR"/*.csv "$OUT_DIR/data/"
 
-  # Generate manifest.json from *_summary.csv filenames
   RUNS=()
   for f in "$OUT_DIR"/data/*_summary.csv; do
     [[ -f "$f" ]] || continue
@@ -108,7 +101,6 @@ else
     exit 1
   fi
 
-  # Build JSON array
   JSON_ARRAY=$(printf '%s\n' "${RUNS[@]}" | sort | python3 -c "
 import sys, json
 runs = [line.strip() for line in sys.stdin if line.strip()]
@@ -121,16 +113,11 @@ print(json.dumps({'files': runs}))
   echo "Bundled $CSV_COUNT CSV file(s) total"
 fi
 
-# Create zip (Amplify expects files at the root of the archive)
+# Create zip with files at archive root.
 (cd "$OUT_DIR" && zip -r "$OUT_ZIP" .)
-
 rm -rf "$OUT_DIR"
 
 echo ""
-echo "Created: amplify-deploy.zip"
+echo "Created: gh-pages-deploy.zip"
 echo ""
-echo "To deploy:"
-echo "  1. Go to AWS Amplify Console"
-echo "  2. New app > Host web app > Deploy without Git provider"
-echo "  3. Upload amplify-deploy.zip"
-echo "  4. Enable password protection under Access control"
+echo "Ready for GitHub Pages publishing."

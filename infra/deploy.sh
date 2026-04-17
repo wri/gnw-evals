@@ -8,13 +8,12 @@ TEMPLATE="$(dirname "$0")/template.yaml"
 # Usage
 # ---------------------------------------------------------------------------
 usage() {
-  echo "Usage: $0 --profile <aws-sso-profile> [--amplify-domain <url>] [--bucket-name <name>]"
+  echo "Usage: $0 --profile <aws-sso-profile> [--bucket-name <name>]"
   echo ""
   echo "Deploys the GNW evals CloudFormation stack using AWS SSO credentials."
   echo ""
   echo "Options:"
   echo "  --profile         AWS SSO profile name (required)"
-  echo "  --amplify-domain  Amplify app URL for CORS (default: https://example.amplifyapp.com)"
   echo "  --bucket-name     S3 bucket name (default: gnw-evals-data)"
   exit 1
 }
@@ -23,13 +22,11 @@ usage() {
 # Parse args
 # ---------------------------------------------------------------------------
 PROFILE=""
-AMPLIFY_DOMAIN="https://example.amplifyapp.com"
 BUCKET_NAME="gnw-evals-data"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --profile) PROFILE="$2"; shift 2 ;;
-    --amplify-domain) AMPLIFY_DOMAIN="$2"; shift 2 ;;
     --bucket-name) BUCKET_NAME="$2"; shift 2 ;;
     *) usage ;;
   esac
@@ -59,7 +56,6 @@ aws cloudformation deploy \
   --capabilities CAPABILITY_NAMED_IAM \
   --tags "wri:project=${STACK_NAME}" \
   --parameter-overrides \
-    AmplifyDomain="$AMPLIFY_DOMAIN" \
     BucketName="$BUCKET_NAME" \
   --profile "$PROFILE"
 

@@ -1,8 +1,8 @@
 # GNW Evals Infrastructure
 
-CloudFormation stack for hosting the GNW eval results viewer on AWS Amplify, with eval CSV data served from a private S3 bucket via CloudFront.
+CloudFormation stack for hosting the GNW eval results viewer, with eval CSV data served from a private S3 bucket via CloudFront.
 
-There are two ways to deploy the Amplify frontend:
+There are two ways to deploy the frontend:
 
 - **Self-contained zip** (Option A): Bundle CSVs directly into the zip. No CloudFront/S3 infrastructure needed — skip straight to step 4A.
 - **CloudFront-backed** (Option B): Deploy the full stack and upload CSVs to S3. The frontend fetches data from CloudFront at runtime.
@@ -29,7 +29,7 @@ Someone (local)                          AWS
                                          └────────┬───────────┘
                                                   │ fetch
                                          ┌────────v───────────┐
-                                         │ Amplify            │
+                                        │ GitHub Pages       │
                                          │ password-protected  │
                                          └────────────────────┘
 ```
@@ -60,13 +60,13 @@ If you just want to share eval results without setting up S3/CloudFront:
 
 ```bash
 # Bundles index.html + CSVs from outputs/ into a deployable zip
-./scripts/package_amplify.sh
+./scripts/package_gh_pages.sh
 
 # Or point at a different CSV directory
-./scripts/package_amplify.sh --outputs-dir /path/to/csvs
+./scripts/package_gh_pages.sh --outputs-dir /path/to/csvs
 ```
 
-Then upload `amplify-deploy.zip` via the Amplify Console (see step 4A below). To update results later, re-run the script and re-upload.
+Then publish `gh-pages-deploy.zip` with GitHub Pages (see step 4A below). To update results later, re-run the script and republish.
 
 ## Full setup (CloudFront-backed)
 
@@ -89,7 +89,7 @@ The deploy script prints a table with these values:
 
 | Output                 | Used for                                                                                          |
 | ---------------------- | ------------------------------------------------------------------------------------------------- |
-| `CloudFrontDomainName` | `CLOUDFRONT_BASE` in `simple.py` and `index.html`, or `--cloudfront-url` for `package_amplify.sh` |
+| `CloudFrontDomainName` | `CLOUDFRONT_BASE` in `simple.py` and `index.html`, or `--cloudfront-url` for `package_gh_pages.sh` |
 | `ApiUrl`               | `GNW_UPLOAD_API_URL` env var for `scripts/upload_evals.sh`                                        |
 | `ApiKeySecretArn`      | Reference only; the API key value is printed separately                                           |
 
@@ -113,52 +113,32 @@ CLOUDFRONT_BASE = "https://dXXXXXXXXXX.cloudfront.net/"
 Or, if using the zip deploy, pass it as a flag instead (no source edits needed):
 
 ```bash
-./scripts/package_amplify.sh --cloudfront-url https://dXXXXXXXXXX.cloudfront.net/
+./scripts/package_gh_pages.sh --cloudfront-url https://dXXXXXXXXXX.cloudfront.net/
 ```
 
-### 4. Create the Amplify app
+### 4. Publish the frontend
 
-#### Option A: Deploy without Git (recommended for quick setup)
+#### Option A: Manual publish
 
 No GitHub connection needed. Package the app as a zip and upload manually:
 
 ```bash
 # Self-contained: bundles CSVs from outputs/ into the zip
-./scripts/package_amplify.sh
+./scripts/package_gh_pages.sh
 
 # With CloudFront: data fetched at runtime, no CSVs bundled
-./scripts/package_amplify.sh --cloudfront-url https://dXXXXXXXXXX.cloudfront.net/
+./scripts/package_gh_pages.sh --cloudfront-url https://dXXXXXXXXXX.cloudfront.net/
 ```
 
-Then in the AWS Console:
-
-1. Go to **AWS Amplify**
-2. **New app** > **Host web app** > **Deploy without Git provider**
-3. Upload `amplify-deploy.zip`
-4. Under **Access control**, enable password protection
+Then publish with GitHub Pages from `gh-pages-deploy.zip` contents.
 
 To update with new eval results, re-run the script and upload the new zip.
 
-#### Option B: Deploy via GitHub
+#### Option B: CI publish via GitHub Actions
 
-1. Go to **AWS Amplify** in the console
-2. **New app** > **Host web app** > connect your GitHub repo
-3. Select the branch (e.g. `main`)
-4. Amplify will detect `amplify.yml` in the repo root automatically
-5. Under **Access control**, enable password protection
+Use `.github/workflows/run-evals-manual.yml`, which now packages and deploys to GitHub Pages after evals complete.
 
-### 5. Update the stack with the Amplify domain
-
-Once the Amplify app is deployed and you have its URL (e.g. `https://main.d1abc2def3.amplifyapp.com`), update the stack so CloudFront's CORS policy allows requests from it:
-
-```bash
-./infra/deploy.sh --profile <your-sso-profile> \
-  --amplify-domain https://main.d1abc2def3.amplifyapp.com
-```
-
-> **Note:** This step is only needed for CloudFront-backed mode. Self-contained zips serve data from the same origin, so CORS is not involved.
-
-### 6. Upload initial eval data
+### 5. Upload initial eval data
 
 ```bash
 export GNW_UPLOAD_API_URL="<ApiUrl from stack output>"
@@ -222,7 +202,7 @@ aws secretsmanager get-secret-value \
 | ---------------------------- | ----------------------------------------------------------------------------------- |
 | `infra/deploy.sh`            | Deploy/update the CloudFormation stack                                              |
 | `scripts/upload_evals.sh`    | Upload CSVs to S3 via pre-signed URLs                                               |
-| `scripts/package_amplify.sh` | Package `index.html` (+ optional CSV data) into a zip for manual Amplify deployment |
+| `scripts/package_gh_pages.sh` | Package `index.html` (+ optional CSV data) into a zip for GitHub Pages deployment |
 
 
 ## Updating the stack
@@ -231,7 +211,6 @@ To change parameters or update resources:
 
 ```bash
 ./infra/deploy.sh --profile <your-sso-profile> \
-  --amplify-domain https://main.d1abc2def3.amplifyapp.com \
   --bucket-name gnw-evals-data
 ```
 
@@ -247,4 +226,4 @@ aws cloudformation delete-stack \
   --profile <your-sso-profile>
 ```
 
-The Amplify app must be deleted separately from the Amplify Console.
+Any GitHub Pages site teardown is managed in repository settings.

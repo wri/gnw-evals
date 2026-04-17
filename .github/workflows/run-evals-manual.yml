@@ -43,7 +43,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   run-evals:
@@ -54,10 +54,8 @@ jobs:
       OFFSET: ${{ inputs.offset }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-      AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+      GNW_UPLOAD_API_URL: ${{ secrets.GNW_UPLOAD_API_URL }}
+      GNW_UPLOAD_API_KEY: ${{ secrets.GNW_UPLOAD_API_KEY }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -124,28 +122,19 @@ jobs:
           path: outputs/*.csv
           if-no-files-found: error
 
-      - name: Check optional S3 upload readiness
-        id: s3_ready
-        run: |
-          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ] || [ -z "$AWS_S3_BUCKET" ]; then
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "AWS credentials or AWS_S3_BUCKET missing; S3 upload will be skipped."
-            exit 0
-          fi
-          echo "enabled=true" >> "$GITHUB_OUTPUT"
+      - name: Upload CSVs to S3
+        run: bash scripts/upload_evals.sh
 
-      - name: Configure AWS credentials
-        if: ${{ steps.s3_ready.outputs.enabled == 'true' }}
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Build site
+        run: |
+          mkdir -p "site/${{ github.sha }}"
+          cp index.html "site/${{ github.sha }}/"
+          echo "Site URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ github.sha }}/"
+
+      - name: Deploy to gh-pages branch
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_DEFAULT_REGION || 'us-east-1' }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          folder: site
+          clean: false
 
-      - name: Upload CSV files to S3 (optional)
-        if: ${{ steps.s3_ready.outputs.enabled == 'true' }}
-        run: |
-          run_date="$(date -u +%Y-%m-%d)"
-          dest="s3://$AWS_S3_BUCKET/${{ inputs.target_env }}/${run_date}/${{ github.run_id }}/"
-          echo "Uploading outputs/*.csv to $dest"
-          uv run --with awscli aws s3 cp outputs/ "$dest" --recursive --exclude "*" --include "*.csv"
