@@ -5,8 +5,10 @@ set -euo pipefail
 # Upload eval CSVs to S3 via pre-signed URLs
 #
 # Usage:
-#   ./scripts/upload_evals.sh                  # uploads all CSVs in outputs/
-#   ./scripts/upload_evals.sh <prefix>         # uploads a specific run
+#   ./scripts/upload_evals.sh                                 # all CSVs in outputs/
+#   ./scripts/upload_evals.sh <prefix>                        # a specific run in outputs/
+#   ./scripts/upload_evals.sh --outputs-dir <path>            # all CSVs in <path>
+#   ./scripts/upload_evals.sh --outputs-dir <path> <prefix>   # specific run in <path>
 #
 # Required env vars:
 #   GNW_UPLOAD_API_URL   - API Gateway endpoint (from CloudFormation output)
@@ -15,11 +17,28 @@ set -euo pipefail
 
 API_URL="${GNW_UPLOAD_API_URL:?Set GNW_UPLOAD_API_URL to the API Gateway endpoint}"
 API_KEY="${GNW_UPLOAD_API_KEY:?Set GNW_UPLOAD_API_KEY to the shared API key}"
+
 OUTPUTS_DIR="outputs"
+PREFIX=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --outputs-dir) OUTPUTS_DIR="$2"; shift 2 ;;
+    -h|--help) sed -n '4,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -*) echo "Unknown flag: $1" >&2; exit 1 ;;
+    *)
+      if [[ -z "$PREFIX" ]]; then PREFIX="$1"; shift
+      else echo "Unexpected argument: $1" >&2; exit 1; fi ;;
+  esac
+done
+
+if [[ ! -d "$OUTPUTS_DIR" ]]; then
+  echo "Error: outputs dir '$OUTPUTS_DIR' does not exist" >&2
+  exit 1
+fi
 
 # Determine which files to upload
-if [[ $# -ge 1 ]]; then
-  PREFIX="$1"
+if [[ -n "$PREFIX" ]]; then
   FILES=("$OUTPUTS_DIR/${PREFIX}_summary.csv" "$OUTPUTS_DIR/${PREFIX}_detailed.csv")
 else
   FILES=("$OUTPUTS_DIR"/*_summary.csv "$OUTPUTS_DIR"/*_detailed.csv)
@@ -59,14 +78,20 @@ for csv in "${FILES[@]}"; do
   fi
 
   # 2. Upload directly to S3
-  http_code=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "$presign_url" \
+  resp_body=$(mktemp)
+  http_code=$(curl -s -o "$resp_body" -w "%{http_code}" -X PUT "$presign_url" \
     -H "Content-Type: text/csv" \
     --upload-file "$csv")
 
   if [[ "$http_code" == "200" ]]; then
     echo "  Uploaded $filename"
+    rm -f "$resp_body"
   else
     echo "  ERROR: Upload failed for $filename (HTTP $http_code)"
+    echo "  S3 response:"
+    sed 's/^/    /' "$resp_body"
+    echo
+    rm -f "$resp_body"
     exit 1
   fi
 done

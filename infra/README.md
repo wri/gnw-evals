@@ -183,6 +183,10 @@ After running evals locally:
 
 # Or upload a specific run
 ./scripts/upload_evals.sh staging_20260213_152400
+
+# Or point at a different directory
+./scripts/upload_evals.sh --outputs-dir /path/to/csvs
+./scripts/upload_evals.sh --outputs-dir /path/to/csvs staging_20260213_152400
 ```
 
 The upload script:
