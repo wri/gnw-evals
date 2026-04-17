@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GNW Eval Results</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #fafaf8;
+    --surface: #ffffff;
+    --border: #e2e0dc;
+    --border-light: #f0eeea;
+    --text: #1a1a18;
+    --text-muted: #6b6962;
+    --text-dim: #9b978f;
+    --accent: #2c5f2d;
+    --accent-light: #e8f0e8;
+    --pass: #009e73;
+    --fail: #d55e00;
+    --missing: #BBBBBB;
+    --pass-bg: #dce7f2;
+    --fail-bg: #fce4e7;
+    --radius: 6px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.06);
+    --shadow-md: 0 4px 12px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.08);
+    --font: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --mono: 'DM Mono', 'SF Mono', 'Consolas', monospace;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 40px 32px 80px;
+  }
+
+  /* ── Header ─────────────────────────────── */
+  .page-header {
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--text);
+  }
+  .page-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin-bottom: 6px;
+  }
+  .page-header p {
+    color: var(--text-muted);
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  .page-header a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  /* ── Controls Row ───────────────────────── */
+  .controls {
+    display: flex;
+    gap: 20px;
+    align-items: end;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .control-group { display: flex; flex-direction: column; gap: 5px; }
+  .control-group label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+  }
+  .control-group select {
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 8px 32px 8px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%236b6962' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    min-width: 220px;
+    transition: border-color .15s;
+  }
+  .control-group select:hover { border-color: var(--text-dim); }
+  .control-group select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+
+  /* ── Section titles ─────────────────────── */
+  .section-title {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Heatmap + Detail two-column layout ── */
+  .heatmap-detail-area {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .heatmap-detail-area { grid-template-columns: 1fr; }
+    .detail-sidebar { position: static !important; }
+  }
+
+  .heatmap-column { min-width: 0; }
+
+  .heatmap-scroll {
+    overflow: auto;
+    height: 90dvh;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    padding: 0 12px 12px;
+  }
+
+  .heatmap-table {
+    --col-label-h: 110px;
+    border-collapse: separate;
+    border-spacing: 0;
+    width: auto;
+    /* Slack for the last column's rotated label to extend right without clipping. */
+    margin-right: 96px;
+  }
+  .heatmap-table thead { position: sticky; top: 0; z-index: 2; }
+  .heatmap-table th {
+    padding: 0;
+    vertical-align: bottom;
+    white-space: nowrap;
+    border-bottom: 2px solid var(--border);
+    background: var(--surface);
+    overflow: visible;
+  }
+  .heatmap-table th .col-label-wrap {
+    width: 28px;
+    height: var(--col-label-h);
+    position: relative;
+    overflow: visible;
+  }
+  .heatmap-table th .col-label {
+    position: absolute;
+    bottom: 8px;
+    left: 14px;
+    transform: rotate(-35deg);
+    transform-origin: bottom left;
+    white-space: nowrap;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.2px;
+  }
+  .heatmap-table td {
+    width: 28px;
+    height: 18px;
+    min-width: 28px;
+    padding: 1px;
+    cursor: pointer;
+    transition: opacity .12s;
+  }
+  .heatmap-table td .cell {
+    width: 100%;
+    height: 100%;
+    border-radius: 2px;
+    transition: box-shadow .12s, transform .12s;
+  }
+  .heatmap-table td:hover .cell { transform: scale(1.08); box-shadow: 0 0 0 2px var(--text); }
+  .heatmap-table.has-selection td { opacity: 0.45; }
+  .heatmap-table.has-selection td.selected { opacity: 1; }
+  .heatmap-table.has-selection td.selected .cell { box-shadow: 0 0 0 2px var(--text); transform: scale(1.12); }
+
+  .cell-pass { background: var(--pass); }
+  .cell-fail { background: var(--fail); }
+  .cell-missing { background: var(--missing); }
+
+  /* ── Legend ──────────────────────────────── */
+  .legend {
+    display: flex;
+    gap: 16px;
+    margin: 10px 0 0 4px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* ── Detail Sidebar (sticky) ────────────── */
+  .detail-sidebar {
+    position: sticky;
+    top: 16px;
+    min-width: 380px;
+    max-width: 560px;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+  }
+
+  /* ── Interpretation (collapsible) ───────── */
+  .interpretation {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.7;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 16px;
+  }
+  .interpretation summary {
+    padding: 12px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    list-style: none;
+  }
+  .interpretation summary::before {
+    content: "\25B6\FE0E";
+    display: inline-block;
+    margin-right: 6px;
+    font-size: 9px;
+    transition: transform .15s;
+  }
+  .interpretation[open] summary::before { transform: rotate(90deg); }
+  .interpretation .interp-body { padding: 0 16px 14px; }
+  .interpretation p { margin-bottom: 8px; }
+  .interpretation strong { color: var(--text); font-weight: 600; }
+
+  /* ── Tooltip ────────────────────────────── */
+  .tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: var(--text);
+    color: #fff;
+    font-size: 11.5px;
+    font-family: var(--mono);
+    padding: 6px 10px;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity .1s;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+  }
+  .tooltip.visible { opacity: 1; }
+
+  /* ── Selection Banner ───────────────────── */
+  .selection-banner {
+    background: var(--accent-light);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    font-size: 12.5px;
+    display: none;
+  }
+  .selection-banner.visible { display: block; }
+  .selection-banner strong { font-weight: 600; }
+
+  /* ── Diagnostic Table ───────────────────── */
+  .diagnostic-panel { display: none; margin-bottom: 12px; }
+  .diagnostic-panel.visible { display: block; }
+  .diagnostic-panel h3 {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 3px;
+  }
+  .diagnostic-panel .subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+
+  .diag-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+  .diag-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-light);
+    vertical-align: top;
+  }
+  .diag-table tr:last-child td { border-bottom: none; }
+  .diag-table td:first-child {
+    width: 160px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .diag-table td:last-child {
+    font-size: 12.5px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .diag-table tr.query-row { background: #f6f5f3; }
+  .diag-table tr.result-row td:last-child { font-weight: 700; font-size: 16px; }
+  .diag-table tr.result-pass td:last-child { color: var(--pass); }
+  .diag-table tr.result-fail td:last-child { color: var(--fail); }
+  .diag-table a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+
+  /* ── Sidebar placeholder ────────────────── */
+  .sidebar-placeholder {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-dim);
+    font-size: 13px;
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius);
+    line-height: 1.6;
+  }
+
+  /* ── Raw detail dump ────────────────────── */
+  .raw-detail { display: none; margin-bottom: 12px; }
+  .raw-detail.visible { display: block; }
+  .raw-detail summary {
+    font-size: 11px;
+    color: var(--text-muted);
+    cursor: pointer;
+    margin-bottom: 6px;
+    font-family: var(--mono);
+  }
+  .raw-detail .raw-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .raw-detail .raw-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border-light);
+    vertical-align: top;
+  }
+  .raw-detail .raw-table td:first-child {
+    font-family: var(--mono);
+    font-weight: 500;
+    color: var(--text-muted);
+    white-space: nowrap;
+    width: 180px;
+  }
+  .raw-detail .raw-table td:last-child { white-space: pre-wrap; word-break: break-word; }
+
+  /* ── Summary Section ────────────────────── */
+  .summary-section { margin-top: 8px; }
+
+  .score-summary {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 22px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .score-summary .run-info {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .score-line {
+    display: grid;
+    grid-template-columns: 190px 1fr 130px;
+    align-items: center;
+    gap: 14px;
+    padding: 5px 0;
+    font-size: 13px;
+  }
+  .score-line .label {
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .score-line .bar-container {
+    position: relative;
+    height: 20px;
+    background: var(--border-light);
+    border-radius: 4px;
+    overflow: hidden;
+    min-width: 80px;
+  }
+  .score-line .bar-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    border-radius: 4px;
+    transition: width .4s ease;
+  }
+  .score-line .bar-pct {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text);
+    z-index: 1;
+  }
+  .score-line .value {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .score-line .no-tests {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  /* ── Summary tables ─────────────────────── */
+  .summary-tables {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 24px;
+    margin-top: 20px;
+  }
+  @media (max-width: 700px) { .summary-tables { grid-template-columns: 1fr; } }
+
+  .summary-tables table {
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    font-size: 13px;
+    width: 100%;
+  }
+  .summary-tables th {
+    padding: 8px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    background: #f9f8f6;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .summary-tables td {
+    padding: 7px 14px;
+    border-bottom: 1px solid var(--border-light);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .summary-tables tr:last-child td { border-bottom: none; }
+  .summary-tables td:first-child {
+    font-family: var(--font);
+    font-weight: 500;
+    font-size: 13px;
+  }
+
+  /* ── Loading / Error ────────────────────── */
+  .loading-overlay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 160px;
+    color: var(--text-muted);
+    font-size: 13px;
+    gap: 10px;
+  }
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-msg {
+    background: #fef2f2;
+    border: 1px solid #e8a0a0;
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    color: #7f1d1d;
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+
+  /* ── Fade-in animation ──────────────────── */
+  .fade-in { animation: fadeIn .3s ease both; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <header class="page-header">
+    <h1>Global Nature Watch offline LLM evaluations</h1>
+    <p>
+      This page examines results from a single run of GNW LLM evals.
+      Experts have prepared queries and corresponding correct ("expected") answers. The purpose of these offline evals is to ensure the LLM responses match ("actual").
+      The prepared Q&amp;A pairs are in this spreadsheet:
+      <a href="https://docs.google.com/spreadsheets/d/1_G1aq2fSCPqhT6w55_Od6VU7sov76t1lHQTBeZZxbdM/edit?usp=sharing" target="_blank">GNW eval sets</a>
+    </p>
+  </header>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="control-group">
+      <label for="run-select">Eval Run</label>
+      <select id="run-select"><option>Loading…</option></select>
+    </div>
+    <div class="control-group">
+      <label for="evalset-select">Eval Set</label>
+      <select id="evalset-select"><option>—</option></select>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div id="loading" class="loading-overlay">
+    <div class="spinner"></div>
+    <span>Loading manifest…</span>
+  </div>
+
+  <!-- Error -->
+  <div id="error" class="error-msg" style="display:none"></div>
+
+  <!-- Main content (hidden until data loads) -->
+  <div id="main-content" style="display:none">
+
+    <!-- Heatmap + Detail side-by-side -->
+    <div class="section-title">Heatmap</div>
+    <div class="heatmap-detail-area">
+      <!-- Left: heatmap (scrollable) -->
+      <div class="heatmap-column">
+        <div class="heatmap-scroll" id="heatmap-container"></div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:var(--pass)"></div> Pass</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:var(--fail)"></div> Fail</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:var(--missing)"></div> Missing / N/A</div>
+        </div>
+      </div>
+
+      <!-- Right: sticky detail sidebar -->
+      <div class="detail-sidebar">
+        <details class="interpretation">
+          <summary>How to read this chart</summary>
+          <div class="interp-body">
+            <p><strong>Each row represents one eval test query.</strong><br>
+            If 50 tests were run, the heatmap will be 50 units tall.</p>
+            <p><strong>Each column represents an eval score.</strong><br>
+            For each score, the correct "expected" value is compared to GNW's "actual" response.
+            If no expected value is available, the score is not computed.</p>
+            <p><strong>Each cell represents a result.</strong><br>
+            Blue indicates a passing score, rose/pink indicates failing.</p>
+            <p><strong>This heatmap is interactive.</strong><br>
+            Click on a cell to see the expected and actual values. Double-click to clear.</p>
+          </div>
+        </details>
+
+        <!-- Selection banner -->
+        <div id="selection-banner" class="selection-banner"></div>
+
+        <!-- Diagnostic table -->
+        <div id="diagnostic-panel" class="diagnostic-panel">
+          <h3 id="diag-title"></h3>
+          <div id="diag-subtitle" class="subtitle"></div>
+          <table class="diag-table" id="diag-table"><tbody></tbody></table>
+        </div>
+
+        <!-- Raw detail dump -->
+        <div id="raw-detail" class="raw-detail">
+          <details>
+            <summary>Show all columns for selected row</summary>
+            <table class="raw-table" id="raw-table"><tbody></tbody></table>
+          </details>
+        </div>
+
+        <!-- Placeholder when nothing is selected -->
+        <div id="sidebar-placeholder" class="sidebar-placeholder">
+          Click a heatmap cell to<br>view diagnostic details
+        </div>
+      </div>
+    </div>
+
+    <!-- Score Summary -->
+    <div class="summary-section">
+      <div class="section-title">Score Summary</div>
+      <div class="score-summary" id="score-summary"></div>
+      <div class="summary-tables" id="summary-tables"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ─── Configuration ────────────────────────────────────────────
+const CLOUDFRONT_BASE = "https://XXXXXXXXXX.cloudfront.net/";
+const LOCAL_DATA_BASE = "data/";
+
+// Resolved at init time — will be CLOUDFRONT_BASE or LOCAL_DATA_BASE
+let DATA_BASE = null;
+
+// Friendly label overrides for known score columns. Any *_score column not
+// listed here still renders — labelFor() falls back to a title-cased version
+// of the column name, so new scores appear automatically.
+const SCORE_LABELS = {
+  agent_answer_score: "Agent Answer",
+  charts_answer_score: "Charts Answer",
+  aoi_id_match_score: "AOI GADM ID Match",
+  subregion_match_score: "AOI Subregion Match",
+  dataset_id_match_score: "Dataset ID Match",
+  date_match_score: "Date Match",
+  context_layer_match_score: "Context Layer Match",
+  data_pull_exists_score: "Data Pull Exists",
+  clarification_requested_score: "Clarification Requested",
+};
+
+// Known-score ordering; unknown *_score columns append after these in header order.
+const SCORE_COLS_PREFERRED_ORDER = Object.keys(SCORE_LABELS);
+
+const SCORE_TO_COLUMNS = {
+  date_match_score: [
+    "expected_start_date", "actual_start_date",
+    "expected_end_date", "actual_end_date",
+    "date_match_score", "date_success",
+  ],
+  aoi_id_match_score: [
+    "expected_aoi_ids", "match_aoi_id",
+    "actual_id", "aoi_id_match_score",
+  ],
+  subregion_match_score: [
+    "expected_subregion", "actual_subregion",
+    "match_subregion", "subregion_match_score",
+  ],
+  dataset_id_match_score: [
+    "expected_dataset_id", "actual_dataset_id",
+    "expected_dataset_name", "actual_dataset_name",
+    "dataset_id_match_score",
+  ],
+  context_layer_match_score: [
+    "expected_context_layer", "actual_context_layer",
+    "context_layer_match_score",
+  ],
+  charts_answer_score: [
+    "expected_answer", "actual_charts_answer",
+    "charts_answer_score",
+  ],
+  agent_answer_score: [
+    "expected_answer", "expected_agent_answer",
+    "actual_agent_answer", "agent_answer_score",
+  ],
+  data_pull_exists_score: [
+    "data_pull_exists_score", "row_count",
+    "data_pull_success",
+  ],
+  clarification_requested_score: [
+    "expected_clarification", "actual_clarification_requested",
+    "clarification_requested_score",
+  ],
+};
+
+const BASE_COLS = ["query", "trace_url"];
+
+const PIVOT_EVAL_SETS = ["analysis_results", "dataset_id", "gold"];
+
+// ─── State ────────────────────────────────────────────────────
+let state = {
+  manifest: [],
+  summaryData: [],
+  detailedData: [],
+  scoreCols: [],
+  selectedRun: null,
+  selectedEvalSet: null,
+  selectedCell: null, // { idx, score }
+};
+
+// ─── DOM refs ─────────────────────────────────────────────────
+const $runSelect = document.getElementById("run-select");
+const $evalsetSelect = document.getElementById("evalset-select");
+const $loading = document.getElementById("loading");
+const $error = document.getElementById("error");
+const $main = document.getElementById("main-content");
+const $heatmap = document.getElementById("heatmap-container");
+const $tooltip = document.getElementById("tooltip");
+const $banner = document.getElementById("selection-banner");
+const $diagPanel = document.getElementById("diagnostic-panel");
+const $diagTitle = document.getElementById("diag-title");
+const $diagSubtitle = document.getElementById("diag-subtitle");
+const $diagTable = document.getElementById("diag-table");
+const $rawDetail = document.getElementById("raw-detail");
+const $rawTable = document.getElementById("raw-table");
+const $scoreSummary = document.getElementById("score-summary");
+const $summaryTables = document.getElementById("summary-tables");
+const $placeholder = document.getElementById("sidebar-placeholder");
+
+// ─── Helpers ──────────────────────────────────────────────────
+function showLoading(msg) {
+  $loading.style.display = "flex";
+  $loading.querySelector("span").textContent = msg;
+  $main.style.display = "none";
+}
+function hideLoading() {
+  $loading.style.display = "none";
+  $main.style.display = "block";
+  $main.classList.add("fade-in");
+}
+function showError(msg) {
+  $error.textContent = msg;
+  $error.style.display = "block";
+}
+
+function fetchCSV(url) {
+  return new Promise((resolve, reject) => {
+    Papa.parse(url, {
+      download: true,
+      header: true,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      complete: (results) => resolve(results.data),
+      error: (err) => reject(err),
+    });
+  });
+}
+
+function locateMostRecent(sources) {
+  let best = null, bestDate = 0;
+  for (const s of sources) {
+    const m = s.match(/(20\d{2})(\d{2})(\d{2})/);
+    if (m) {
+      const d = parseInt(m[1] + m[2] + m[3], 10);
+      if (d > bestDate) { bestDate = d; best = s; }
+    }
+  }
+  return best || sources[sources.length - 1];
+}
+
+function getColumnsForScore(score) {
+  let cols = SCORE_TO_COLUMNS[score];
+  if (!cols) {
+    // Unknown score: show the score column itself plus any detailed columns
+    // whose name shares the score's root (e.g. for `foo_bar_score`, surface
+    // any column containing `foo_bar`).
+    const root = score.replace(/_score$/, "");
+    const headers = state.detailedData[0] ? Object.keys(state.detailedData[0]) : [];
+    cols = [score, ...headers.filter(h => h !== score && h.includes(root))];
+  }
+  return [...BASE_COLS, ...cols];
+}
+
+function labelFor(col) {
+  if (SCORE_LABELS[col]) return SCORE_LABELS[col];
+  // Title-case the column name, stripping a trailing `_score`.
+  return col.replace(/_score$/, "")
+    .split("_")
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+function deriveScoreCols(rows) {
+  if (!rows.length) return [];
+  const headers = Object.keys(rows[0]);
+  const present = new Set(
+    headers.filter(h => h.endsWith("_score") && h !== "overall_score")
+  );
+  const known = SCORE_COLS_PREFERRED_ORDER.filter(c => present.has(c));
+  const extras = headers.filter(h => present.has(h) && !SCORE_LABELS[h]);
+  return [...known, ...extras];
+}
+
+function esc(str) {
+  if (str == null) return "";
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ─── Data source discovery ────────────────────────────────────
+
+/** Try to load manifest.json from a base URL. Returns sorted file list or null. */
+async function tryManifest(base) {
+  try {
+    const resp = await fetch(base + "manifest.json");
+    if (!resp.ok) return null;
+    const manifest = await resp.json();
+    const files = (manifest.files || []).sort();
+    return files.length > 0 ? files : null;
+  } catch { return null; }
+}
+
+/**
+ * Fall back for local dev: fetch the directory listing HTML that
+ * Python's http.server (or similar) returns, and scrape *_summary.csv
+ * filenames to derive run names.
+ */
+async function tryDirectoryListing(base) {
+  try {
+    const resp = await fetch(base);
+    if (!resp.ok) return null;
+    const html = await resp.text();
+    const re = /href="([^"]+_summary\.csv)"/g;
+    const runs = [];
+    let m;
+    while ((m = re.exec(html)) !== null) {
+      runs.push(m[1].replace(/_summary\.csv$/, ""));
+    }
+    return runs.length > 0 ? runs.sort() : null;
+  } catch { return null; }
+}
+
+// ─── Init ─────────────────────────────────────────────────────
+async function init() {
+  try {
+    showLoading("Loading manifest…");
+
+    // 1. Try CloudFront manifest
+    let files = await tryManifest(CLOUDFRONT_BASE);
+    if (files) {
+      DATA_BASE = CLOUDFRONT_BASE;
+    }
+
+    // 2. Fall back to local data/manifest.json
+    if (!files) {
+      files = await tryManifest(LOCAL_DATA_BASE);
+      if (files) DATA_BASE = LOCAL_DATA_BASE;
+    }
+
+    // 3. Fall back to scraping local data/ directory listing
+    if (!files) {
+      files = await tryDirectoryListing(LOCAL_DATA_BASE);
+      if (files) DATA_BASE = LOCAL_DATA_BASE;
+    }
+
+    if (!files) throw new Error("Could not load manifest from CloudFront or local data/ folder");
+
+    state.manifest = files;
+    console.log(`Data source: ${DATA_BASE} (${files.length} runs)`);
+
+    // Populate run dropdown
+    $runSelect.innerHTML = "";
+    for (const f of state.manifest) {
+      const opt = document.createElement("option");
+      opt.value = f;
+      opt.textContent = f;
+      $runSelect.appendChild(opt);
+    }
+    const recent = locateMostRecent(state.manifest);
+    $runSelect.value = recent;
+
+    $runSelect.addEventListener("change", () => loadRun($runSelect.value));
+
+    await loadRun(recent);
+  } catch (e) {
+    $loading.style.display = "none";
+    showError("Error loading data: " + e.message);
+    console.error(e);
+  }
+}
+
+async function loadRun(runName) {
+  state.selectedRun = runName;
+  state.selectedCell = null;
+
+  showLoading("Loading CSVs…");
+  $error.style.display = "none";
+
+  try {
+    const [summary, detailed] = await Promise.all([
+      fetchCSV(DATA_BASE + runName + "_summary.csv"),
+      fetchCSV(DATA_BASE + runName + "_detailed.csv"),
+    ]);
+
+    // Add idx column
+    summary.forEach((row, i) => row.idx = i);
+    detailed.forEach((row, i) => row.idx = i);
+
+    state.summaryData = summary;
+    state.detailedData = detailed;
+    state.scoreCols = deriveScoreCols(summary);
+
+    // Populate eval set dropdown
+    const evalSets = [...new Set(summary.map(r => r.eval_set).filter(Boolean))].sort();
+    $evalsetSelect.innerHTML = "";
+    for (const es of evalSets) {
+      const opt = document.createElement("option");
+      opt.value = es;
+      opt.textContent = es;
+      $evalsetSelect.appendChild(opt);
+    }
+    state.selectedEvalSet = evalSets.includes("gold") ? "gold" : evalSets[0] || null;
+    if (state.selectedEvalSet) $evalsetSelect.value = state.selectedEvalSet;
+
+    $evalsetSelect.onchange = () => {
+      state.selectedEvalSet = $evalsetSelect.value;
+      state.selectedCell = null;
+      renderHeatmap();
+      clearSelection();
+    };
+
+    hideLoading();
+    renderAll();
+  } catch (e) {
+    $loading.style.display = "none";
+    showError("Error loading run data: " + e.message);
+    console.error(e);
+  }
+}
+
+// ─── Render All ───────────────────────────────────────────────
+function renderAll() {
+  renderHeatmap();
+  clearSelection();
+  renderScoreSummary();
+  renderSummaryTables();
+}
+
+// ─── Heatmap ──────────────────────────────────────────────────
+function renderHeatmap() {
+  const data = state.summaryData;
+  const scoreCols = state.scoreCols;
+  const filtered = state.selectedEvalSet
+    ? data.filter(r => r.eval_set === state.selectedEvalSet)
+    : data;
+
+  if (filtered.length === 0) {
+    $heatmap.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-dim);font-size:13px">No tests in this eval set.</div>`;
+    return;
+  }
+
+  let html = "<table class='heatmap-table' id='heatmap-tbl'><thead><tr>";
+  for (const col of scoreCols) {
+    const lbl = esc(labelFor(col));
+    html += `<th><div class="col-label-wrap"><span class="col-label" title="${lbl}">${lbl}</span></div></th>`;
+  }
+  html += "</tr></thead><tbody>";
+
+  for (const row of filtered) {
+    html += "<tr>";
+    for (const col of scoreCols) {
+      const v = row[col];
+      const cls = v === 1 ? "cell-pass" : v === 0 ? "cell-fail" : "cell-missing";
+      const stateStr = v === 1 ? "pass" : v === 0 ? "fail" : "missing";
+      html += `<td data-idx="${row.idx}" data-score="${col}" data-state="${stateStr}"><div class="cell ${cls}"></div></td>`;
+    }
+    html += "</tr>";
+  }
+  html += "</tbody></table>";
+  $heatmap.innerHTML = html;
+
+  // Attach events
+  const tbl = document.getElementById("heatmap-tbl");
+
+  tbl.addEventListener("mouseover", (e) => {
+    const td = e.target.closest("td[data-idx]");
+    if (!td) return;
+    const idx = td.dataset.idx;
+    const score = labelFor(td.dataset.score);
+    const st = td.dataset.state;
+    $tooltip.innerHTML = `#${idx} &middot; ${esc(score)} &middot; ${st}`;
+    $tooltip.classList.add("visible");
+  });
+  tbl.addEventListener("mousemove", (e) => {
+    $tooltip.style.left = (e.clientX + 12) + "px";
+    $tooltip.style.top = (e.clientY - 30) + "px";
+  });
+  tbl.addEventListener("mouseout", (e) => {
+    if (!e.target.closest("td[data-idx]")) return;
+    $tooltip.classList.remove("visible");
+  });
+  tbl.addEventListener("click", (e) => {
+    const td = e.target.closest("td[data-idx]");
+    if (!td) return;
+    const idx = parseInt(td.dataset.idx, 10);
+    const score = td.dataset.score;
+    state.selectedCell = { idx, score };
+    applySelection();
+    renderDiagnostic();
+  });
+  tbl.addEventListener("dblclick", (e) => {
+    e.preventDefault();
+    state.selectedCell = null;
+    clearSelection();
+  });
+}
+
+function applySelection() {
+  const tbl = document.getElementById("heatmap-tbl");
+  if (!tbl) return;
+  const sel = state.selectedCell;
+  if (!sel) { tbl.classList.remove("has-selection"); return; }
+  tbl.classList.add("has-selection");
+  tbl.querySelectorAll("td[data-idx]").forEach(td => {
+    td.classList.toggle("selected",
+      parseInt(td.dataset.idx, 10) === sel.idx && td.dataset.score === sel.score
+    );
+  });
+}
+
+function clearSelection() {
+  state.selectedCell = null;
+  const tbl = document.getElementById("heatmap-tbl");
+  if (tbl) {
+    tbl.classList.remove("has-selection");
+    tbl.querySelectorAll("td.selected").forEach(td => td.classList.remove("selected"));
+  }
+  $banner.classList.remove("visible");
+  $diagPanel.classList.remove("visible");
+  $rawDetail.classList.remove("visible");
+  $placeholder.style.display = "";
+}
+
+// ─── Diagnostic ───────────────────────────────────────────────
+function renderDiagnostic() {
+  const sel = state.selectedCell;
+  if (!sel) { clearSelection(); return; }
+
+  const { idx, score } = sel;
+  const summaryRow = state.summaryData[idx];
+  const detailedRow = state.detailedData[idx];
+  if (!summaryRow || !detailedRow) {
+    $placeholder.style.display = "none";
+    $banner.innerHTML = `Detail row <strong>#${idx}</strong> not found &mdash; summary and detailed CSVs may be out of sync.`;
+    $banner.classList.add("visible");
+    $diagPanel.classList.remove("visible");
+    $rawDetail.classList.remove("visible");
+    return;
+  }
+
+  $placeholder.style.display = "none";
+
+  const evalSet = summaryRow.eval_set || "unknown";
+
+  // Banner
+  $banner.innerHTML = `You have selected <strong>${esc(labelFor(score))} score</strong> for eval <strong>test #${idx}</strong> from eval_set '<strong>${esc(evalSet)}</strong>'.`;
+  $banner.classList.add("visible");
+
+  // Diagnostic table
+  const showCols = getColumnsForScore(score).filter(c => c in detailedRow);
+
+  const scoreVal = detailedRow[score];
+  const resultStr = scoreVal === 1 ? "PASS" : scoreVal === 0 ? "FAIL" : "missing";
+  const resultCls = scoreVal === 1 ? "result-pass" : scoreVal === 0 ? "result-fail" : "";
+
+  $diagTitle.textContent = `Diagnostic: ${labelFor(score)} score`;
+  $diagSubtitle.textContent = `for eval test #${idx}`;
+
+  let tbody = "";
+  tbody += `<tr class="result-row ${resultCls}"><td>result</td><td>${esc(resultStr)}</td></tr>`;
+  for (const col of showCols) {
+    const val = detailedRow[col];
+    const display = val == null || val === "" ? "\u2014" : String(val);
+    const isQuery = col === "query";
+    const isTrace = col === "trace_url";
+    const rowCls = isQuery ? " class='query-row'" : "";
+    let cell;
+    if (isTrace && val) {
+      const traceId = String(val).split("/").pop();
+      cell = `<a href="${esc(String(val))}" target="_blank">Langfuse trace ${esc(traceId)}</a>`;
+    } else if (isQuery) {
+      cell = `\u201C${esc(display)}\u201D`;
+    } else {
+      cell = esc(display);
+    }
+    tbody += `<tr${rowCls}><td>${esc(col)}</td><td>${cell}</td></tr>`;
+  }
+  $diagTable.querySelector("tbody")?.remove();
+  $diagTable.insertAdjacentHTML("beforeend", `<tbody>${tbody}</tbody>`);
+  $diagPanel.classList.add("visible");
+
+  // Raw detail dump
+  let rawBody = "";
+  const allKeys = Object.keys(detailedRow).filter(k => {
+    const v = detailedRow[k];
+    return v != null && v !== "";
+  });
+  for (const k of allKeys) {
+    rawBody += `<tr><td>${esc(k)}</td><td>${esc(String(detailedRow[k]))}</td></tr>`;
+  }
+  $rawTable.querySelector("tbody")?.remove();
+  $rawTable.insertAdjacentHTML("beforeend", `<tbody>${rawBody}</tbody>`);
+  $rawDetail.classList.add("visible");
+  $rawDetail.querySelector("details").removeAttribute("open");
+}
+
+// ─── Score Summary ────────────────────────────────────────────
+function renderScoreSummary() {
+  const data = state.summaryData;
+  const scoreCols = state.scoreCols;
+  const evalSets = [...new Set(data.map(r => r.eval_set).filter(Boolean))].sort();
+
+  let html = `<div class="run-info">Run: ${esc(state.selectedRun)}<br>`;
+  html += `Total tests: ${data.length}<br>`;
+  html += `Eval sets: ${evalSets.map(esc).join(", ")}</div>`;
+
+  for (const col of scoreCols) {
+    const vals = data.map(r => r[col]).filter(v => v != null && !isNaN(v));
+    const count = vals.length;
+    const sum = vals.reduce((a, b) => a + b, 0);
+
+    if (count === 0) {
+      html += `<div class="score-line">
+        <span class="label">${esc(labelFor(col))}</span>
+        <span class="bar-container"><span class="bar-pct">no tests</span></span>
+        <span class="no-tests">N/A</span>
+      </div>`;
+      continue;
+    }
+
+    const mean = sum / count;
+    const pct = Math.round(mean * 100);
+    const barColor = mean >= 0.8 ? "var(--pass)" : mean >= 0.5 ? "#CCBB44" : "var(--fail)";
+
+    html += `<div class="score-line">
+      <span class="label">${esc(labelFor(col))}</span>
+      <span class="bar-container">
+        <span class="bar-fill" style="width:${pct}%;background:${barColor}"></span>
+        <span class="bar-pct">${pct}%</span>
+      </span>
+      <span class="value">${sum}/${count} passing</span>
+    </div>`;
+  }
+
+  $scoreSummary.innerHTML = html;
+}
+
+// ─── Summary Tables ───────────────────────────────────────────
+function renderSummaryTables() {
+  const data = state.summaryData;
+  const scoreCols = state.scoreCols;
+  const evalSets = [...new Set(data.map(r => r.eval_set).filter(Boolean))].sort();
+
+  // Test count by eval_set
+  const countMap = {};
+  for (const r of data) { countMap[r.eval_set] = (countMap[r.eval_set] || 0) + 1; }
+
+  let countTable = "<div><div class='section-title' style='font-size:13px'>Tests by eval set</div><table><thead><tr><th>Eval Set</th><th>Count</th></tr></thead><tbody>";
+  for (const es of evalSets) {
+    countTable += `<tr><td>${esc(es)}</td><td>${countMap[es]}</td></tr>`;
+  }
+  countTable += "</tbody></table></div>";
+
+  // Mean score pivot table
+  const pivotSets = PIVOT_EVAL_SETS.filter(es => evalSets.includes(es));
+  if (pivotSets.length > 0) {
+    let pivot = "<div><div class='section-title' style='font-size:13px'>Mean score by eval set</div><table><thead><tr><th>Score</th>";
+    for (const es of pivotSets) pivot += `<th>${esc(es)}</th>`;
+    pivot += "</tr></thead><tbody>";
+
+    for (const col of scoreCols) {
+      pivot += `<tr><td>${esc(labelFor(col))}</td>`;
+      for (const es of pivotSets) {
+        const vals = data.filter(r => r.eval_set === es).map(r => r[col]).filter(v => v != null && !isNaN(v));
+        const mean = vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2) : "\u2014";
+        pivot += `<td>${mean}</td>`;
+      }
+      pivot += "</tr>";
+    }
+    pivot += "</tbody></table></div>";
+    $summaryTables.innerHTML = countTable + pivot;
+  } else {
+    $summaryTables.innerHTML = countTable;
+  }
+}
+
+// ─── Boot ─────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

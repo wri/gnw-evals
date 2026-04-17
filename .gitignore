@@ -218,3 +218,6 @@ uv.lock
 
 # debug and temp
 temp*
+
+# Amplify build artifact from scripts/package_amplify.sh
+amplify-deploy.zip
