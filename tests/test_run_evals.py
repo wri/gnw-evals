@@ -54,6 +54,7 @@ def mock_test_cases():
             expected_aoi_source="kba",
             expected_dataset_id="0",
             expected_dataset_name="Global All Ecosystem Disturbance Alerts (DIST-ALERT)",
+            expected_dataset_parameters='[{"name":"canopy_cover","values":[30]}]',
             expected_context_layer="",
             expected_start_date="8/1/2023",
             expected_end_date="8/31/2024",
@@ -69,6 +70,7 @@ def mock_test_cases():
             expected_aoi_source="wdpa",
             expected_dataset_id="0",
             expected_dataset_name="Global All Ecosystem Disturbance Alerts (DIST-ALERT)",
+            expected_dataset_parameters='[{"name":"canopy_cover","values":[30]}]',
             expected_context_layer="",
             expected_start_date="7/1/2024",
             expected_end_date="12/31/2024",
@@ -84,6 +86,7 @@ def mock_test_cases():
             expected_aoi_source="gadm",
             expected_dataset_id="0",
             expected_dataset_name="Global All Ecosystem Disturbance Alerts (DIST-ALERT)",
+            expected_dataset_parameters='[{"name":"canopy_cover","values":[30]}]',
             expected_context_layer="",
             expected_start_date="1/1/2023",
             expected_end_date="12/31/2023",
@@ -113,7 +116,7 @@ def mock_agent_state():
         "dataset": {
             "dataset_id": "0",
             "dataset_name": "Global All Ecosystem Disturbance Alerts (DIST-ALERT)",
-            "parameters": [{"name": "confidence", "values": "high"}],
+            "parameters": [{"name": "canopy_cover", "values": [30]}],
             "context_layer": "",
         },
         "statistics": [
@@ -243,15 +246,22 @@ async def test_run_csv_tests_with_mocked_data(
                         ), "Should have dataset_id_match_score field"
                         assert hasattr(
                             first_result,
+                            "dataset_parameter_match_score",
+                        ), "Should have dataset_parameter_match_score field"
+                        assert hasattr(
+                            first_result,
                             "context_layer_match_score",
                         ), "Should have context_layer_match_score field"
+                        assert first_result.dataset_parameter_match_score == 1.0, (
+                            "Dataset parameters should match"
+                        )
                         assert hasattr(
                             first_result,
                             "actual_dataset_parameters",
                         ), "Should have actual_dataset_parameters field"
                         assert (
                             first_result.actual_dataset_parameters
-                            == '[{"name":"confidence","values":"high"}]'
+                            == '[{"name":"canopy_cover","values":[30]}]'
                         ), "Should capture dataset parameters from agent state"
                         assert hasattr(
                             first_result,
@@ -481,7 +491,7 @@ def test_aoi_evaluator_missing_expected_subregion():
 
 
 def test_dataset_evaluator_missing_expected_context_layer():
-    """Test that missing expected_context_layer returns None for context_layer_match_score.
+    """Test that missing optional dataset expectations return None scores.
 
     Missing "Expected" values should result in None scores, not positive scores.
     """
@@ -491,7 +501,7 @@ def test_dataset_evaluator_missing_expected_context_layer():
         "dataset": {
             "dataset_id": "0",
             "dataset_name": "DIST-ALERT",
-            "parameters": [{"name": "confidence", "values": "high"}],
+            "parameters": [{"name": "canopy_cover", "values": [30]}],
             "context_layer": "tree_cover",
         },
     }
@@ -499,13 +509,17 @@ def test_dataset_evaluator_missing_expected_context_layer():
     result = evaluate_dataset_selection(
         agent_state=agent_state,
         expected_dataset_id="0",
+        expected_dataset_parameters="",  # Empty - should return None
         expected_context_layer="",  # Empty - should return None
         query="",
     )
 
     assert result["dataset_id_match_score"] == 1.0, "Dataset ID should match"
+    assert result["dataset_parameter_match_score"] is None, (
+        "Dataset parameter score should be None when expected is empty"
+    )
     assert result["actual_dataset_parameters"] == (
-        '[{"name":"confidence","values":"high"}]'
+        '[{"name":"canopy_cover","values":[30]}]'
     )
     assert result["context_layer_match_score"] is None, (
         "Context layer score should be None when expected is empty"
@@ -530,6 +544,7 @@ def test_dataset_evaluator_none_expected_context_layer():
     result = evaluate_dataset_selection(
         agent_state=agent_state,
         expected_dataset_id="0",
+        expected_dataset_parameters="",
         expected_context_layer="no_selection",  # should assert no_selection
         query="",
     )
@@ -555,6 +570,7 @@ def test_dataset_evaluator_incorrect_expected_context_layer():
     result = evaluate_dataset_selection(
         agent_state=agent_state,
         expected_dataset_id="0",
+        expected_dataset_parameters="",
         expected_context_layer="driver",  # Empty - should return None
         query="",
     )
@@ -619,6 +635,7 @@ def test_overall_score_excludes_none_values():
         "aoi_id_match_score": 1.0,
         "subregion_match_score": None,  # Not evaluated (missing expected)
         "dataset_id_match_score": 1.0,
+        "dataset_parameter_match_score": None,  # Not evaluated (missing expected)
         "context_layer_match_score": None,  # Not evaluated (missing expected)
         "data_pull_exists_score": 1.0,
         "date_match_score": None,  # Not evaluated (missing expected)
@@ -630,6 +647,7 @@ def test_overall_score_excludes_none_values():
         expected_aoi_ids=["BRA"],
         expected_subregion="",  # Empty
         expected_dataset_id="0",
+        expected_dataset_parameters="",  # Empty
         expected_context_layer="",  # Empty
         expected_start_date="",  # Empty
         expected_end_date="",  # Empty
@@ -684,7 +702,7 @@ def test_aoi_evaluator_all_fields_present():
 def test_dataset_evaluator_all_fields_present():
     """Test dataset evaluator with all expected fields present.
 
-    Validates that both scores are calculated when both expected values are provided.
+    Validates that all dataset scores are calculated when expected values are provided.
     """
     from gnw_evals.evaluators import evaluate_dataset_selection
 
@@ -692,6 +710,7 @@ def test_dataset_evaluator_all_fields_present():
         "dataset": {
             "dataset_id": "0",
             "dataset_name": "DIST-ALERT",
+            "parameters": [{"name": "canopy_cover", "values": [30]}],
             "context_layer": "tree_cover",
         },
     }
@@ -699,12 +718,54 @@ def test_dataset_evaluator_all_fields_present():
     result = evaluate_dataset_selection(
         agent_state=agent_state,
         expected_dataset_id="0",
+        expected_dataset_parameters='[{"name":"canopy_cover","values":[30]}]',
         expected_context_layer="tree_cover",  # Provided
         query="",
     )
 
     assert result["dataset_id_match_score"] == 1.0, "Dataset ID should match"
+    assert result["dataset_parameter_match_score"] == 1.0, (
+        "Dataset parameters should match"
+    )
     assert result["context_layer_match_score"] == 1.0, "Context layer should match"
+
+
+def test_dataset_evaluator_incorrect_expected_dataset_parameters():
+    """Test dataset parameter scoring for equivalent and mismatched JSON values."""
+    from gnw_evals.evaluators import evaluate_dataset_selection
+
+    agent_state = {
+        "dataset": {
+            "dataset_id": "0",
+            "dataset_name": "DIST-ALERT",
+            "parameters": [{"name": "canopy_cover", "values": [30]}],
+            "context_layer": "tree_cover",
+        },
+    }
+
+    equivalent_result = evaluate_dataset_selection(
+        agent_state=agent_state,
+        expected_dataset_id="0",
+        expected_dataset_parameters='[{"values":[30],"name":"canopy_cover"}]',
+        expected_context_layer="tree_cover",
+        query="",
+    )
+
+    assert equivalent_result["dataset_parameter_match_score"] == 1.0, (
+        "Dataset parameter score should tolerate JSON key ordering."
+    )
+
+    mismatch_result = evaluate_dataset_selection(
+        agent_state=agent_state,
+        expected_dataset_id="0",
+        expected_dataset_parameters='[{"name":"canopy_cover","values":[10]}]',
+        expected_context_layer="tree_cover",
+        query="",
+    )
+
+    assert mismatch_result["dataset_parameter_match_score"] == 0.0, (
+        "Dataset parameter score should be 0.0 if parameters don't match."
+    )
 
 
 def test_data_pull_evaluator_all_fields_present():

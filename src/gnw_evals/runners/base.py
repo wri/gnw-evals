@@ -69,6 +69,7 @@ class BaseTestRunner(ABC):
             match_subregion=None,
             # Dataset evaluation fields
             dataset_id_match_score=None,
+            dataset_parameter_match_score=None,
             context_layer_match_score=None,
             actual_dataset_id=None,
             actual_dataset_name=None,
@@ -125,6 +126,7 @@ class BaseTestRunner(ABC):
         dataset_eval = evaluate_dataset_selection(
             agent_state,
             expected_data.expected_dataset_id,
+            expected_data.expected_dataset_parameters,
             expected_data.expected_context_layer,
             query,
         )
@@ -180,6 +182,8 @@ class BaseTestRunner(ABC):
         # Dataset checks
         if expected_data.expected_dataset_id:
             scores.append(evaluations.get("dataset_id_match_score"))
+        if expected_data.expected_dataset_parameters:
+            scores.append(evaluations.get("dataset_parameter_match_score"))
         if expected_data.expected_context_layer:
             scores.append(evaluations.get("context_layer_match_score"))
 
