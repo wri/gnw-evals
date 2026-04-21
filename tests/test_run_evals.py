@@ -113,6 +113,7 @@ def mock_agent_state():
         "dataset": {
             "dataset_id": "0",
             "dataset_name": "Global All Ecosystem Disturbance Alerts (DIST-ALERT)",
+            "parameters": [{"name": "confidence", "values": "high"}],
             "context_layer": "",
         },
         "statistics": [
@@ -244,6 +245,14 @@ async def test_run_csv_tests_with_mocked_data(
                             first_result,
                             "context_layer_match_score",
                         ), "Should have context_layer_match_score field"
+                        assert hasattr(
+                            first_result,
+                            "actual_dataset_parameters",
+                        ), "Should have actual_dataset_parameters field"
+                        assert (
+                            first_result.actual_dataset_parameters
+                            == '[{"name":"confidence","values":"high"}]'
+                        ), "Should capture dataset parameters from agent state"
                         assert hasattr(
                             first_result,
                             "data_pull_exists_score",
@@ -482,6 +491,7 @@ def test_dataset_evaluator_missing_expected_context_layer():
         "dataset": {
             "dataset_id": "0",
             "dataset_name": "DIST-ALERT",
+            "parameters": [{"name": "confidence", "values": "high"}],
             "context_layer": "tree_cover",
         },
     }
@@ -494,6 +504,9 @@ def test_dataset_evaluator_missing_expected_context_layer():
     )
 
     assert result["dataset_id_match_score"] == 1.0, "Dataset ID should match"
+    assert result["actual_dataset_parameters"] == (
+        '[{"name":"confidence","values":"high"}]'
+    )
     assert result["context_layer_match_score"] is None, (
         "Context layer score should be None when expected is empty"
     )

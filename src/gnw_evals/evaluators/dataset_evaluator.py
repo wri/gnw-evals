@@ -1,5 +1,6 @@
 """Dataset selection evaluator."""
 
+import json
 from typing import Any
 
 from gnw_evals.evaluators.utils import normalize_value
@@ -23,8 +24,9 @@ def evaluate_dataset_selection(
         query: Original user query (kept for compatibility but not used)
 
     Returns:
-        Dict with dataset_id_match_score (0/1/None), context_layer_match_score (0/1/None),
-        actual_dataset_id, actual_dataset_name, actual_context_layer
+        Dict with dataset_id_match_score (0/1/None), context_layer_match_score
+        (0/1/None), actual_dataset_id, actual_dataset_name,
+        actual_dataset_parameters, actual_context_layer
 
     """
     if not expected_dataset_id:
@@ -33,6 +35,7 @@ def evaluate_dataset_selection(
             "context_layer_match_score": None,
             "actual_dataset_id": None,
             "actual_dataset_name": None,
+            "actual_dataset_parameters": None,
             "actual_context_layer": None,
             "error": "Missing dataset data",
         }
@@ -45,12 +48,17 @@ def evaluate_dataset_selection(
             "context_layer_match_score": None,
             "actual_dataset_id": None,
             "actual_dataset_name": None,
+            "actual_dataset_parameters": None,
             "actual_context_layer": None,
             "error": "Missing dataset data",
         }
 
     actual_dataset_id = str(dataset.get("dataset_id", ""))
     actual_dataset_name = dataset.get("dataset_name", "")
+    actual_dataset_parameters = json.dumps(
+        dataset.get("parameters", []),
+        separators=(",", ":"),
+    )
     actual_context_layer = dataset.get("context_layer", "")
 
     # Normalize values for comparison
@@ -78,6 +86,7 @@ def evaluate_dataset_selection(
         "context_layer_match_score": context_layer_match_score,
         "actual_dataset_id": actual_dataset_id,
         "actual_dataset_name": actual_dataset_name,
+        "actual_dataset_parameters": actual_dataset_parameters,
         "actual_context_layer": actual_context_layer,
         "error": "",
     }

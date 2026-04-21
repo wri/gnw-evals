@@ -34,6 +34,7 @@ class TestResult(BaseModel):
     context_layer_match_score: float | None = None
     actual_dataset_id: str | None = None
     actual_dataset_name: str | None = None
+    actual_dataset_parameters: str | None = None
     actual_context_layer: str | None = None
 
     # Data pull evaluation fields - separate binary scores (0/1/None)

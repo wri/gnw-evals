@@ -72,6 +72,7 @@ class BaseTestRunner(ABC):
             context_layer_match_score=None,
             actual_dataset_id=None,
             actual_dataset_name=None,
+            actual_dataset_parameters=None,
             actual_context_layer=None,
             # Data pull evaluation fields
             data_pull_exists_score=None,

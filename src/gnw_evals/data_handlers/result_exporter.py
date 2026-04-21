@@ -100,6 +100,7 @@ class ResultExporter:
             "dataset_id_match_score",
             "expected_dataset_name",
             "actual_dataset_name",
+            "actual_dataset_parameters",
             "expected_context_layer",
             "actual_context_layer",
             "context_layer_match_score",
