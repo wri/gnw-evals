@@ -175,11 +175,6 @@ def _print_csv_summary(results: list[TestResult]) -> None:
     ]
     print(_metric_line("AOI ID Match", aoi_scores))
 
-    subregion_scores = [
-        r.subregion_match_score for r in results if r.subregion_match_score is not None
-    ]
-    print(_metric_line("Subregion Match", subregion_scores))
-
     dataset_id_scores = [
         r.dataset_id_match_score
         for r in results

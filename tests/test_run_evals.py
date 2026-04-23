@@ -50,7 +50,6 @@ def mock_test_cases():
         ExpectedData(
             query="True or false: Mount Hakusan had more area with high confidence disturbance alerts in August 2023 than August 2024",
             expected_aoi_ids=["15060"],
-            expected_subregion="",
             expected_aoi_source="kba",
             expected_dataset_id="0",
             expected_dataset_name="Global All Ecosystem Disturbance Alerts (DIST-ALERT)",
@@ -65,7 +64,6 @@ def mock_test_cases():
         ExpectedData(
             query="How much of Virunga National Park was impacted by high confidence disturbance alerts in the second half of 2023?",
             expected_aoi_ids=[],
-            expected_subregion="",
             expected_aoi_source="wdpa",
             expected_dataset_id="0",
             expected_dataset_name="Global All Ecosystem Disturbance Alerts (DIST-ALERT)",
@@ -80,7 +78,6 @@ def mock_test_cases():
         ExpectedData(
             query="Which country had the most distrubed area in November 2023, Australia or Brazil?",
             expected_aoi_ids=["BRA", "AUS"],
-            expected_subregion="country",
             expected_aoi_source="gadm",
             expected_dataset_id="0",
             expected_dataset_name="Global All Ecosystem Disturbance Alerts (DIST-ALERT)",
@@ -232,10 +229,6 @@ async def test_run_csv_tests_with_mocked_data(
                             first_result,
                             "aoi_id_match_score",
                         ), "Should have aoi_id_match_score field"
-                        assert hasattr(
-                            first_result,
-                            "subregion_match_score",
-                        ), "Should have subregion_match_score field"
                         assert hasattr(
                             first_result,
                             "dataset_id_match_score",
@@ -435,11 +428,8 @@ async def test_run_csv_tests_with_empty_data(mock_config):
 # ============================================================================
 
 
-def test_aoi_evaluator_missing_expected_subregion():
-    """Test that missing expected_subregion returns None for subregion_match_score.
-
-    Missing "Expected" values should result in None scores, not positive scores.
-    """
+def test_aoi_evaluator_with_aoi_ids_only():
+    """Test AOI evaluator when only AOI IDs are expected."""
     from gnw_evals.evaluators import evaluate_aoi_selection
 
     agent_state = {
@@ -454,20 +444,15 @@ def test_aoi_evaluator_missing_expected_subregion():
                 },
             ],
         },
-        "subregion": "country",
     }
 
     result = evaluate_aoi_selection(
         agent_state=agent_state,
         expected_aoi_ids=["BRA"],
-        expected_subregion="",  # Empty - should return None
         query="",
     )
 
     assert result["aoi_id_match_score"] == 1.0, "AOI ID should match"
-    assert result["subregion_match_score"] is None, (
-        "Subregion score should be None when expected is empty"
-    )
     assert result["match_aoi_id"] is True, "AOI ID match flag should be True"
 
 
@@ -604,7 +589,6 @@ def test_overall_score_excludes_none_values():
     # Evaluations with some None scores (missing expected values)
     evaluations = {
         "aoi_id_match_score": 1.0,
-        "subregion_match_score": None,  # Not evaluated (missing expected)
         "dataset_id_match_score": 1.0,
         "context_layer_match_score": None,  # Not evaluated (missing expected)
         "data_pull_exists_score": 1.0,
@@ -615,7 +599,6 @@ def test_overall_score_excludes_none_values():
 
     expected_data = ExpectedData(
         expected_aoi_ids=["BRA"],
-        expected_subregion="",  # Empty
         expected_dataset_id="0",
         expected_context_layer="",  # Empty
         expected_start_date="",  # Empty
@@ -636,7 +619,7 @@ def test_overall_score_excludes_none_values():
 def test_aoi_evaluator_all_fields_present():
     """Test AOI evaluator with all expected fields present.
 
-    Validates that both scores are calculated when both expected values are provided.
+    Validates that AOI ID score is calculated when expected AOI IDs are provided.
     """
     from gnw_evals.evaluators import evaluate_aoi_selection
 
@@ -652,20 +635,16 @@ def test_aoi_evaluator_all_fields_present():
                 },
             ],
         },
-        "subregion": "country",
     }
 
     result = evaluate_aoi_selection(
         agent_state=agent_state,
         expected_aoi_ids=["BRA"],
-        expected_subregion="country",  # Provided
         query="",
     )
 
     assert result["aoi_id_match_score"] == 1.0, "AOI ID should match"
-    assert result["subregion_match_score"] == 1.0, "Subregion should match"
     assert result["match_aoi_id"] is True
-    assert result["match_subregion"] is True
 
 
 def test_dataset_evaluator_all_fields_present():
@@ -1072,7 +1051,6 @@ def test_overall_score_with_both_answer_scores():
     # Scenario: Charts answer correct (1.0), agent answer wrong (0.0)
     evaluations = {
         "aoi_id_match_score": 1.0,
-        "subregion_match_score": None,  # Not evaluated (missing expected)
         "dataset_id_match_score": 1.0,
         "context_layer_match_score": None,  # Not evaluated (missing expected)
         "data_pull_exists_score": 1.0,
@@ -1084,7 +1062,6 @@ def test_overall_score_with_both_answer_scores():
 
     expected_data = ExpectedData(
         expected_aoi_ids=["BRA"],
-        expected_subregion="",  # Empty
         expected_dataset_id="0",
         expected_context_layer="",  # Empty
         expected_start_date="",  # Empty
