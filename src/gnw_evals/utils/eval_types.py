@@ -20,14 +20,11 @@ class TestResult(BaseModel):
 
     # AOI evaluation fields - separate binary scores (0/1/None)
     aoi_id_match_score: float | None = None
-    subregion_match_score: float | None = None
     actual_id: str | None = None
     actual_name: str | None = None
     actual_subtype: str | None = None
     actual_source: str | None = None
-    actual_subregion: str | None = None
     match_aoi_id: bool = False
-    match_subregion: bool | None = None
 
     # Dataset evaluation fields - separate binary scores (0/1/None)
     dataset_id_match_score: float | None = None
@@ -58,7 +55,6 @@ class TestResult(BaseModel):
 
     # Expected data fields
     expected_aoi_ids: list[str] | None = None
-    expected_subregion: str = ""
     expected_aoi_source: str = ""
     expected_dataset_id: str = ""
     expected_dataset_name: str = ""
@@ -84,7 +80,6 @@ class ExpectedData(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     expected_aoi_ids: list[str] | None = None
-    expected_subregion: str = ""
     expected_aoi_source: str = ""
     expected_dataset_id: str = ""
     expected_dataset_name: str = ""

@@ -59,14 +59,11 @@ class BaseTestRunner(ABC):
             execution_time=datetime.now().isoformat(),
             # AOI evaluation fields
             aoi_id_match_score=None,
-            subregion_match_score=None,
             actual_id=None,
             actual_name=None,
             actual_subtype=None,
             actual_source=None,
-            actual_subregion=None,
             match_aoi_id=False,
-            match_subregion=None,
             # Dataset evaluation fields
             dataset_id_match_score=None,
             context_layer_match_score=None,
@@ -118,7 +115,6 @@ class BaseTestRunner(ABC):
         aoi_eval = evaluate_aoi_selection(
             agent_state,
             expected_data.expected_aoi_ids,
-            expected_data.expected_subregion,
             query,
         )
         dataset_eval = evaluate_dataset_selection(
@@ -158,7 +154,7 @@ class BaseTestRunner(ABC):
     ) -> float:
         """Calculate overall score from individual evaluation scores.
 
-        Each check (AOI ID, subregion, dataset ID, context layer, data pull,
+        Each check (AOI ID, dataset ID, context layer, data pull,
         date match, answer, clarification) is scored independently as 0 or 1.
 
         Only non-None scores are included in the average. A score of None
@@ -173,8 +169,6 @@ class BaseTestRunner(ABC):
         # AOI checks
         if expected_data.expected_aoi_ids:
             scores.append(evaluations.get("aoi_id_match_score"))
-        if expected_data.expected_subregion:
-            scores.append(evaluations.get("subregion_match_score"))
 
         # Dataset checks
         if expected_data.expected_dataset_id:
