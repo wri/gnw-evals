@@ -7,7 +7,10 @@ from gnw_evals.evaluators.utils import normalize_value
 
 
 def _normalize_dataset_parameters(value: Any) -> str:
-    """Normalize dataset parameters for stable JSON comparison."""
+    """Normalize dataset parameters for stable JSON comparison.
+
+    Only the `name` and `values` fields are considered for matching.
+    """
     if value is None or value == "None" or str(value).strip() == "":
         return ""
 
@@ -17,6 +20,19 @@ def _normalize_dataset_parameters(value: Any) -> str:
             parsed_value = json.loads(value)
         except json.JSONDecodeError:
             return normalize_value(value)
+
+    if isinstance(parsed_value, list):
+        parsed_value = [
+            {"name": item.get("name"), "values": item.get("values")}
+            if isinstance(item, dict)
+            else item
+            for item in parsed_value
+        ]
+    elif isinstance(parsed_value, dict):
+        parsed_value = {
+            "name": parsed_value.get("name"),
+            "values": parsed_value.get("values"),
+        }
 
     return json.dumps(parsed_value, sort_keys=True, separators=(",", ":"))
 

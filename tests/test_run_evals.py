@@ -731,14 +731,21 @@ def test_dataset_evaluator_all_fields_present():
 
 
 def test_dataset_evaluator_incorrect_expected_dataset_parameters():
-    """Test dataset parameter scoring for equivalent and mismatched JSON values."""
+    """Test dataset parameter scoring ignores extra fields and catches value mismatches."""
     from gnw_evals.evaluators import evaluate_dataset_selection
 
     agent_state = {
         "dataset": {
             "dataset_id": "0",
             "dataset_name": "DIST-ALERT",
-            "parameters": [{"name": "canopy_cover", "values": [30]}],
+            "parameters": [
+                {
+                    "name": "canopy_cover",
+                    "values": [30],
+                    "description": "Minimum tree cover threshold",
+                    "unit": "percent",
+                },
+            ],
             "context_layer": "tree_cover",
         },
     }
@@ -746,13 +753,13 @@ def test_dataset_evaluator_incorrect_expected_dataset_parameters():
     equivalent_result = evaluate_dataset_selection(
         agent_state=agent_state,
         expected_dataset_id="0",
-        expected_dataset_parameters='[{"values":[30],"name":"canopy_cover"}]',
+        expected_dataset_parameters='[{"values":[30],"name":"canopy_cover","description":"ignored"}]',
         expected_context_layer="tree_cover",
         query="",
     )
 
     assert equivalent_result["dataset_parameter_match_score"] == 1.0, (
-        "Dataset parameter score should tolerate JSON key ordering."
+        "Dataset parameter score should ignore fields other than name and values."
     )
 
     mismatch_result = evaluate_dataset_selection(
