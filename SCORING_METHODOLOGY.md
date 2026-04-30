@@ -88,6 +88,12 @@ The following comparisons (i.e. between expected and actual values) are performe
     - `response_factual_accuracy_score`
     - `response_helpfulness_score`
     - `response_safety_score`
+  - Produces a concise reason for each score:
+    - `response_relevance_reason`
+    - `response_coherence_reason`
+    - `response_factual_accuracy_reason`
+    - `response_helpfulness_reason`
+    - `response_safety_reason`
   - Scores are normalized to 0-1 before inclusion in `overall_score`
 - **Score:** 1 is lowest quality, 5 is highest quality
 

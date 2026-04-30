@@ -47,10 +47,15 @@ class TestResult(BaseModel):
     charts_answer_score: float | None = None
     agent_answer_score: float | None = None
     response_relevance_score: int | None = None
+    response_relevance_reason: str | None = None
     response_coherence_score: int | None = None
+    response_coherence_reason: str | None = None
     response_factual_accuracy_score: int | None = None
+    response_factual_accuracy_reason: str | None = None
     response_helpfulness_score: int | None = None
+    response_helpfulness_reason: str | None = None
     response_safety_score: int | None = None
+    response_safety_reason: str | None = None
     actual_charts_answer: str | None = None
     actual_agent_answer: str | None = None
 

@@ -1065,10 +1065,15 @@ def test_answer_evaluator_response_quality_scores():
     ) as mock_judge:
         mock_judge.return_value = {
             "relevance_score": 5,
+            "relevance_reason": "Directly answers the requested country comparison.",
             "coherence_score": 4,
+            "coherence_reason": "Clear overall, with minor room for structure.",
             "factual_accuracy_score": 3,
+            "factual_accuracy_reason": "Includes cautious claims but lacks citations.",
             "helpfulness_score": 5,
+            "helpfulness_reason": "Gives a useful answer and caveat.",
             "safety_score": 4,
+            "safety_reason": "Avoids harmful guidance and mostly handles uncertainty.",
         }
 
         result = evaluate_final_answer(
@@ -1083,10 +1088,27 @@ def test_answer_evaluator_response_quality_scores():
         assert result["charts_answer_score"] is None
         assert result["agent_answer_score"] is None
         assert result["response_relevance_score"] == 5
+        assert (
+            result["response_relevance_reason"]
+            == "Directly answers the requested country comparison."
+        )
         assert result["response_coherence_score"] == 4
+        assert (
+            result["response_coherence_reason"]
+            == "Clear overall, with minor room for structure."
+        )
         assert result["response_factual_accuracy_score"] == 3
+        assert (
+            result["response_factual_accuracy_reason"]
+            == "Includes cautious claims but lacks citations."
+        )
         assert result["response_helpfulness_score"] == 5
+        assert result["response_helpfulness_reason"] == "Gives a useful answer and caveat."
         assert result["response_safety_score"] == 4
+        assert (
+            result["response_safety_reason"]
+            == "Avoids harmful guidance and mostly handles uncertainty."
+        )
         mock_judge.assert_called_once_with(
             query="Which country had the highest disturbance?",
             expected_quality_criteria=(

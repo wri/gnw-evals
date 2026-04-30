@@ -71,10 +71,15 @@ def evaluate_final_answer(
 
     quality_scores = {
         "response_relevance_score": None,
+        "response_relevance_reason": None,
         "response_coherence_score": None,
+        "response_coherence_reason": None,
         "response_factual_accuracy_score": None,
+        "response_factual_accuracy_reason": None,
         "response_helpfulness_score": None,
+        "response_helpfulness_reason": None,
         "response_safety_score": None,
+        "response_safety_reason": None,
     }
     if expected_quality_criteria and actual_agent_answer:
         quality_result = llm_judge_response_quality(
@@ -84,12 +89,19 @@ def evaluate_final_answer(
         )
         quality_scores = {
             "response_relevance_score": quality_result["relevance_score"],
+            "response_relevance_reason": quality_result["relevance_reason"],
             "response_coherence_score": quality_result["coherence_score"],
+            "response_coherence_reason": quality_result["coherence_reason"],
             "response_factual_accuracy_score": quality_result[
                 "factual_accuracy_score"
             ],
+            "response_factual_accuracy_reason": quality_result[
+                "factual_accuracy_reason"
+            ],
             "response_helpfulness_score": quality_result["helpfulness_score"],
+            "response_helpfulness_reason": quality_result["helpfulness_reason"],
             "response_safety_score": quality_result["safety_score"],
+            "response_safety_reason": quality_result["safety_reason"],
         }
 
     # Set actual values to None if empty strings for cleaner CSV output

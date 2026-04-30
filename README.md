@@ -122,6 +122,14 @@ When this column is provided, the eval writes five separate 1-5 scores:
 - `response_helpfulness_score`
 - `response_safety_score`
 
+It also writes a concise reason for each score:
+
+- `response_relevance_reason`
+- `response_coherence_reason`
+- `response_factual_accuracy_reason`
+- `response_helpfulness_reason`
+- `response_safety_reason`
+
 These scores evaluate `messages[-1].content`, not the chart insight. They are
 normalized to a 0-1 scale before being included in `overall_score`.
 
