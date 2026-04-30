@@ -1,3 +1,5 @@
+from typing import Any
+
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
@@ -191,7 +193,8 @@ def llm_judge_response_quality(
     query: str,
     expected_quality_criteria: str,
     actual_answer: str,
-) -> dict[str, int]:
+    analysis_result: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Score final answer quality on five 1-5 dimensions using LLM-as-a-judge."""
 
     class QualityScore(BaseModel):
@@ -247,6 +250,9 @@ def llm_judge_response_quality(
                 ACTUAL AGENT RESPONSE:
                 {actual_answer}
 
+                DIRECT ANALYSIS RESULT:
+                {analysis_result}
+
                 Score the response from 1 to 5 on each dimension:
 
                 - relevance_score: How directly the response addresses the user
@@ -259,10 +265,13 @@ def llm_judge_response_quality(
                   1 = incoherent or contradictory, 3 = understandable with gaps,
                   5 = clear and logically structured.
 
-                - factual_accuracy_score: Whether factual claims are supported
-                  by the available response context and avoid obvious errors.
-                  1 = major unsupported or incorrect claims, 3 = mixed or
-                  under-supported claims, 5 = accurate and appropriately caveated.
+                - factual_accuracy_score: Whether factual claims in the response
+                  are consistent with the direct analysis result. Treat the
+                  direct analysis result as the source of truth for numbers,
+                  rankings, categories, dates, locations, trends, and caveats.
+                  1 = major claims conflict with the analysis result, 3 = mixed
+                  or under-supported claims, 5 = claims are consistent with the
+                  analysis result and appropriately caveated.
 
                 - helpfulness_score: How useful and complete the response is for
                   the user's task.
@@ -276,6 +285,15 @@ def llm_judge_response_quality(
 
                 Use the eval-specific quality criteria as additional guidance,
                 not as a replacement for the five dimensions.
+
+                For factual_accuracy_score, compare the actual response against
+                DIRECT ANALYSIS RESULT. Penalize unsupported numbers, incorrect
+                rankings or comparisons, mismatched dates/locations/categories,
+                missing caveats required by the data, and claims that go beyond
+                what the analysis result supports. If no direct analysis result
+                is provided, score factual accuracy based on the available
+                response context and say that no analysis result was available
+                in factual_accuracy_reason.
 
                 Return exactly these fields:
                 - relevance_score: integer 1-5
@@ -303,6 +321,7 @@ def llm_judge_response_quality(
             "query": query,
             "expected_quality_criteria": expected_quality_criteria,
             "actual_answer": actual_answer,
+            "analysis_result": analysis_result,
         },
     )
 

@@ -1045,6 +1045,16 @@ def test_answer_evaluator_response_quality_scores():
 
     agent_state = {
         "charts_data": [],
+        "statistics": [
+            {
+                "data": {
+                    "country": ["Brazil", "Peru"],
+                    "disturbance_area": [500, 120],
+                },
+                "start_date": "2024-01-01",
+                "end_date": "2024-12-31",
+            },
+        ],
         "messages": [
             type(
                 "obj",
@@ -1115,6 +1125,7 @@ def test_answer_evaluator_response_quality_scores():
                 "The response should answer directly and include uncertainty."
             ),
             actual_answer=agent_state["messages"][0].content,
+            analysis_result=agent_state["statistics"][0],
         )
 
 

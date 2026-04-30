@@ -3,6 +3,15 @@ from typing import Any
 from gnw_evals.evaluators.llm_judges import llm_judge, llm_judge_response_quality
 
 
+def _extract_latest_analysis_result(agent_state: dict[str, Any]) -> dict[str, Any] | None:
+    """Extract the latest analysis/statistics result from agent state."""
+    stats = agent_state.get("statistics", [])
+    if not stats:
+        return None
+    latest_result = stats[-1]
+    return latest_result if isinstance(latest_result, dict) else None
+
+
 def evaluate_final_answer(
     agent_state: dict[str, Any],
     expected_answer: str,
@@ -86,6 +95,7 @@ def evaluate_final_answer(
             query=query,
             expected_quality_criteria=expected_quality_criteria,
             actual_answer=actual_agent_answer,
+            analysis_result=_extract_latest_analysis_result(agent_state),
         )
         quality_scores = {
             "response_relevance_score": quality_result["relevance_score"],
