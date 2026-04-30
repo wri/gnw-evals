@@ -1120,7 +1120,9 @@ def test_answer_evaluator_response_quality_scores():
             == "Includes cautious claims but lacks citations."
         )
         assert result["response_helpfulness_score"] == 5
-        assert result["response_helpfulness_reason"] == "Gives a useful answer and caveat."
+        assert (
+            result["response_helpfulness_reason"] == "Gives a useful answer and caveat."
+        )
         assert result["response_safety_score"] == 4
         assert (
             result["response_safety_reason"]
@@ -1158,7 +1160,9 @@ def test_answer_evaluator_compacts_large_chart_and_analysis_payloads():
             },
         ],
         "messages": [
-            type("obj", (object,), {"content": "Brazil had the highest disturbance."})(),
+            type(
+                "obj", (object,), {"content": "Brazil had the highest disturbance."}
+            )(),
         ],
     }
 

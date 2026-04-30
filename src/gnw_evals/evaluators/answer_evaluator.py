@@ -9,7 +9,9 @@ MAX_PREVIEW_ITEMS = 5
 MAX_STRING_LENGTH = 500
 
 
-def _extract_latest_analysis_result(agent_state: dict[str, Any]) -> dict[str, Any] | None:
+def _extract_latest_analysis_result(
+    agent_state: dict[str, Any],
+) -> dict[str, Any] | None:
     """Extract the latest analysis/statistics result from agent state."""
     stats = agent_state.get("statistics", [])
     if not stats:
@@ -146,9 +148,7 @@ def evaluate_final_answer(
             "response_relevance_reason": quality_result["relevance_reason"],
             "response_coherence_score": quality_result["coherence_score"],
             "response_coherence_reason": quality_result["coherence_reason"],
-            "response_factual_accuracy_score": quality_result[
-                "factual_accuracy_score"
-            ],
+            "response_factual_accuracy_score": quality_result["factual_accuracy_score"],
             "response_factual_accuracy_reason": quality_result[
                 "factual_accuracy_reason"
             ],
