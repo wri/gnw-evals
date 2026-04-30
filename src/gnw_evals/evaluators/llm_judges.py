@@ -310,6 +310,7 @@ def llm_judge_response_quality(
                   the user's task. Consider whether any chart is a useful and
                   readable way to answer the question, with suitable chart type,
                   labels, units, grouping, and level of detail.
+
                   1 = not useful, 3 = somewhat useful but incomplete,
                   5 = useful, complete, and actionable.
 
