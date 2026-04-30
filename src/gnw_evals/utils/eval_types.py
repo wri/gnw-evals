@@ -28,9 +28,11 @@ class TestResult(BaseModel):
 
     # Dataset evaluation fields - separate binary scores (0/1/None)
     dataset_id_match_score: float | None = None
+    dataset_parameter_match_score: float | None = None
     context_layer_match_score: float | None = None
     actual_dataset_id: str | None = None
     actual_dataset_name: str | None = None
+    actual_dataset_parameters: str | None = None
     actual_context_layer: str | None = None
 
     # Data pull evaluation fields - separate binary scores (0/1/None)
@@ -58,6 +60,7 @@ class TestResult(BaseModel):
     expected_aoi_source: str = ""
     expected_dataset_id: str = ""
     expected_dataset_name: str = ""
+    expected_dataset_parameters: str = ""
     expected_context_layer: str = ""
     expected_start_date: str = ""
     expected_end_date: str = ""
@@ -83,6 +86,7 @@ class ExpectedData(BaseModel):
     expected_aoi_source: str = ""
     expected_dataset_id: str = ""
     expected_dataset_name: str = ""
+    expected_dataset_parameters: str = ""
     expected_context_layer: str = ""
     expected_start_date: str = ""
     expected_end_date: str = ""

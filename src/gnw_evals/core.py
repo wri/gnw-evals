@@ -142,7 +142,7 @@ def _print_csv_summary(results: list[TestResult]) -> None:
 
     passed = sum(1 for r in results if r.overall_score >= 0.7)
 
-    # Label column width based on longest label ("Context Layer Match" = 18 chars)
+    # Label column width based on longest label ("Dataset Parameter Match" = 23 chars)
     LABEL_WIDTH = 25
 
     def _metric_line(label: str, scores: list) -> str:
@@ -181,6 +181,13 @@ def _print_csv_summary(results: list[TestResult]) -> None:
         if r.dataset_id_match_score is not None
     ]
     print(_metric_line("Dataset ID Match", dataset_id_scores))
+
+    dataset_parameter_scores = [
+        r.dataset_parameter_match_score
+        for r in results
+        if r.dataset_parameter_match_score is not None
+    ]
+    print(_metric_line("Dataset Parameter Match", dataset_parameter_scores))
 
     context_scores = [
         r.context_layer_match_score
