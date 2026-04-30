@@ -1161,7 +1161,9 @@ def test_answer_evaluator_compacts_large_chart_and_analysis_payloads():
         ],
         "messages": [
             type(
-                "obj", (object,), {"content": "Brazil had the highest disturbance."}
+                "obj",
+                (object,),
+                {"content": "Brazil had the highest disturbance."},
             )(),
         ],
     }
