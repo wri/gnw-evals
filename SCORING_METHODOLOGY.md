@@ -81,7 +81,8 @@ The following comparisons (i.e. between expected and actual values) are performe
 **9. Response Quality Scores**
 - **Evaluated when:** `expected_quality_criteria` is provided AND agent produced a final message
 - **Comparison:** LLM-as-a-judge
-  - Uses the original query, the eval-specific `expected_quality_criteria`, and the final agent response
+  - Uses the original query, the eval-specific `expected_quality_criteria`, the final agent response, `charts_data[0]` when available, and the direct analysis result
+  - Folds chart relevance, correctness, readability, and usefulness into the existing relevance, factual accuracy, and helpfulness dimensions
   - Produces separate 1-5 scores for:
     - `response_relevance_score`
     - `response_coherence_score`

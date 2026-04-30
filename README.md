@@ -106,8 +106,8 @@ Use `expected_answer` when the expected output is a specific value, such as
 `TRUE`, `198.4 hectares`, `Brazil`, or `2015`.
 
 Use `expected_quality_criteria` when you want a broader, subjective evaluation
-of the final agent response. The cell should describe what a high-quality
-response should do for that row, for example:
+of the final agent response and any generated chart. The cell should describe
+what a high-quality response should do for that row, for example:
 
 ```text
 The response should answer the user's question directly, explain the main trend,
@@ -130,8 +130,11 @@ It also writes a concise reason for each score:
 - `response_helpfulness_reason`
 - `response_safety_reason`
 
-These scores evaluate `messages[-1].content`, not the chart insight. They are
-normalized to a 0-1 scale before being included in `overall_score`.
+These scores evaluate `messages[-1].content` plus `charts_data[0]` when chart
+data is available. Chart relevance, correctness, readability, and usefulness
+are folded into the existing relevance, factual accuracy, and helpfulness
+dimensions. Scores are normalized to a 0-1 scale before being included in
+`overall_score`.
 
 ## Running E2E Tests
 

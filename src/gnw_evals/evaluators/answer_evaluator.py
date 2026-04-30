@@ -1,6 +1,12 @@
 from typing import Any
 
-from gnw_evals.evaluators.llm_judges import llm_judge, llm_judge_response_quality
+from gnw_evals.evaluators.llm_judges import (
+    llm_judge,
+    llm_judge_response_quality,
+)
+
+MAX_PREVIEW_ITEMS = 5
+MAX_STRING_LENGTH = 500
 
 
 def _extract_latest_analysis_result(agent_state: dict[str, Any]) -> dict[str, Any] | None:
@@ -10,6 +16,37 @@ def _extract_latest_analysis_result(agent_state: dict[str, Any]) -> dict[str, An
         return None
     latest_result = stats[-1]
     return latest_result if isinstance(latest_result, dict) else None
+
+
+def _compact_for_judge(value: Any, max_items: int = MAX_PREVIEW_ITEMS) -> Any:
+    """Create a bounded preview of large nested data before sending to an LLM."""
+    if isinstance(value, dict):
+        return {
+            key: _compact_for_judge(nested_value, max_items)
+            for key, nested_value in value.items()
+        }
+
+    if isinstance(value, list):
+        if len(value) <= max_items * 2:
+            return [_compact_for_judge(item, max_items) for item in value]
+        return {
+            "total_items": len(value),
+            "first_items": [
+                _compact_for_judge(item, max_items) for item in value[:max_items]
+            ],
+            "last_items": [
+                _compact_for_judge(item, max_items) for item in value[-max_items:]
+            ],
+        }
+
+    if isinstance(value, str) and len(value) > MAX_STRING_LENGTH:
+        return {
+            "truncated": True,
+            "original_length": len(value),
+            "preview": value[:MAX_STRING_LENGTH],
+        }
+
+    return value
 
 
 def evaluate_final_answer(
@@ -41,7 +78,12 @@ def evaluate_final_answer(
     """
     # Extract charts insight
     charts_data = agent_state.get("charts_data", [])
-    actual_charts_answer = charts_data[0].get("insight", "") if charts_data else ""
+    actual_chart_data = (
+        charts_data[0] if charts_data and isinstance(charts_data[0], dict) else None
+    )
+    actual_charts_answer = (
+        actual_chart_data.get("insight", "") if actual_chart_data else ""
+    )
 
     # Extract agent message
     messages = agent_state.get("messages", [])
@@ -90,12 +132,14 @@ def evaluate_final_answer(
         "response_safety_score": None,
         "response_safety_reason": None,
     }
+    analysis_result = _extract_latest_analysis_result(agent_state)
     if expected_quality_criteria and actual_agent_answer:
         quality_result = llm_judge_response_quality(
             query=query,
             expected_quality_criteria=expected_quality_criteria,
             actual_answer=actual_agent_answer,
-            analysis_result=_extract_latest_analysis_result(agent_state),
+            analysis_result=_compact_for_judge(analysis_result),
+            chart_data=_compact_for_judge(actual_chart_data),
         )
         quality_scores = {
             "response_relevance_score": quality_result["relevance_score"],

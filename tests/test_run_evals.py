@@ -1044,7 +1044,14 @@ def test_answer_evaluator_response_quality_scores():
     from gnw_evals.evaluators import evaluate_final_answer
 
     agent_state = {
-        "charts_data": [],
+        "charts_data": [
+            {
+                "type": "bar",
+                "x": "country",
+                "y": "disturbance_area",
+                "insight": "Brazil had the highest disturbance.",
+            },
+        ],
         "statistics": [
             {
                 "data": {
@@ -1126,7 +1133,64 @@ def test_answer_evaluator_response_quality_scores():
             ),
             actual_answer=agent_state["messages"][0].content,
             analysis_result=agent_state["statistics"][0],
+            chart_data=agent_state["charts_data"][0],
         )
+
+
+def test_answer_evaluator_compacts_large_chart_and_analysis_payloads():
+    """Test quality judging sends bounded previews of large payloads."""
+    from unittest.mock import patch
+
+    from gnw_evals.evaluators import evaluate_final_answer
+
+    agent_state = {
+        "charts_data": [
+            {
+                "type": "bar",
+                "data": [{"rank": i, "value": i * 10} for i in range(20)],
+                "insight": "Brazil had the highest disturbance.",
+            },
+        ],
+        "statistics": [
+            {
+                "data": [{"rank": i, "value": i * 10} for i in range(20)],
+                "notes": "x" * 600,
+            },
+        ],
+        "messages": [
+            type("obj", (object,), {"content": "Brazil had the highest disturbance."})(),
+        ],
+    }
+
+    with patch(
+        "gnw_evals.evaluators.answer_evaluator.llm_judge_response_quality",
+    ) as mock_judge:
+        mock_judge.return_value = {
+            "relevance_score": 5,
+            "relevance_reason": "Relevant.",
+            "coherence_score": 5,
+            "coherence_reason": "Clear.",
+            "factual_accuracy_score": 5,
+            "factual_accuracy_reason": "Consistent.",
+            "helpfulness_score": 5,
+            "helpfulness_reason": "Helpful.",
+            "safety_score": 5,
+            "safety_reason": "Safe.",
+        }
+
+        evaluate_final_answer(
+            agent_state=agent_state,
+            expected_answer="",
+            expected_quality_criteria="Judge quality.",
+            query="Which country had the highest disturbance?",
+        )
+
+        call_kwargs = mock_judge.call_args.kwargs
+        assert call_kwargs["analysis_result"]["data"]["total_items"] == 20
+        assert len(call_kwargs["analysis_result"]["data"]["first_items"]) == 5
+        assert len(call_kwargs["analysis_result"]["data"]["last_items"]) == 5
+        assert call_kwargs["analysis_result"]["notes"]["truncated"] is True
+        assert call_kwargs["chart_data"]["data"]["total_items"] == 20
 
 
 def test_overall_score_with_both_answer_scores():
