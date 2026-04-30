@@ -13,6 +13,7 @@ All individual scores are **binary** (0 or 1) or `None`:
 
 The following comparisons (i.e. between expected and actual values) are performed using LLM-as-a-Judge
 * Answer quality evaluation (`charts_answer_score`, `agent_answer_score`)
+* Response quality evaluation (`response_relevance_score`, `response_coherence_score`, `response_factual_accuracy_score`, `response_helpfulness_score`, `response_safety_score`)
 * Clarification detection (`clarification_requested_score`) 
 
 ## Individual Score Components
@@ -77,9 +78,22 @@ The following comparisons (i.e. between expected and actual values) are performe
   - Evaluates raw agent response from `messages[-1].content`
 - **Score:** 1 if agent message captures expected answer, otherwise 0
 
+**9. Response Quality Scores**
+- **Evaluated when:** `expected_quality_criteria` is provided AND agent produced a final message
+- **Comparison:** LLM-as-a-judge
+  - Uses the original query, the eval-specific `expected_quality_criteria`, and the final agent response
+  - Produces separate 1-5 scores for:
+    - `response_relevance_score`
+    - `response_coherence_score`
+    - `response_factual_accuracy_score`
+    - `response_helpfulness_score`
+    - `response_safety_score`
+  - Scores are normalized to 0-1 before inclusion in `overall_score`
+- **Score:** 1 is lowest quality, 5 is highest quality
+
 ### Clarification Handling
 
-**9. Clarification Requested Score** (`clarification_requested_score`)
+**10. Clarification Requested Score** (`clarification_requested_score`)
 - **Evaluated when:** Agent requests clarification instead of completing the task
 - **Comparison:** LLM-as-a-judge
   - First, detects if agent response is a clarification request

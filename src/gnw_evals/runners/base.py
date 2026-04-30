@@ -82,6 +82,11 @@ class BaseTestRunner(ABC):
             # Answer evaluation fields
             charts_answer_score=None,
             agent_answer_score=None,
+            response_relevance_score=None,
+            response_coherence_score=None,
+            response_factual_accuracy_score=None,
+            response_helpfulness_score=None,
+            response_safety_score=None,
             actual_charts_answer=None,
             actual_agent_answer=None,
             # Clarification evaluation fields
@@ -136,6 +141,8 @@ class BaseTestRunner(ABC):
         answer_eval = evaluate_final_answer(
             agent_state,
             expected_data.expected_answer,
+            expected_data.expected_quality_criteria,
+            query,
         )
 
         return {
@@ -154,13 +161,14 @@ class BaseTestRunner(ABC):
     ) -> float:
         """Calculate overall score from individual evaluation scores.
 
-        Each check (AOI ID, dataset ID, context layer, data pull,
-        date match, answer, clarification) is scored independently as 0 or 1.
+        Most checks are scored independently as 0 or 1. Response quality checks
+        are scored from 1 to 5 and normalized before being averaged.
 
         Only non-None scores are included in the average. A score of None
         means that check was not applicable (missing expected value).
         """
         scores = []
+        quality_scores = []
 
         # Clarification check
         if expected_data.expected_clarification:
@@ -188,9 +196,16 @@ class BaseTestRunner(ABC):
         if expected_data.expected_answer:
             scores.append(evaluations.get("charts_answer_score"))
             scores.append(evaluations.get("agent_answer_score"))
+        if expected_data.expected_quality_criteria:
+            quality_scores.append(evaluations.get("response_relevance_score"))
+            quality_scores.append(evaluations.get("response_coherence_score"))
+            quality_scores.append(evaluations.get("response_factual_accuracy_score"))
+            quality_scores.append(evaluations.get("response_helpfulness_score"))
+            quality_scores.append(evaluations.get("response_safety_score"))
 
         # Filter out None values (checks that weren't applicable)
         valid_scores = [s for s in scores if s is not None]
+        valid_scores.extend(s / 5 for s in quality_scores if s is not None)
 
         if not valid_scores:
             return 0.0

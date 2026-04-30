@@ -77,8 +77,8 @@ For the corresponding score to be computed, expected values must be provided. Th
 - `expected_start_date` - Expected start date (YYYY-MM-DD or YYYY). For date ranges, use the earliest expected date.
 - `expected_end_date` - Expected end date (YYYY-MM-DD or YYYY). For date ranges, use the latest expected date.
 - `expected_answer` - Expected answer text for LLM-as-a-judge comparison. Can be empty if not applicable.
+- `expected_quality_criteria` - Optional quality criteria for a more advanced LLM-as-a-judge check of the final agent response. When provided, the eval scores relevance, coherence, factual accuracy, helpfulness, and safety from 1-5.
 - `expected_clarification` - Boolean flag indicating whether agent should request clarification instead of completing the task (default: `False`)
-- `expected_` 
 
 
 Other columns, optional: 
@@ -99,6 +99,31 @@ For the GOLDEN eval set, it is recommended to include the following complete col
 - Expected columns: `expected_aoi_ids`, `expected_dataset_id`, `expected_start_date`,  `expected_end_date`,  `expected_answer`, `expected_clarification`  
 
 **A "golden set" for evaluations should follow best practice. A summary of these best practices is provided here: [GOLDENSET_GUIDELINES.md](GOLDENSET_GUIDELINES.md).**
+
+### Response Quality Checks
+
+Use `expected_answer` when the expected output is a specific value, such as
+`TRUE`, `198.4 hectares`, `Brazil`, or `2015`.
+
+Use `expected_quality_criteria` when you want a broader, subjective evaluation
+of the final agent response. The cell should describe what a high-quality
+response should do for that row, for example:
+
+```text
+The response should answer the user's question directly, explain the main trend,
+mention uncertainty caused by sparse data, and avoid overclaiming causality.
+```
+
+When this column is provided, the eval writes five separate 1-5 scores:
+
+- `response_relevance_score`
+- `response_coherence_score`
+- `response_factual_accuracy_score`
+- `response_helpfulness_score`
+- `response_safety_score`
+
+These scores evaluate `messages[-1].content`, not the chart insight. They are
+normalized to a 0-1 scale before being included in `overall_score`.
 
 ## Running E2E Tests
 

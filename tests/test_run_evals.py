@@ -1037,6 +1037,65 @@ def test_answer_evaluator_no_charts_data():
         )
 
 
+def test_answer_evaluator_response_quality_scores():
+    """Test that expected_quality_criteria triggers five-dimension quality scoring."""
+    from unittest.mock import patch
+
+    from gnw_evals.evaluators import evaluate_final_answer
+
+    agent_state = {
+        "charts_data": [],
+        "messages": [
+            type(
+                "obj",
+                (object,),
+                {
+                    "content": (
+                        "Brazil had the highest disturbance. The result should "
+                        "be interpreted cautiously because alert counts can be "
+                        "affected by data availability."
+                    ),
+                },
+            )(),
+        ],
+    }
+
+    with patch(
+        "gnw_evals.evaluators.answer_evaluator.llm_judge_response_quality",
+    ) as mock_judge:
+        mock_judge.return_value = {
+            "relevance_score": 5,
+            "coherence_score": 4,
+            "factual_accuracy_score": 3,
+            "helpfulness_score": 5,
+            "safety_score": 4,
+        }
+
+        result = evaluate_final_answer(
+            agent_state=agent_state,
+            expected_answer="",
+            expected_quality_criteria=(
+                "The response should answer directly and include uncertainty."
+            ),
+            query="Which country had the highest disturbance?",
+        )
+
+        assert result["charts_answer_score"] is None
+        assert result["agent_answer_score"] is None
+        assert result["response_relevance_score"] == 5
+        assert result["response_coherence_score"] == 4
+        assert result["response_factual_accuracy_score"] == 3
+        assert result["response_helpfulness_score"] == 5
+        assert result["response_safety_score"] == 4
+        mock_judge.assert_called_once_with(
+            query="Which country had the highest disturbance?",
+            expected_quality_criteria=(
+                "The response should answer directly and include uncertainty."
+            ),
+            actual_answer=agent_state["messages"][0].content,
+        )
+
+
 def test_overall_score_with_both_answer_scores():
     """Test that overall score calculation includes both answer scores.
 
@@ -1076,6 +1135,42 @@ def test_overall_score_with_both_answer_scores():
     # = (1.0 + 1.0 + 1.0 + 1.0 + 0.0) / 5 = 0.8
     assert score == 0.8, (
         f"Expected 0.8, got {score}. Both answer scores should be included in average"
+    )
+
+
+def test_overall_score_with_response_quality_scores():
+    """Test that 1-5 response quality scores are normalized in overall score."""
+    from gnw_evals.runners.api import APITestRunner
+    from gnw_evals.utils.eval_types import ExpectedData
+
+    runner = APITestRunner(api_base_url="http://test", api_token="test")
+
+    evaluations = {
+        "aoi_id_match_score": 1.0,
+        "dataset_id_match_score": None,
+        "context_layer_match_score": None,
+        "data_pull_exists_score": None,
+        "date_match_score": None,
+        "charts_answer_score": None,
+        "agent_answer_score": None,
+        "response_relevance_score": 1,
+        "response_coherence_score": 4,
+        "response_factual_accuracy_score": 3,
+        "response_helpfulness_score": 5,
+        "response_safety_score": 4,
+        "clarification_requested_score": None,
+    }
+
+    expected_data = ExpectedData(
+        expected_aoi_ids=["BRA"],
+        expected_quality_criteria="Score final answer quality.",
+    )
+
+    score = runner._calculate_overall_score(evaluations, expected_data)
+
+    # Average normalized scores: 1.0, 0.2, 0.8, 0.6, 1.0, 0.8 = 0.73
+    assert score == 0.73, (
+        f"Expected 0.73, got {score}. Quality scores should be normalized"
     )
 
 

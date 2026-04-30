@@ -46,6 +46,11 @@ class TestResult(BaseModel):
     # Answer evaluation fields
     charts_answer_score: float | None = None
     agent_answer_score: float | None = None
+    response_relevance_score: int | None = None
+    response_coherence_score: int | None = None
+    response_factual_accuracy_score: int | None = None
+    response_helpfulness_score: int | None = None
+    response_safety_score: int | None = None
     actual_charts_answer: str | None = None
     actual_agent_answer: str | None = None
 
@@ -62,6 +67,7 @@ class TestResult(BaseModel):
     expected_start_date: str = ""
     expected_end_date: str = ""
     expected_answer: str = ""
+    expected_quality_criteria: str = ""
     expected_clarification: bool | None = None
     test_group: str = "unknown"
     status: str = "ready"
@@ -87,6 +93,7 @@ class ExpectedData(BaseModel):
     expected_start_date: str = ""
     expected_end_date: str = ""
     expected_answer: str = ""
+    expected_quality_criteria: str = ""
     expected_clarification: bool | None = None
     test_group: str = "unknown"
     status: str = "ready"

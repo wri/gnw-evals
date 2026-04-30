@@ -156,6 +156,14 @@ def _print_csv_summary(results: list[TestResult]) -> None:
             )
         return f"{label_col:<{LABEL_WIDTH}} {0:>3} / {0:>3}"
 
+    def _quality_metric_line(label: str, scores: list) -> str:
+        label_col = f"{label}:"
+        evaluated = len(scores)
+        if evaluated > 0:
+            avg = sum(scores) / evaluated
+            return f"{label_col:<{LABEL_WIDTH}} avg {avg:.2f} / 5 ({evaluated:>3})"
+        return f"{label_col:<{LABEL_WIDTH}} avg -- / 5 ({0:>3})"
+
     print(f"\n{'=' * 50}")
     print("SIMPLE E2E TEST SUMMARY")
     print(f"{'=' * 50}")
@@ -205,6 +213,17 @@ def _print_csv_summary(results: list[TestResult]) -> None:
         r.charts_answer_score for r in results if r.charts_answer_score is not None
     ]
     print(_metric_line("Charts Answer", charts_scores))
+
+    quality_metrics = [
+        ("Response Relevance", "response_relevance_score"),
+        ("Response Coherence", "response_coherence_score"),
+        ("Response Factual Accuracy", "response_factual_accuracy_score"),
+        ("Response Helpfulness", "response_helpfulness_score"),
+        ("Response Safety", "response_safety_score"),
+    ]
+    for label, field in quality_metrics:
+        scores = [getattr(r, field) for r in results if getattr(r, field) is not None]
+        print(_quality_metric_line(label, scores))
 
     clarification_scores = [
         r.clarification_requested_score
