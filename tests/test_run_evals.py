@@ -208,11 +208,11 @@ async def test_run_csv_tests_with_mocked_data(
         with patch("gnw_evals.runners.api.httpx.AsyncClient", return_value=mock_client):
             with patch("gnw_evals.core.ResultExporter") as mock_exporter_class:
                 with patch(
-                    "gnw_evals.evaluators.llm_judges.llm_judge",
+                    "gnw_evals.evaluators.answer_evaluator.llm_judge",
                     return_value=1.0,
                 ):
                     with patch(
-                        "gnw_evals.evaluators.llm_judges.llm_judge_clarification",
+                        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification",
                         return_value={"is_clarification": False, "explanation": ""},
                     ):
                         mock_exporter = MagicMock()
@@ -341,11 +341,11 @@ async def test_run_csv_tests_with_multiple_workers(
         with patch("gnw_evals.runners.api.httpx.AsyncClient", return_value=mock_client):
             with patch("gnw_evals.core.ResultExporter") as mock_exporter_class:
                 with patch(
-                    "gnw_evals.evaluators.llm_judges.llm_judge",
+                    "gnw_evals.evaluators.answer_evaluator.llm_judge",
                     return_value=1.0,
                 ):
                     with patch(
-                        "gnw_evals.evaluators.llm_judges.llm_judge_clarification",
+                        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification",
                         return_value={"is_clarification": False, "explanation": ""},
                     ):
                         mock_exporter = MagicMock()
@@ -407,11 +407,11 @@ async def test_run_csv_tests_with_api_error(mock_test_cases, mock_config):
         with patch("gnw_evals.runners.api.httpx.AsyncClient", return_value=mock_client):
             with patch("gnw_evals.core.ResultExporter") as mock_exporter_class:
                 with patch(
-                    "gnw_evals.evaluators.llm_judges.llm_judge",
+                    "gnw_evals.evaluators.answer_evaluator.llm_judge",
                     return_value=1.0,
                 ):
                     with patch(
-                        "gnw_evals.evaluators.llm_judges.llm_judge_clarification",
+                        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification",
                         return_value={"is_clarification": False, "explanation": ""},
                     ):
                         mock_exporter = MagicMock()
