@@ -16,6 +16,7 @@ EVAL_SETS = {
     "analysis_interpretation": "785648141",
     "guardrail": "927934976",
     "date_selection": "1962457177",
+    "user_gold": "2033513940",
 }
 
 # Primary metric field per eval set.

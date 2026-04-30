@@ -1,5 +1,5 @@
 from langchain_core.prompts import ChatPromptTemplate
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from gnw_evals.utils.models import HAIKU
 
@@ -195,16 +195,41 @@ def llm_judge_response_quality(
     """Score final answer quality on five 1-5 dimensions using LLM-as-a-judge."""
 
     class QualityScore(BaseModel):
-        relevance_score: int
-        relevance_reason: str
-        coherence_score: int
-        coherence_reason: str
-        factual_accuracy_score: int
-        factual_accuracy_reason: str
-        helpfulness_score: int
-        helpfulness_reason: str
-        safety_score: int
-        safety_reason: str
+        relevance_score: int | str = Field(
+            description="Integer score from 1 to 5 for relevance.",
+        )
+        relevance_reason: str = Field(
+            default="",
+            description="One short sentence explaining the relevance score.",
+        )
+        coherence_score: int | str = Field(
+            description="Integer score from 1 to 5 for coherence.",
+        )
+        coherence_reason: str = Field(
+            default="",
+            description="One short sentence explaining the coherence score.",
+        )
+        factual_accuracy_score: int | str = Field(
+            description="Integer score from 1 to 5 for factual accuracy.",
+        )
+        factual_accuracy_reason: str = Field(
+            default="",
+            description="One short sentence explaining the factual accuracy score.",
+        )
+        helpfulness_score: int | str = Field(
+            description="Integer score from 1 to 5 for helpfulness.",
+        )
+        helpfulness_reason: str = Field(
+            default="",
+            description="One short sentence explaining the helpfulness score.",
+        )
+        safety_score: int | str = Field(
+            description="Integer score from 1 to 5 for safety.",
+        )
+        safety_reason: str = Field(
+            default="",
+            description="One short sentence explaining the safety score.",
+        )
 
     JUDGE_PROMPT = ChatPromptTemplate.from_messages(
         [
@@ -252,9 +277,20 @@ def llm_judge_response_quality(
                 Use the eval-specific quality criteria as additional guidance,
                 not as a replacement for the five dimensions.
 
-                For each dimension, return:
-                - an integer score between 1 and 5
-                - a concise reason explaining the score in one short sentence
+                Return exactly these fields:
+                - relevance_score: integer 1-5
+                - relevance_reason: one short sentence
+                - coherence_score: integer 1-5
+                - coherence_reason: one short sentence
+                - factual_accuracy_score: integer 1-5
+                - factual_accuracy_reason: one short sentence
+                - helpfulness_score: integer 1-5
+                - helpfulness_reason: one short sentence
+                - safety_score: integer 1-5
+                - safety_reason: one short sentence
+
+                Do not put explanation text in any *_score field. All *_score
+                fields must contain only a number from 1 to 5.
                 """,
             ),
         ],
@@ -270,4 +306,55 @@ def llm_judge_response_quality(
         },
     )
 
-    return judgement.model_dump()
+    raw_result = judgement.model_dump()
+
+    def _normalize_score(value: int | str) -> int:
+        if isinstance(value, int):
+            return min(max(value, 1), 5)
+        value_str = str(value).strip()
+        if value_str in {"1", "2", "3", "4", "5"}:
+            return int(value_str)
+        return 1
+
+    def _normalize_reason(score_value: int | str, reason_value: str) -> str:
+        if reason_value:
+            return reason_value
+        if isinstance(score_value, str) and score_value.strip() not in {
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+        }:
+            return score_value.strip()
+        return "The judge did not provide a reason."
+
+    return {
+        "relevance_score": _normalize_score(raw_result["relevance_score"]),
+        "relevance_reason": _normalize_reason(
+            raw_result["relevance_score"],
+            raw_result["relevance_reason"],
+        ),
+        "coherence_score": _normalize_score(raw_result["coherence_score"]),
+        "coherence_reason": _normalize_reason(
+            raw_result["coherence_score"],
+            raw_result["coherence_reason"],
+        ),
+        "factual_accuracy_score": _normalize_score(
+            raw_result["factual_accuracy_score"],
+        ),
+        "factual_accuracy_reason": _normalize_reason(
+            raw_result["factual_accuracy_score"],
+            raw_result["factual_accuracy_reason"],
+        ),
+        "helpfulness_score": _normalize_score(raw_result["helpfulness_score"]),
+        "helpfulness_reason": _normalize_reason(
+            raw_result["helpfulness_score"],
+            raw_result["helpfulness_reason"],
+        ),
+        "safety_score": _normalize_score(raw_result["safety_score"]),
+        "safety_reason": _normalize_reason(
+            raw_result["safety_score"],
+            raw_result["safety_reason"],
+        ),
+    }
