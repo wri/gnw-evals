@@ -65,6 +65,13 @@ def llm_judge_clarification(agent_state: dict, query: str) -> dict:
             - Asking to choose between options
             - Expressing uncertainty about what the user wants
 
+            Do NOT count the response as a clarification request if the agent directly answers the user's question
+            and only asks an optional follow-up question afterward, such as offering to analyze a specific region,
+            compare locations, or continue with a next step.
+
+            Only return true if the response primarily asks for more information before it can answer,
+            or says it cannot proceed because the original query is ambiguous.
+
             Return true if this is a clarification request, false if the agent attempted to complete the task.
             """,
             ),

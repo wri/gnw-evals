@@ -977,6 +977,19 @@ def test_clarification_evaluator_no_query():
     )
 
 
+def test_clarification_judge_allows_optional_follow_up_questions():
+    """Test that clarification prompt excludes answered metadata follow-ups."""
+    import inspect
+
+    from gnw_evals.evaluators.llm_judges import llm_judge_clarification
+
+    source = inspect.getsource(llm_judge_clarification)
+
+    assert "optional follow-up question" in source
+    assert "directly answers the user's question" in source
+    assert "before it can answer" in source
+
+
 def test_clarification_and_other_evaluations_run_together():
     """Integration test: clarification detection doesn't block other evaluations.
 
