@@ -77,6 +77,7 @@ For the corresponding score to be computed, expected values must be provided. Th
 - `expected_start_date` - Expected start date (YYYY-MM-DD or YYYY). For date ranges, use the earliest expected date.
 - `expected_end_date` - Expected end date (YYYY-MM-DD or YYYY). For date ranges, use the latest expected date.
 - `expected_answer` - Expected answer text for LLM-as-a-judge comparison. Can be empty if not applicable.
+- `expected_text` - Expected information, phrasing, or behavior that should appear in the final agent response. This is a semantic inclusion check, not an exact match. Use it for text such as "30 x 30 resolution" or instructions such as "clarifies to user that dataset isn't available". Can be empty if not applicable.
 - `expected_clarification` - Boolean flag indicating whether agent should request clarification instead of completing the task (default: `False`)
 - `expected_` 
 

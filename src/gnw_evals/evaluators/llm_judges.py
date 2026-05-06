@@ -185,3 +185,57 @@ def llm_judge(expected_answer: str, actual_answer: str):
     # llm_judgement.answer_eval_type
 
     return llm_judgement.score
+
+
+def llm_judge_expected_text(expected_text: str, actual_answer: str) -> int:
+    """Judge whether an answer includes semantically similar expected text."""
+
+    class TextMatchScore(BaseModel):
+        score: int
+
+    JUDGE_PROMPT = ChatPromptTemplate.from_messages(
+        [
+            (
+                "user",
+                """
+                You are evaluating whether an AI-generated response includes
+                the expected information, meaning, or behavior.
+
+                EXPECTED TEXT OR INSTRUCTION:
+                {expected_text}
+
+                ACTUAL AGENT RESPONSE:
+                {actual_answer}
+
+                Return score 1 if the actual response includes information that
+                is semantically similar to the expected text, even if the wording
+                is different. Also return 1 if the expected text is an
+                instruction or qualitative behavior and the response satisfies
+                it.
+
+                Return score 0 if the response omits, contradicts, or only
+                weakly implies the expected text or behavior.
+
+                Examples:
+                - Expected "30 x 30 resolution" matches responses that say
+                  "30-meter by 30-meter pixels" or "30 m resolution".
+                - Expected "clarifies to user that dataset isn't available"
+                  matches responses that explain the requested dataset is not
+                  available and ask the user to choose another option.
+
+                Return:
+                - score: 1 if the expected text/behavior is included, otherwise 0
+                """,
+            ),
+        ],
+    )
+
+    judge_chain = JUDGE_PROMPT | HAIKU.with_structured_output(TextMatchScore)
+    judgement = judge_chain.invoke(
+        {
+            "expected_text": expected_text,
+            "actual_answer": actual_answer,
+        },
+    )
+
+    return judgement.score
