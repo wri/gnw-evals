@@ -13,6 +13,7 @@ class TestResult(BaseModel):
     thread_id: str
     trace_id: str | None = None
     trace_url: str | None = None
+    test_id: str = ""
     query: str
     eval_set: str = "custom"
     overall_score: float
@@ -95,6 +96,7 @@ class ExpectedData(BaseModel):
     expected_answer: str = ""
     expected_text: str = ""
     expected_clarification: bool | None = None
+    test_id: str = ""
     test_group: str = "unknown"
     status: str = "ready"
     thread_id: str | None = None

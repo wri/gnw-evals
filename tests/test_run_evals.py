@@ -588,6 +588,7 @@ def test_data_pull_evaluator_missing_expected_dates():
     # Data pull evaluation (no longer includes dates)
     data_result = evaluate_data_pull(
         agent_state=agent_state,
+        expected_answer="Test",
         min_rows=1,
         query="",
     )
@@ -602,6 +603,30 @@ def test_data_pull_evaluator_missing_expected_dates():
     assert data_result["data_pull_exists_score"] == 1.0, "Data pull should succeed"
     assert date_result["date_match_score"] is None, (
         "Date score should be None when expected dates are missing"
+    )
+
+
+def test_data_pull_evaluator_missing_expected_answer():
+    """Test that data pull score is None when expected_answer is missing."""
+    from gnw_evals.evaluators import evaluate_data_pull
+
+    agent_state = {
+        "statistics": [
+            {
+                "data": {"value": [100, 200]},
+            },
+        ],
+    }
+
+    data_result = evaluate_data_pull(
+        agent_state=agent_state,
+        expected_answer="",
+        min_rows=1,
+        query="",
+    )
+
+    assert data_result["data_pull_exists_score"] is None, (
+        "Data pull score should be None when expected_answer is missing"
     )
 
 
@@ -776,6 +801,7 @@ def test_data_pull_evaluator_all_fields_present():
     # Data pull evaluation
     data_result = evaluate_data_pull(
         agent_state=agent_state,
+        expected_answer="Test",
         min_rows=1,
         query="",
     )

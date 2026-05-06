@@ -43,6 +43,7 @@ class ResultExporter:
 
         # 1. Summary CSV - just query and scores
         summary_fields = [
+            "test_id",
             "query",
             "eval_set",
             "overall_score",
@@ -75,6 +76,7 @@ class ResultExporter:
         # 2. Detailed CSV - expected vs actual side by side
         detailed_fields = [
             # Basic info
+            "test_id",
             "query",
             "eval_set",
             "thread_id",
