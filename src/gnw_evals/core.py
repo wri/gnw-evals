@@ -213,6 +213,13 @@ def _print_csv_summary(results: list[TestResult]) -> None:
     ]
     print(_metric_line("Charts Answer", charts_scores))
 
+    expected_text_scores = [
+        r.expected_text_match_score
+        for r in results
+        if r.expected_text_match_score is not None
+    ]
+    print(_metric_line("Expected Text Match", expected_text_scores))
+
     clarification_scores = [
         r.clarification_requested_score
         for r in results

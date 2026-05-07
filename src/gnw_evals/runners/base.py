@@ -84,6 +84,7 @@ class BaseTestRunner(ABC):
             # Answer evaluation fields
             charts_answer_score=None,
             agent_answer_score=None,
+            expected_text_match_score=None,
             actual_charts_answer=None,
             actual_agent_answer=None,
             # Clarification evaluation fields
@@ -134,11 +135,13 @@ class BaseTestRunner(ABC):
         data_eval = evaluate_data_pull(
             agent_state,
             expected_clarification=expected_data.expected_clarification,
+            expected_answer=expected_data.expected_answer,
             query=query,
         )
         answer_eval = evaluate_final_answer(
             agent_state,
             expected_data.expected_answer,
+            expected_data.expected_text,
         )
 
         return {
@@ -193,6 +196,8 @@ class BaseTestRunner(ABC):
         if expected_data.expected_answer:
             scores.append(evaluations.get("charts_answer_score"))
             scores.append(evaluations.get("agent_answer_score"))
+        if expected_data.expected_text:
+            scores.append(evaluations.get("expected_text_match_score"))
 
         # Filter out None values (checks that weren't applicable)
         valid_scores = [s for s in scores if s is not None]

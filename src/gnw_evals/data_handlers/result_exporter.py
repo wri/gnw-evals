@@ -43,6 +43,7 @@ class ResultExporter:
 
         # 1. Summary CSV - just query and scores
         summary_fields = [
+            "test_id",
             "query",
             "eval_set",
             "overall_score",
@@ -54,6 +55,7 @@ class ResultExporter:
             "date_match_score",
             "charts_answer_score",
             "agent_answer_score",
+            "expected_text_match_score",
             "clarification_requested_score",
             "execution_time",
             "error",
@@ -74,6 +76,7 @@ class ResultExporter:
         # 2. Detailed CSV - expected vs actual side by side
         detailed_fields = [
             # Basic info
+            "test_id",
             "query",
             "eval_set",
             "thread_id",
@@ -118,6 +121,8 @@ class ResultExporter:
             "charts_answer_score",
             "actual_agent_answer",
             "agent_answer_score",
+            "expected_text",
+            "expected_text_match_score",
             # Clarification: Expected vs Actual
             "expected_clarification",
             "actual_clarification_requested",

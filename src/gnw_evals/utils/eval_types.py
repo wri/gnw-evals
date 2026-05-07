@@ -13,6 +13,7 @@ class TestResult(BaseModel):
     thread_id: str
     trace_id: str | None = None
     trace_url: str | None = None
+    test_id: str = ""
     query: str
     eval_set: str = "custom"
     overall_score: float
@@ -48,6 +49,7 @@ class TestResult(BaseModel):
     # Answer evaluation fields
     charts_answer_score: float | None = None
     agent_answer_score: float | None = None
+    expected_text_match_score: float | None = None
     actual_charts_answer: str | None = None
     actual_agent_answer: str | None = None
 
@@ -65,6 +67,7 @@ class TestResult(BaseModel):
     expected_start_date: str = ""
     expected_end_date: str = ""
     expected_answer: str = ""
+    expected_text: str = ""
     expected_clarification: bool | None = None
     test_group: str = "unknown"
     status: str = "ready"
@@ -91,7 +94,9 @@ class ExpectedData(BaseModel):
     expected_start_date: str = ""
     expected_end_date: str = ""
     expected_answer: str = ""
+    expected_text: str = ""
     expected_clarification: bool | None = None
+    test_id: str = ""
     test_group: str = "unknown"
     status: str = "ready"
     thread_id: str | None = None

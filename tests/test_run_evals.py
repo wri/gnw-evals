@@ -588,6 +588,7 @@ def test_data_pull_evaluator_missing_expected_dates():
     # Data pull evaluation (no longer includes dates)
     data_result = evaluate_data_pull(
         agent_state=agent_state,
+        expected_answer="Test",
         min_rows=1,
         query="",
     )
@@ -602,6 +603,30 @@ def test_data_pull_evaluator_missing_expected_dates():
     assert data_result["data_pull_exists_score"] == 1.0, "Data pull should succeed"
     assert date_result["date_match_score"] is None, (
         "Date score should be None when expected dates are missing"
+    )
+
+
+def test_data_pull_evaluator_missing_expected_answer():
+    """Test that data pull score is None when expected_answer is missing."""
+    from gnw_evals.evaluators import evaluate_data_pull
+
+    agent_state = {
+        "statistics": [
+            {
+                "data": {"value": [100, 200]},
+            },
+        ],
+    }
+
+    data_result = evaluate_data_pull(
+        agent_state=agent_state,
+        expected_answer="",
+        min_rows=1,
+        query="",
+    )
+
+    assert data_result["data_pull_exists_score"] is None, (
+        "Data pull score should be None when expected_answer is missing"
     )
 
 
@@ -776,6 +801,7 @@ def test_data_pull_evaluator_all_fields_present():
     # Data pull evaluation
     data_result = evaluate_data_pull(
         agent_state=agent_state,
+        expected_answer="Test",
         min_rows=1,
         query="",
     )
@@ -951,6 +977,19 @@ def test_clarification_evaluator_no_query():
     )
 
 
+def test_clarification_judge_allows_optional_follow_up_questions():
+    """Test that clarification prompt excludes answered metadata follow-ups."""
+    import inspect
+
+    from gnw_evals.evaluators.llm_judges import llm_judge_clarification
+
+    source = inspect.getsource(llm_judge_clarification)
+
+    assert "optional follow-up question" in source
+    assert "directly answers the user's question" in source
+    assert "before it can answer" in source
+
+
 def test_clarification_and_other_evaluations_run_together():
     """Integration test: clarification detection doesn't block other evaluations.
 
@@ -1118,6 +1157,48 @@ def test_answer_evaluator_no_charts_data():
         )
 
 
+def test_answer_evaluator_expected_text_match():
+    """Test that expected_text checks semantic inclusion in the agent response."""
+    from unittest.mock import patch
+
+    from gnw_evals.evaluators import evaluate_final_answer
+
+    agent_state = {
+        "charts_data": [],
+        "messages": [
+            type(
+                "obj",
+                (object,),
+                {
+                    "content": (
+                        "Tree cover loss is available at approximately "
+                        "30-meter by 30-meter pixel resolution."
+                    ),
+                },
+            )(),
+        ],
+    }
+
+    with patch(
+        "gnw_evals.evaluators.answer_evaluator.llm_judge_expected_text",
+    ) as mock_judge:
+        mock_judge.return_value = 1.0
+
+        result = evaluate_final_answer(
+            agent_state=agent_state,
+            expected_answer="",
+            expected_text="30 x 30 resolution",
+        )
+
+        assert result["charts_answer_score"] is None
+        assert result["agent_answer_score"] is None
+        assert result["expected_text_match_score"] == 1.0
+        mock_judge.assert_called_once_with(
+            "30 x 30 resolution",
+            agent_state["messages"][0].content,
+        )
+
+
 def test_overall_score_with_both_answer_scores():
     """Test that overall score calculation includes both answer scores.
 
@@ -1138,6 +1219,7 @@ def test_overall_score_with_both_answer_scores():
         "date_match_score": None,  # Not evaluated (missing expected)
         "charts_answer_score": 1.0,  # Charts answer correct
         "agent_answer_score": 0.0,  # Agent answer wrong
+        "expected_text_match_score": None,
         "clarification_requested_score": None,
     }
 
@@ -1157,6 +1239,34 @@ def test_overall_score_with_both_answer_scores():
     # = (1.0 + 1.0 + 1.0 + 1.0 + 0.0) / 5 = 0.8
     assert score == 0.8, (
         f"Expected 0.8, got {score}. Both answer scores should be included in average"
+    )
+
+
+def test_overall_score_with_expected_text_score():
+    """Test that expected_text_match_score is included in overall score."""
+    from gnw_evals.runners.api import APITestRunner
+    from gnw_evals.utils.eval_types import ExpectedData
+
+    runner = APITestRunner(api_base_url="http://test", api_token="test")
+
+    evaluations = {
+        "aoi_id_match_score": None,
+        "dataset_id_match_score": None,
+        "context_layer_match_score": None,
+        "data_pull_exists_score": None,
+        "date_match_score": None,
+        "charts_answer_score": None,
+        "agent_answer_score": None,
+        "expected_text_match_score": 1.0,
+        "clarification_requested_score": None,
+    }
+
+    expected_data = ExpectedData(expected_text="clarifies dataset is unavailable")
+
+    score = runner._calculate_overall_score(evaluations, expected_data)
+
+    assert score == 1.0, (
+        f"Expected 1.0, got {score}. Expected text score should be included"
     )
 
 

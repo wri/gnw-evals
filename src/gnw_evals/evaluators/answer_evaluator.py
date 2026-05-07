@@ -1,11 +1,12 @@
 from typing import Any
 
-from gnw_evals.evaluators.llm_judges import llm_judge
+from gnw_evals.evaluators.llm_judges import llm_judge, llm_judge_expected_text
 
 
 def evaluate_final_answer(
     agent_state: dict[str, Any],
     expected_answer: str,
+    expected_text: str = "",
 ) -> dict[str, Any]:
     """Check if final answer contains key information from expected answer using LLM-as-a-judge.
 
@@ -15,10 +16,13 @@ def evaluate_final_answer(
     Returns TWO separate "answer" scores:
     - charts_answer_score: Compares expected_answer to charts_data[0]["insight"]
     - agent_answer_score: Compares expected_answer to messages[-1].content
+    - expected_text_match_score: Checks whether messages[-1].content includes
+      expected_text semantically
 
     Args:
         agent_state: Final agent state after execution
         expected_answer: Expected answer text
+        expected_text: Expected text, meaning, or behavior to check in agent response
 
     Returns:
         Dict with charts_answer_score, agent_answer_score, and actual values
@@ -49,33 +53,32 @@ def evaluate_final_answer(
             # Fallback for any other format
             actual_agent_answer = str(content) if content else ""
 
-    # If no expected answer, both scores are None
-    if not expected_answer:
-        return {
-            "charts_answer_score": None,
-            "agent_answer_score": None,
-            "actual_charts_answer": actual_charts_answer,
-            "actual_agent_answer": actual_agent_answer,
-        }
-
     # Score charts answer
     charts_answer_score = None
-    if actual_charts_answer:
+    if expected_answer and actual_charts_answer:
         # Has insight (even if empty string), evaluate it
         charts_answer_score = llm_judge(expected_answer, actual_charts_answer)
     # else: No charts data at all, return None (not applicable)
 
     # Score agent answer
     agent_answer_score = None
-    if actual_agent_answer:
+    if expected_answer and actual_agent_answer:
         # Has message response, evaluate it
         agent_answer_score = llm_judge(expected_answer, actual_agent_answer)
     # else: No agent message, return None (not applicable)
+
+    expected_text_match_score = None
+    if expected_text and actual_agent_answer:
+        expected_text_match_score = llm_judge_expected_text(
+            expected_text,
+            actual_agent_answer,
+        )
 
     # Set actual values to None if empty strings for cleaner CSV output
     return {
         "charts_answer_score": charts_answer_score,
         "agent_answer_score": agent_answer_score,
+        "expected_text_match_score": expected_text_match_score,
         "actual_charts_answer": actual_charts_answer or None,
         "actual_agent_answer": actual_agent_answer or None,
     }
