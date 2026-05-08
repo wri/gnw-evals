@@ -194,6 +194,56 @@ def llm_judge(expected_answer: str, actual_answer: str):
     return llm_judgement.score
 
 
+def llm_judge_chart(query: str, expected_answer: str, chart_json: str) -> int:
+    """Judge whether chart JSON is appropriate and supports the expected answer."""
+
+    class ChartScore(BaseModel):
+        score: int
+
+    JUDGE_PROMPT = ChatPromptTemplate.from_messages(
+        [
+            (
+                "user",
+                """
+                You are evaluating whether a chart specification is useful and correct for answering a user query.
+
+                USER QUERY:
+                {query}
+
+                EXPECTED ANSWER:
+                {expected_answer}
+
+                CHART JSON:
+                {chart_json}
+
+                Score 1 if the chart JSON appears appropriate for the query and its encoded data, chart type,
+                labels, dimensions, measures, filters, and time range would help a user verify or understand the
+                expected answer.
+
+                Score 0 if the chart is missing important data, uses the wrong metric/location/date range,
+                has an unsuitable chart type for the comparison, contradicts the expected answer, or is too
+                incomplete to judge.
+
+                Do not score based on any prose insight or narrative answer. Focus on the chart specification,
+                encoded data, labels, fields, and visual structure.
+                """,
+            ),
+        ],
+    )
+
+    judge_chain = JUDGE_PROMPT | HAIKU.with_structured_output(ChartScore)
+
+    llm_judgement = judge_chain.invoke(
+        {
+            "query": query,
+            "expected_answer": expected_answer,
+            "chart_json": chart_json,
+        },
+    )
+
+    return llm_judgement.score
+
+
 def llm_judge_expected_text(expected_text: str, actual_answer: str) -> int:
     """Judge whether an answer includes semantically similar expected text."""
 

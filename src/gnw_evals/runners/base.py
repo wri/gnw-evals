@@ -86,6 +86,7 @@ class BaseTestRunner(ABC):
             agent_answer_score=None,
             expected_text_match_score=None,
             actual_charts_answer=None,
+            actual_charts_json=None,
             actual_agent_answer=None,
             # Clarification evaluation fields
             actual_clarification_requested=None,
@@ -142,6 +143,7 @@ class BaseTestRunner(ABC):
             agent_state,
             expected_data.expected_answer,
             expected_data.expected_text,
+            query,
         )
 
         return {

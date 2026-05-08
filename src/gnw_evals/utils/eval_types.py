@@ -51,6 +51,7 @@ class TestResult(BaseModel):
     agent_answer_score: float | None = None
     expected_text_match_score: float | None = None
     actual_charts_answer: str | None = None
+    actual_charts_json: str | None = None
     actual_agent_answer: str | None = None
 
     # Clarification evaluation fields

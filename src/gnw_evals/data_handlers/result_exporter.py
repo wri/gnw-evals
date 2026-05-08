@@ -118,6 +118,7 @@ class ResultExporter:
             # Answer: Expected vs Actual
             "expected_answer",
             "actual_charts_answer",
+            "actual_charts_json",
             "charts_answer_score",
             "actual_agent_answer",
             "agent_answer_score",
