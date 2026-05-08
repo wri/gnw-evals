@@ -1111,9 +1111,7 @@ def test_answer_evaluator_both_answers_present():
                 query="Which country had more disturbed area, Brazil or Australia?",
             )
 
-            assert result["charts_answer_score"] == 1.0, (
-                "Chart JSON should score 1.0"
-            )
+            assert result["charts_answer_score"] == 1.0, "Chart JSON should score 1.0"
             assert result["agent_answer_score"] == 0.0, (
                 "Agent answer should score 0.0 (wrong)"
             )
@@ -1121,14 +1119,13 @@ def test_answer_evaluator_both_answers_present():
                 result["actual_charts_answer"]
                 == "The answer is Brazil with 500 hectares."
             ), "Should still capture charts insight"
-            assert result["actual_charts_json"] is not None, (
-                "Should capture chart JSON"
-            )
+            assert result["actual_charts_json"] is not None, "Should capture chart JSON"
             assert "insight" not in result["actual_charts_json"], (
                 "Chart JSON judge should not receive prose insight text"
             )
             assert (
-                result["actual_agent_answer"] == "Based on the data, Australia has more."
+                result["actual_agent_answer"]
+                == "Based on the data, Australia has more."
             ), "Should capture agent message"
 
             mock_chart_judge.assert_called_once()
@@ -1173,9 +1170,7 @@ def test_answer_evaluator_no_charts_data():
         assert result["actual_charts_answer"] is None, (
             "No charts answer should be recorded"
         )
-        assert result["actual_charts_json"] is None, (
-            "No chart JSON should be recorded"
-        )
+        assert result["actual_charts_json"] is None, "No chart JSON should be recorded"
         assert result["actual_agent_answer"] == "I need more information to answer.", (
             "Should capture agent message"
         )
