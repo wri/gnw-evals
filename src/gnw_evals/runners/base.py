@@ -83,8 +83,11 @@ class BaseTestRunner(ABC):
             actual_end_date=None,
             # Answer evaluation fields
             charts_answer_score=None,
+            chart_answer_score_reason=None,
             agent_answer_score=None,
+            agent_answer_score_reason=None,
             expected_text_match_score=None,
+            expected_text_match_score_reason=None,
             actual_charts_answer=None,
             actual_charts_json=None,
             actual_agent_answer=None,

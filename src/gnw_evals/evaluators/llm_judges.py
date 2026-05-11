@@ -89,11 +89,16 @@ def llm_judge_clarification(agent_state: dict, query: str) -> dict:
         return {"is_clarification": False, "explanation": "LLM call failed"}
 
 
-def llm_judge(expected_answer: str, actual_answer: str):
+def llm_judge(
+    expected_answer: str,
+    actual_answer: str,
+    include_reason: bool = False,
+):
     """Use LLM to judge if an actual answer captures the essence of an expected answer."""
 
     class Score(BaseModel):
         score: int
+        reason: str
         answer_eval_type: str  # "boolean", "numeric", "named_entity", "year"
 
     JUDGE_PROMPT = ChatPromptTemplate.from_messages(
@@ -169,11 +174,10 @@ def llm_judge(expected_answer: str, actual_answer: str):
                 2. Apply the appropriate scoring rule from above
                 3. Return:
                    - score: 1 if it matches according to the rules, 0 if it does not
+                   - reason: one concise sentence explaining why you gave that score
                    - answer_eval_type: one of "boolean", "numeric", "year", "named_entity"
 
                 Be strict with the rules above, especially for boolean, numeric, and year types.
-
-                IMPORTANT: Respond with ONLY "1" if the insight adequately captures the expected answer, or "0" if it does not.
                 """,
             ),
         ],
@@ -188,17 +192,26 @@ def llm_judge(expected_answer: str, actual_answer: str):
         },
     )
 
-    # Currently not doing anything with other structured output
-    # llm_judgement.answer_eval_type
+    if include_reason:
+        return {
+            "score": llm_judgement.score,
+            "reason": llm_judgement.reason,
+        }
 
     return llm_judgement.score
 
 
-def llm_judge_chart(query: str, expected_answer: str, chart_json: str) -> int:
+def llm_judge_chart(
+    query: str,
+    expected_answer: str,
+    chart_json: str,
+    include_reason: bool = False,
+) -> int | dict[str, int | str]:
     """Judge whether chart JSON is appropriate and supports the expected answer."""
 
     class ChartScore(BaseModel):
         score: int
+        reason: str
 
     JUDGE_PROMPT = ChatPromptTemplate.from_messages(
         [
@@ -226,6 +239,10 @@ def llm_judge_chart(query: str, expected_answer: str, chart_json: str) -> int:
 
                 Do not score based on any prose insight or narrative answer. Focus on the chart specification,
                 encoded data, labels, fields, and visual structure.
+
+                Return:
+                - score: 1 or 0
+                - reason: one concise sentence explaining why you gave that score
                 """,
             ),
         ],
@@ -241,14 +258,25 @@ def llm_judge_chart(query: str, expected_answer: str, chart_json: str) -> int:
         },
     )
 
+    if include_reason:
+        return {
+            "score": llm_judgement.score,
+            "reason": llm_judgement.reason,
+        }
+
     return llm_judgement.score
 
 
-def llm_judge_expected_text(expected_text: str, actual_answer: str) -> int:
+def llm_judge_expected_text(
+    expected_text: str,
+    actual_answer: str,
+    include_reason: bool = False,
+) -> int | dict[str, int | str]:
     """Judge whether an answer includes semantically similar expected text."""
 
     class TextMatchScore(BaseModel):
         score: int
+        reason: str
 
     JUDGE_PROMPT = ChatPromptTemplate.from_messages(
         [
@@ -282,6 +310,7 @@ def llm_judge_expected_text(expected_text: str, actual_answer: str) -> int:
 
                 Return:
                 - score: 1 if the expected text/behavior is included, otherwise 0
+                - reason: one concise sentence explaining why you gave that score
                 """,
             ),
         ],
@@ -294,5 +323,11 @@ def llm_judge_expected_text(expected_text: str, actual_answer: str) -> int:
             "actual_answer": actual_answer,
         },
     )
+
+    if include_reason:
+        return {
+            "score": judgement.score,
+            "reason": judgement.reason,
+        }
 
     return judgement.score
