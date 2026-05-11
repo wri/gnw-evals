@@ -1066,17 +1066,29 @@ def test_clarification_and_other_evaluations_run_together():
 
 
 def test_answer_evaluator_both_answers_present():
-    """Test that both charts and agent answers are evaluated when both exist.
+    """Test that chart JSON and agent answers are evaluated when both exist.
 
-    Verifies that we get two separate scores when both data sources exist.
-    Charts answer is correct (1.0), agent answer is wrong (0.0).
+    Verifies chart scoring uses the chart JSON, not the prose insight.
     """
     from unittest.mock import patch
 
     from gnw_evals.evaluators import evaluate_final_answer
 
     agent_state = {
-        "charts_data": [{"insight": "The answer is Brazil with 500 hectares."}],
+        "charts_data": [
+            {
+                "insight": "The answer is Brazil with 500 hectares.",
+                "type": "bar",
+                "data": [
+                    {"country": "Brazil", "disturbed_area": 500},
+                    {"country": "Australia", "disturbed_area": 100},
+                ],
+                "encoding": {
+                    "x": {"field": "country"},
+                    "y": {"field": "disturbed_area"},
+                },
+            },
+        ],
         "messages": [
             type(
                 "obj",
@@ -1087,30 +1099,55 @@ def test_answer_evaluator_both_answers_present():
     }
 
     with patch("gnw_evals.evaluators.answer_evaluator.llm_judge") as mock_judge:
-        # First call for charts answer (correct), second call for agent answer (wrong)
-        mock_judge.side_effect = [1.0, 0.0]
+        with patch(
+            "gnw_evals.evaluators.answer_evaluator.llm_judge_chart",
+        ) as mock_chart_judge:
+            mock_chart_judge.return_value = {
+                "score": 1.0,
+                "reason": "The chart compares Brazil and Australia correctly.",
+            }
+            mock_judge.return_value = {
+                "score": 0.0,
+                "reason": "The response identifies Australia instead of Brazil.",
+            }
 
-        result = evaluate_final_answer(
-            agent_state=agent_state,
-            expected_answer="Brazil",
-        )
+            result = evaluate_final_answer(
+                agent_state=agent_state,
+                expected_answer="Brazil",
+                query="Which country had more disturbed area, Brazil or Australia?",
+            )
 
-        assert result["charts_answer_score"] == 1.0, (
-            "Charts answer should score 1.0 (correct)"
-        )
-        assert result["agent_answer_score"] == 0.0, (
-            "Agent answer should score 0.0 (wrong)"
-        )
-        assert (
-            result["actual_charts_answer"] == "The answer is Brazil with 500 hectares."
-        ), "Should capture charts insight"
-        assert (
-            result["actual_agent_answer"] == "Based on the data, Australia has more."
-        ), "Should capture agent message"
-        # Verify LLM judge was called twice
-        assert mock_judge.call_count == 2, (
-            "Should call LLM judge twice (charts + agent)"
-        )
+            assert result["charts_answer_score"] == 1.0, "Chart JSON should score 1.0"
+            assert result["agent_answer_score"] == 0.0, (
+                "Agent answer should score 0.0 (wrong)"
+            )
+            assert (
+                result["chart_answer_score_reason"]
+                == "The chart compares Brazil and Australia correctly."
+            )
+            assert (
+                result["agent_answer_score_reason"]
+                == "The response identifies Australia instead of Brazil."
+            )
+            assert (
+                result["actual_charts_answer"]
+                == "The answer is Brazil with 500 hectares."
+            ), "Should still capture charts insight"
+            assert result["actual_charts_json"] is not None, "Should capture chart JSON"
+            assert "insight" not in result["actual_charts_json"], (
+                "Chart JSON judge should not receive prose insight text"
+            )
+            assert (
+                result["actual_agent_answer"]
+                == "Based on the data, Australia has more."
+            ), "Should capture agent message"
+
+            mock_chart_judge.assert_called_once()
+            mock_judge.assert_called_once_with(
+                "Brazil",
+                "Based on the data, Australia has more.",
+                include_reason=True,
+            )
 
 
 def test_answer_evaluator_no_charts_data():
@@ -1132,7 +1169,10 @@ def test_answer_evaluator_no_charts_data():
 
     with patch("gnw_evals.evaluators.answer_evaluator.llm_judge") as mock_judge:
         # Only agent answer is evaluated (returns 0 - wrong answer)
-        mock_judge.return_value = 0.0
+        mock_judge.return_value = {
+            "score": 0.0,
+            "reason": "The response asks for more information instead of answering Brazil.",
+        }
 
         result = evaluate_final_answer(
             agent_state=agent_state,
@@ -1145,15 +1185,23 @@ def test_answer_evaluator_no_charts_data():
         assert result["agent_answer_score"] == 0.0, (
             "Agent answer should still be evaluated and score 0.0"
         )
+        assert result["chart_answer_score_reason"] is None
+        assert (
+            result["agent_answer_score_reason"]
+            == "The response asks for more information instead of answering Brazil."
+        )
         assert result["actual_charts_answer"] is None, (
             "No charts answer should be recorded"
         )
+        assert result["actual_charts_json"] is None, "No chart JSON should be recorded"
         assert result["actual_agent_answer"] == "I need more information to answer.", (
             "Should capture agent message"
         )
         # Verify LLM judge was called only once (for agent answer)
-        assert mock_judge.call_count == 1, (
-            "Should call LLM judge only once (agent answer only)"
+        mock_judge.assert_called_once_with(
+            "Brazil",
+            "I need more information to answer.",
+            include_reason=True,
         )
 
 
@@ -1182,7 +1230,10 @@ def test_answer_evaluator_expected_text_match():
     with patch(
         "gnw_evals.evaluators.answer_evaluator.llm_judge_expected_text",
     ) as mock_judge:
-        mock_judge.return_value = 1.0
+        mock_judge.return_value = {
+            "score": 1.0,
+            "reason": "The response states an equivalent 30-meter pixel resolution.",
+        }
 
         result = evaluate_final_answer(
             agent_state=agent_state,
@@ -1193,9 +1244,14 @@ def test_answer_evaluator_expected_text_match():
         assert result["charts_answer_score"] is None
         assert result["agent_answer_score"] is None
         assert result["expected_text_match_score"] == 1.0
+        assert (
+            result["expected_text_match_score_reason"]
+            == "The response states an equivalent 30-meter pixel resolution."
+        )
         mock_judge.assert_called_once_with(
             "30 x 30 resolution",
             agent_state["messages"][0].content,
+            include_reason=True,
         )
 
 

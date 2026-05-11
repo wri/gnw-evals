@@ -1,28 +1,53 @@
+import json
 from typing import Any
 
-from gnw_evals.evaluators.llm_judges import llm_judge, llm_judge_expected_text
+from gnw_evals.evaluators.llm_judges import (
+    llm_judge,
+    llm_judge_chart,
+    llm_judge_expected_text,
+)
+
+
+def _serialize_chart_json(chart: dict[str, Any]) -> str:
+    """Serialize chart JSON without prose-only insight text."""
+    chart_json = {key: value for key, value in chart.items() if key != "insight"}
+    if not chart_json:
+        return ""
+    serialized = json.dumps(chart_json, ensure_ascii=False, default=str)
+    return serialized[:50000]
+
+
+def _score_and_reason(result: Any) -> tuple[float | None, str | None]:
+    """Normalize judge responses that may be a score or score/reason mapping."""
+    if isinstance(result, dict):
+        return result.get("score"), result.get("reason")
+    return result, None
 
 
 def evaluate_final_answer(
     agent_state: dict[str, Any],
     expected_answer: str,
     expected_text: str = "",
+    query: str = "",
 ) -> dict[str, Any]:
     """Check if final answer contains key information from expected answer using LLM-as-a-judge.
 
     Clarification detection is handled separately by evaluate_clarification().
     This function only evaluates answers.
 
-    Returns TWO separate "answer" scores:
-    - charts_answer_score: Compares expected_answer to charts_data[0]["insight"]
+    Returns answer scores:
+    - charts_answer_score: Judges whether charts_data[0] JSON is appropriate
+      for the query and expected answer
     - agent_answer_score: Compares expected_answer to messages[-1].content
     - expected_text_match_score: Checks whether messages[-1].content includes
       expected_text semantically
+    - *_reason fields: Concise LLM explanations for each score
 
     Args:
         agent_state: Final agent state after execution
         expected_answer: Expected answer text
         expected_text: Expected text, meaning, or behavior to check in agent response
+        query: Original user query
 
     Returns:
         Dict with charts_answer_score, agent_answer_score, and actual values
@@ -31,6 +56,7 @@ def evaluate_final_answer(
     # Extract charts insight
     charts_data = agent_state.get("charts_data", [])
     actual_charts_answer = charts_data[0].get("insight", "") if charts_data else ""
+    actual_charts_json = _serialize_chart_json(charts_data[0]) if charts_data else ""
 
     # Extract agent message
     messages = agent_state.get("messages", [])
@@ -53,32 +79,53 @@ def evaluate_final_answer(
             # Fallback for any other format
             actual_agent_answer = str(content) if content else ""
 
-    # Score charts answer
+    # Score chart JSON, not prose insight text.
     charts_answer_score = None
-    if expected_answer and actual_charts_answer:
-        # Has insight (even if empty string), evaluate it
-        charts_answer_score = llm_judge(expected_answer, actual_charts_answer)
-    # else: No charts data at all, return None (not applicable)
+    charts_answer_score_reason = None
+    if expected_answer and actual_charts_json:
+        charts_answer_score, charts_answer_score_reason = _score_and_reason(
+            llm_judge_chart(
+                query,
+                expected_answer,
+                actual_charts_json,
+                include_reason=True,
+            ),
+        )
 
     # Score agent answer
     agent_answer_score = None
+    agent_answer_score_reason = None
     if expected_answer and actual_agent_answer:
         # Has message response, evaluate it
-        agent_answer_score = llm_judge(expected_answer, actual_agent_answer)
+        agent_answer_score, agent_answer_score_reason = _score_and_reason(
+            llm_judge(
+                expected_answer,
+                actual_agent_answer,
+                include_reason=True,
+            ),
+        )
     # else: No agent message, return None (not applicable)
 
     expected_text_match_score = None
+    expected_text_match_score_reason = None
     if expected_text and actual_agent_answer:
-        expected_text_match_score = llm_judge_expected_text(
-            expected_text,
-            actual_agent_answer,
+        expected_text_match_score, expected_text_match_score_reason = _score_and_reason(
+            llm_judge_expected_text(
+                expected_text,
+                actual_agent_answer,
+                include_reason=True,
+            ),
         )
 
     # Set actual values to None if empty strings for cleaner CSV output
     return {
         "charts_answer_score": charts_answer_score,
+        "chart_answer_score_reason": charts_answer_score_reason,
         "agent_answer_score": agent_answer_score,
+        "agent_answer_score_reason": agent_answer_score_reason,
         "expected_text_match_score": expected_text_match_score,
+        "expected_text_match_score_reason": expected_text_match_score_reason,
         "actual_charts_answer": actual_charts_answer or None,
+        "actual_charts_json": actual_charts_json or None,
         "actual_agent_answer": actual_agent_answer or None,
     }

@@ -48,9 +48,13 @@ class TestResult(BaseModel):
 
     # Answer evaluation fields
     charts_answer_score: float | None = None
+    chart_answer_score_reason: str | None = None
     agent_answer_score: float | None = None
+    agent_answer_score_reason: str | None = None
     expected_text_match_score: float | None = None
+    expected_text_match_score_reason: str | None = None
     actual_charts_answer: str | None = None
+    actual_charts_json: str | None = None
     actual_agent_answer: str | None = None
 
     # Clarification evaluation fields
