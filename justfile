@@ -13,7 +13,7 @@ help:
 
 # open local heatmap notebook
 heatmap:
-    uv run marimo edit --watch nb_heatmap_01.py
+    uv run marimo edit --watch notebooks/nb_heatmap_01.py
 
 
 # ── Smoke test ────────────────────────────────────────────────────────────────
