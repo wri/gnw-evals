@@ -3,8 +3,8 @@
 
 # ── Default ───────────────────────────────────────────────────────────────────
 
-[private]
-default: help
+_default:
+    @just --list
 
 # Show CLI help
 help:

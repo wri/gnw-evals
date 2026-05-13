@@ -1,7 +1,6 @@
-
 import marimo
 
-__generated_with = "0.20.4"
+__generated_with = "0.23.6"
 app = marimo.App(width="medium")
 
 with app.setup(hide_code=True):
@@ -73,7 +72,7 @@ def _(eval_results_dir, file_select):
     return results_simple, source_file_name_detailed
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(results_simple):
     score_map = {
         "agent_answer_score": "Agent Answer",
@@ -84,7 +83,9 @@ def _(results_simple):
         "date_match_score": "Date Match",
         "context_layer_match_score": "Context Layer Match",
         "data_pull_exists_score": "Data Pull Exists",
+        "dataset_parameter_match_score": "Dataset Parameters Match", 
         "clarification_requested_score": "Clarification Requested",
+
     }
 
     # Keep explicit ordering (and only columns that actually exist in df)
@@ -104,6 +105,12 @@ def _(results_simple):
         f"The following score-columns are not being visualized: {[c for c in df_score_cols if c not in score_cols]}",
     )
     return score_cols, score_map
+
+
+@app.cell
+def _(results_simple):
+    results_simple.columns
+    return
 
 
 @app.cell(hide_code=True)
@@ -321,6 +328,13 @@ def _(results_simple, score_map, selected, selected_idx, selected_score):
     return
 
 
+@app.cell
+def _():
+    import anthropic
+
+    return
+
+
 @app.cell(hide_code=True)
 def _(
     get_columns,
@@ -347,6 +361,12 @@ def _(
         title=f"Diagnostic: {score_map[selected_score]} score",
         subtitle=f"for eval test #{selected_idx}",
     )
+    return (diagnostic_info,)
+
+
+@app.cell
+def _(diagnostic_info):
+    diagnostic_info
     return
 
 
@@ -399,8 +419,6 @@ def _(file_select, results_filtered, results_simple, score_cols, score_map):
             f"{stext:<30} :  {_mean:0.2f} ({int(_sum):>3} passing out of {int(_count):<3} tests)",
         )
     print("-" * 50)
-
-
     return
 
 
@@ -497,11 +515,15 @@ def _():
             "context_layer_match_score",
         ],
         "charts_answer_score": [
+            "test_id",
+            "chart_answer_score_reason",
             "expected_answer",
             "actual_charts_answer",
             "charts_answer_score",
         ],
         "agent_answer_score": [
+            "test_id",
+            "agent_answer_score_reason",
             "expected_answer",
             "expected_agent_answer",
             "actual_agent_answer",
