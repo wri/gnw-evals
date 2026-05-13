@@ -1,9 +1,3 @@
-# /// script
-# requires-python = ">=3.13"
-# dependencies = [
-#     "marimo>=0.22.5",
-# ]
-# ///
 
 import marimo
 
