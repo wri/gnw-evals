@@ -97,9 +97,9 @@ def llm_judge(
     """Use LLM to judge if an actual answer captures the essence of an expected answer."""
 
     class Score(BaseModel):
-        score: int
-        reason: str
         answer_eval_type: str  # "boolean", "numeric", "named_entity", "year"
+        reason: str
+        score: int
 
     JUDGE_PROMPT = ChatPromptTemplate.from_messages(
         [
@@ -210,8 +210,8 @@ def llm_judge_chart(
     """Judge whether chart JSON is appropriate and supports the expected answer."""
 
     class ChartScore(BaseModel):
-        score: int
         reason: str
+        score: int
 
     JUDGE_PROMPT = ChatPromptTemplate.from_messages(
         [
@@ -275,8 +275,8 @@ def llm_judge_expected_text(
     """Judge whether an answer includes semantically similar expected text."""
 
     class TextMatchScore(BaseModel):
-        score: int
         reason: str
+        score: int
 
     JUDGE_PROMPT = ChatPromptTemplate.from_messages(
         [
