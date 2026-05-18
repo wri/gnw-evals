@@ -61,6 +61,7 @@ class ResultExporter:
             "expected_text_match_score_reason",
             "clarification_requested_score",
             "execution_time",
+            "duration_seconds",
             "error",
             "trace_url",
         ]
@@ -87,6 +88,7 @@ class ResultExporter:
             "trace_url",
             "overall_score",
             "execution_time",
+            "duration_seconds",
             # AOI: Expected vs Actual
             "expected_aoi_ids",
             "actual_id",
