@@ -118,10 +118,14 @@ jobs:
             --offset "$OFFSET" \
             --eval-set "${{ inputs.eval_set }}"
 
+      - name: Set artifact timestamp
+        id: artifact_ts
+        run: echo "value=$(date -u +%Y%m%d_%H%M%S)" >> "$GITHUB_OUTPUT"
+
       - name: Upload CSV artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: eval-csv-${{ inputs.target_env }}-${{ github.run_id }}
+          name: eval-csv-${{ inputs.target_env }}-${{ steps.artifact_ts.outputs.value }}-${{ github.run_id }}
           path: outputs/*.csv
           if-no-files-found: error
 
