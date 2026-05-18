@@ -142,7 +142,9 @@ async def run_csv_tests(config) -> list[TestResult]:
         run_timestamp=run_started_at,
         api_metadata=api_metadata,
         durations=[
-            r.duration_seconds for r in results if r.duration_seconds is not None
+            float(r.duration_seconds)
+            for r in results
+            if isinstance(r.duration_seconds, (int, float))
         ],
     )
     _print_csv_summary(results, summary_context)
