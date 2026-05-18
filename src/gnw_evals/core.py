@@ -1,5 +1,6 @@
 import asyncio
 import time
+from datetime import UTC, datetime
 
 import click
 import dotenv
@@ -7,11 +8,13 @@ import dotenv
 from gnw_evals.data_handlers import CSVLoader, ResultExporter
 from gnw_evals.runners import APITestRunner
 from gnw_evals.utils.eval_types import ExpectedData, TestResult
-from gnw_evals.utils.sheet_registry import (
-    EVAL_SET_PRIMARY_METRIC,
-    EVAL_SETS,
-    get_sheet_url,
+from gnw_evals.utils.run_metadata import (
+    RunSummaryContext,
+    build_run_summary_context,
+    fetch_gnw_api_metadata,
+    print_run_summary_header,
 )
+from gnw_evals.utils.sheet_registry import EVAL_SETS, get_sheet_url
 
 dotenv.load_dotenv()
 
@@ -47,9 +50,10 @@ async def run_single_test(
         **{k: v for k, v in test_dict.items() if k != "query"},
     )
     result = await runner.run_test(test_case.query, expected_data)
+    duration = time.time() - start_time
+    result.duration_seconds = duration
 
     # Print completion with timing
-    duration = time.time() - start_time
     all_scores = [
         v
         for k, v in result.model_dump().items()
@@ -89,6 +93,9 @@ async def run_csv_tests(config) -> list[TestResult]:
         api_token=config.api_token,
     )
     print(f"Using API endpoint: {config.api_base_url}")
+
+    run_started_at = datetime.now(UTC)
+    api_metadata = await fetch_gnw_api_metadata(config.api_base_url)
 
     # Run tests in parallel
     start_time = time.time()
@@ -130,11 +137,24 @@ async def run_csv_tests(config) -> list[TestResult]:
     print(f"\nAll tests completed in {total_duration:.1f} seconds")
 
     # Print summary
-    _print_csv_summary(results)
+    summary_context = build_run_summary_context(
+        api_base_url=config.api_base_url,
+        run_timestamp=run_started_at,
+        api_metadata=api_metadata,
+        durations=[
+            float(r.duration_seconds)
+            for r in results
+            if isinstance(r.duration_seconds, (int, float))
+        ],
+    )
+    _print_csv_summary(results, summary_context)
     return results
 
 
-def _print_csv_summary(results: list[TestResult]) -> None:
+def _print_csv_summary(
+    results: list[TestResult],
+    summary_context: RunSummaryContext | None = None,
+) -> None:
     """Print CSV test summary statistics."""
     total_tests = len(results)
     if total_tests == 0:
@@ -157,8 +177,10 @@ def _print_csv_summary(results: list[TestResult]) -> None:
         return f"{label_col:<{LABEL_WIDTH}} {0:>3} / {0:>3}"
 
     print(f"\n{'=' * 50}")
-    print("SIMPLE E2E TEST SUMMARY")
+    print("EVALUATION SUMMARY")
     print(f"{'=' * 50}")
+    if summary_context is not None:
+        print_run_summary_header(summary_context)
     print(f"Tests Run (after filters): {total_tests}")
     print()
 
@@ -395,35 +417,6 @@ def run_evals(
             offset=offset,
         )
         exporter.save_results_to_csv(all_results, final_output)
-
-        # Print summary
-        print(f"\n{'=' * 70}")
-        print("RESULTS SUMMARY")
-        print(f"{'=' * 70}")
-        print(f"Total tests: {len(all_results)}")
-
-        if len(eval_sets_to_run) > 1:
-            # Longest field name is "dataset_id_match_score" = 22 chars, +1 for colon
-            METRIC_COL_WIDTH = 23
-            print("\nBreakdown by eval set:")
-            for es in eval_sets_to_run:
-                es_results = [r for r in all_results if r.eval_set == es]
-                if not es_results:
-                    continue
-                metric_field = EVAL_SET_PRIMARY_METRIC.get(es, "agent_answer_score")
-                metric_label = f"{metric_field}:"
-                scores = [
-                    v
-                    for r in es_results
-                    if (v := getattr(r, metric_field, None)) is not None
-                ]
-                evaluated = len(scores)
-                passed = sum(1 for s in scores if s == 1.0)
-                if evaluated > 0:
-                    metric_str = f"{metric_label:<{METRIC_COL_WIDTH}} {passed:>3} / {evaluated:>3} ({passed / evaluated:.2f})"
-                else:
-                    metric_str = f"{metric_label:<{METRIC_COL_WIDTH}} {0:>3} / {0:>3}"
-                print(f"  {es:30} | Tests: {len(es_results):3} | {metric_str}")
     else:
         print("\n❌ No results collected from any eval set")
 

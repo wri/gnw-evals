@@ -366,14 +366,18 @@ async def test_run_csv_tests_caps_workers_to_five_and_sample_size(mock_config):
 
         with patch("gnw_evals.core.APITestRunner"):
             with patch("gnw_evals.core._print_csv_summary"):
-                with patch("gnw_evals.core.asyncio.Semaphore") as mock_semaphore:
-                    with patch(
-                        "gnw_evals.core.run_single_test",
-                        new=AsyncMock(return_value=MagicMock()),
-                    ):
-                        await run_csv_tests(mock_config)
+                with patch(
+                    "gnw_evals.core.fetch_gnw_api_metadata",
+                    new=AsyncMock(return_value=None),
+                ):
+                    with patch("gnw_evals.core.asyncio.Semaphore") as mock_semaphore:
+                        with patch(
+                            "gnw_evals.core.run_single_test",
+                            new=AsyncMock(return_value=MagicMock()),
+                        ):
+                            await run_csv_tests(mock_config)
 
-                        mock_semaphore.assert_called_once_with(2)
+                            mock_semaphore.assert_called_once_with(2)
 
 
 @pytest.mark.asyncio
@@ -397,29 +401,35 @@ async def test_run_csv_tests_with_api_error(mock_test_cases, mock_config):
         )
 
         with patch("gnw_evals.runners.api.httpx.AsyncClient", return_value=mock_client):
-            with patch("gnw_evals.core.ResultExporter") as mock_exporter_class:
-                with patch(
-                    "gnw_evals.evaluators.answer_evaluator.llm_judge",
-                    return_value=1.0,
-                ):
+            with patch(
+                "gnw_evals.core.fetch_gnw_api_metadata",
+                new=AsyncMock(return_value=None),
+            ):
+                with patch("gnw_evals.core.ResultExporter") as mock_exporter_class:
                     with patch(
-                        "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification",
-                        return_value={"is_clarification": False, "explanation": ""},
+                        "gnw_evals.evaluators.answer_evaluator.llm_judge",
+                        return_value=1.0,
                     ):
-                        mock_exporter = MagicMock()
-                        mock_exporter_class.return_value = mock_exporter
+                        with patch(
+                            "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification",
+                            return_value={"is_clarification": False, "explanation": ""},
+                        ):
+                            mock_exporter = MagicMock()
+                            mock_exporter_class.return_value = mock_exporter
 
-                        # Run the tests - should handle error gracefully
-                        results = await run_csv_tests(mock_config)
+                            # Run the tests - should handle error gracefully
+                            results = await run_csv_tests(mock_config)
 
-                        # Should still return a result, but with error
-                        assert len(results) == 1, (
-                            "Should return 1 test result even on error"
-                        )
-                        assert results[0].overall_score == 0.0, (
-                            "Error should result in 0 score"
-                        )
-                        assert results[0].error is not None, "Error should be recorded"
+                            # Should still return a result, but with error
+                            assert len(results) == 1, (
+                                "Should return 1 test result even on error"
+                            )
+                            assert results[0].overall_score == 0.0, (
+                                "Error should result in 0 score"
+                            )
+                            assert results[0].error is not None, (
+                                "Error should be recorded"
+                            )
 
 
 @pytest.mark.asyncio
