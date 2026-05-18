@@ -37,7 +37,9 @@ def _data_pull_outcome(
 ) -> tuple[bool, int, str]:
     """Determine whether a data pull succeeded and how many rows are available."""
     source_url = (stat_entry.get("source_url") or "").strip()
-    if source_url:
+    id = stat_entry.get("id") or ""
+    print(f"source_url: {source_url}, id: {id}")
+    if source_url and id:
         return True, 1, ""
 
     row_count = _count_rows(stat_entry.get("data"))
