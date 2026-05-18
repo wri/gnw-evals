@@ -5,6 +5,47 @@ from typing import Any
 from gnw_evals.evaluators.utils import normalize_end_date, normalize_start_date
 
 
+def _latest_statistics(agent_state: dict[str, Any]) -> dict[str, Any]:
+    """Return the most recent statistics entry from agent state."""
+    stats = agent_state.get("statistics")
+    if not stats:
+        return {}
+    if isinstance(stats, dict):
+        return stats
+    if isinstance(stats, list) and stats:
+        last = stats[-1]
+        return last if isinstance(last, dict) else {}
+    return {}
+
+
+def _count_rows(raw_data: Any) -> int:
+    """Count rows in legacy inline statistics data."""
+    if isinstance(raw_data, list):
+        return len(raw_data)
+    if isinstance(raw_data, dict):
+        if not raw_data:
+            return 0
+        lengths = [len(v) for v in raw_data.values() if isinstance(v, list)]
+        return max(lengths) if lengths else 0
+    return 0
+
+
+def _data_pull_outcome(
+    stat_entry: dict[str, Any],
+    *,
+    min_rows: int,
+) -> tuple[bool, int, str]:
+    """Determine whether a data pull succeeded and how many rows are available."""
+    source_url = (stat_entry.get("source_url") or "").strip()
+    if source_url:
+        return True, 1, ""
+
+    row_count = _count_rows(stat_entry.get("data"))
+    if row_count < min_rows:
+        return False, row_count, "insufficient rows of data retrieved"
+    return True, row_count, ""
+
+
 def evaluate_date_selection(
     agent_state: dict[str, Any],
     expected_start_date: str | None = None,
@@ -29,8 +70,12 @@ def evaluate_date_selection(
         - actual_end_date (str | None): Actual end date from agent state
 
     """
-    actual_start_date = agent_state.get("start_date", "")
-    actual_end_date = agent_state.get("end_date", "")
+    stat_entry = _latest_statistics(agent_state)
+    actual_start_date = agent_state.get("start_date") or stat_entry.get(
+        "start_date",
+        "",
+    )
+    actual_end_date = agent_state.get("end_date") or stat_entry.get("end_date", "")
 
     # If no expected dates, skip evaluation
     if not expected_start_date or not expected_end_date:
@@ -106,33 +151,28 @@ def evaluate_data_pull(
         agent_state: Final agent state after execution
         expected_clarification: Expected clarification behavior (True/False/None)
         expected_answer: Expected answer text. Data pull is only evaluated when provided.
-        min_rows: Minimum number of rows expected
+        min_rows: Minimum number of rows expected (legacy inline data only)
         query: Original user query (kept for compatibility but not used)
 
     Returns:
         Dict with:
-        - data_pull_exists_score (0/1/None): 1.0 if data pulled with sufficient rows,
-          0.0 if insufficient rows or no data, None if not applicable
-        - row_count (int): Number of rows in pulled data
-        - data_pull_success (bool): Whether data pull met minimum row requirement
+        - data_pull_exists_score (0/1/None): 1.0 if data pull succeeded,
+          0.0 if pull missing or failed, None if not applicable
+        - row_count (int): 1 when source_url is present, else legacy row count
+        - data_pull_success (bool): Whether data pull met success criteria
         - error (str): Error message if applicable
 
     """
-    stats = agent_state.get("statistics", [])
-    if stats:
-        raw_data = stats[-1].get("data", [])
-        error = ""
+    stat_entry = _latest_statistics(agent_state)
+    if stat_entry:
+        data_pull_success, row_count, error = _data_pull_outcome(
+            stat_entry,
+            min_rows=min_rows,
+        )
     else:
-        raw_data = []
-        error = "no data retrieved"
-
-    row_count = len(raw_data)
-
-    if row_count < min_rows:
         data_pull_success = False
-        error = "insufficient rows of data retrieved"
-    else:
-        data_pull_success = True
+        row_count = 0
+        error = "no data retrieved"
 
     # If we expect clarification or no answer check, data pull evaluation is not applicable.
     if expected_clarification is True or not expected_answer:
@@ -143,5 +183,6 @@ def evaluate_data_pull(
     return {
         "data_pull_exists_score": data_pull_exists_score,
         "row_count": row_count,
+        "data_pull_success": data_pull_success,
         "error": error,
     }

@@ -118,12 +118,11 @@ def mock_agent_state():
         },
         "statistics": [
             {
-                "data": {
-                    "date": ["2023-08-01", "2023-08-15", "2024-08-01"],
-                    "value": [100, 150, 80],
-                },
+                "dataset_name": "Global All Ecosystem Disturbance Alerts (DIST-ALERT)",
                 "start_date": "8/1/2023",
                 "end_date": "8/31/2024",
+                "source_url": "https://analytics.example/api/pull/abc123",
+                "data": {},
             },
         ],
         "start_date": "8/1/2023",
@@ -576,9 +575,10 @@ def test_data_pull_evaluator_missing_expected_dates():
     agent_state = {
         "statistics": [
             {
-                "data": {"value": [100, 200]},
                 "start_date": "2023-01-01",
                 "end_date": "2023-12-31",
+                "source_url": "https://analytics.example/api/pull/xyz",
+                "data": {},
             },
         ],
         "start_date": "2023-01-01",
@@ -613,7 +613,8 @@ def test_data_pull_evaluator_missing_expected_answer():
     agent_state = {
         "statistics": [
             {
-                "data": {"value": [100, 200]},
+                "source_url": "https://analytics.example/api/pull/xyz",
+                "data": {},
             },
         ],
     }
@@ -789,9 +790,10 @@ def test_data_pull_evaluator_all_fields_present():
     agent_state = {
         "statistics": [
             {
-                "data": {"value": [100, 200]},
                 "start_date": "2023-01-01",
                 "end_date": "2023-12-31",
+                "source_url": "https://analytics.example/api/pull/xyz",
+                "data": {},
             },
         ],
         "start_date": "2023-01-01",
@@ -1401,6 +1403,104 @@ def test_normalize_end_date_yyyy_format():
     # Other formats pass through standard normalization
     assert normalize_end_date("12/31/2023") == "2023-12-31"
     assert normalize_end_date("2023-12-31") == "2023-12-31"
+
+
+def test_data_pull_evaluator_source_url_with_empty_data():
+    """ID-backed pulls succeed when source_url is set even if data is empty."""
+    from gnw_evals.evaluators import evaluate_data_pull
+
+    agent_state = {
+        "statistics": {
+            "dataset_name": "DIST-ALERT",
+            "start_date": "8/1/2023",
+            "end_date": "8/31/2024",
+            "source_url": "https://analytics.example/api/pull/abc123",
+            "data": {},
+        },
+    }
+
+    result = evaluate_data_pull(
+        agent_state=agent_state,
+        expected_answer="Test",
+        min_rows=1,
+    )
+
+    assert result["data_pull_exists_score"] == 1.0
+    assert result["data_pull_success"] is True
+    assert result["row_count"] == 1
+    assert result["error"] == ""
+
+
+def test_data_pull_evaluator_empty_data_without_source_url_fails():
+    """Empty inline data without source_url counts as a failed pull."""
+    from gnw_evals.evaluators import evaluate_data_pull
+
+    agent_state = {
+        "statistics": [
+            {
+                "data": {},
+                "start_date": "2023-01-01",
+                "end_date": "2023-12-31",
+            },
+        ],
+    }
+
+    result = evaluate_data_pull(
+        agent_state=agent_state,
+        expected_answer="Test",
+        min_rows=1,
+    )
+
+    assert result["data_pull_exists_score"] == 0.0
+    assert result["data_pull_success"] is False
+    assert result["row_count"] == 0
+    assert "insufficient rows" in result["error"]
+
+
+def test_data_pull_evaluator_legacy_inline_data():
+    """Legacy statistics with inline column data still score by row count."""
+    from gnw_evals.evaluators import evaluate_data_pull
+
+    agent_state = {
+        "statistics": [
+            {
+                "data": {"value": [100, 200]},
+            },
+        ],
+    }
+
+    result = evaluate_data_pull(
+        agent_state=agent_state,
+        expected_answer="Test",
+        min_rows=1,
+    )
+
+    assert result["data_pull_exists_score"] == 1.0
+    assert result["data_pull_success"] is True
+    assert result["row_count"] == 2
+
+
+def test_date_selection_reads_dates_from_statistics():
+    """Date evaluation falls back to statistics when top-level dates are absent."""
+    from gnw_evals.evaluators import evaluate_date_selection
+
+    agent_state = {
+        "statistics": {
+            "start_date": "2023-01-01",
+            "end_date": "2023-12-31",
+            "source_url": "https://analytics.example/api/pull/abc123",
+            "data": {},
+        },
+    }
+
+    result = evaluate_date_selection(
+        agent_state=agent_state,
+        expected_start_date="1/1/2023",
+        expected_end_date="12/31/2023",
+    )
+
+    assert result["date_match_score"] == 1.0
+    assert result["date_success"] is True
 
 
 def test_evaluate_data_pull_with_date_format_mismatch():
