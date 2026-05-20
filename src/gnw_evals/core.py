@@ -18,6 +18,71 @@ from gnw_evals.utils.sheet_registry import EVAL_SETS, get_sheet_url
 
 dotenv.load_dotenv()
 
+_OVERALL_SCORE_FIELD = "overall_score"
+
+
+def _check_scores_from_result(result: TestResult) -> list[tuple[str, float]]:
+    """Return (field_name, score) pairs for per-check metrics on a result."""
+    return [
+        (field, value)
+        for field, value in result.model_dump().items()
+        if field.endswith("_score")
+        and field != _OVERALL_SCORE_FIELD
+        and value is not None
+    ]
+
+
+def _all_checks_passed(result: TestResult) -> bool:
+    """Return whether every evaluated check scored 1.0 and the run had no error."""
+    if result.error:
+        return False
+    scores = _check_scores_from_result(result)
+    if not scores:
+        return True
+    return all(score == 1.0 for _, score in scores)
+
+
+def _test_display_id(test_case, test_index: int) -> str:
+    """Prefer CSV test_id; fall back to 1-based index."""
+    test_id = getattr(test_case, "test_id", None) or ""
+    if test_id:
+        return test_id
+    return f"#{test_index + 1}"
+
+
+def _print_pass_progress() -> None:
+    print(".", end="", flush=True)
+
+
+def _print_failure_details(
+    test_case,
+    test_index: int,
+    total_tests: int,
+    result: TestResult,
+    duration: float,
+) -> None:
+    """Print multi-line details for tests that did not pass all checks."""
+    scores = _check_scores_from_result(result)
+    checks_passed = sum(1 for _, score in scores if score == 1.0)
+    checks_total = len(scores)
+    test_id = _test_display_id(test_case, test_index)
+    query = getattr(test_case, "query", "") or result.query
+
+    print()
+    print(
+        f"[FAIL] {test_id} ({test_index + 1}/{total_tests}): "
+        f"{checks_passed}/{checks_total} checks passed ({duration:.1f}s)",
+    )
+    if query:
+        print(f"  query: {query[:120]}{'...' if len(query) > 120 else ''}")
+    if result.error:
+        print(f"  error: {result.error}")
+
+    failed_checks = [(name, score) for name, score in scores if score != 1.0]
+    for name, score in failed_checks:
+        label = name.removesuffix("_score").replace("_", " ")
+        print(f"  {label}: {score}")
+
 
 def _build_default_output_filename(
     eval_set: str,
@@ -42,7 +107,6 @@ async def run_single_test(
 ) -> TestResult:
     """Run a single test case."""
     start_time = time.time()
-    print(f"[STARTED]   Test {test_index + 1}/{total_tests}: {test_case.query[:60]}...")
 
     # Convert test case to ExpectedData (remove query field)
     test_dict = test_case.model_dump()
@@ -53,17 +117,10 @@ async def run_single_test(
     duration = time.time() - start_time
     result.duration_seconds = duration
 
-    # Print completion with timing
-    all_scores = [
-        v
-        for k, v in result.model_dump().items()
-        if k.endswith("_score") and k != "overall_score" and v is not None
-    ]
-    checks_passed = sum(1 for s in all_scores if s == 1.0)
-    checks_total = len(all_scores)
-    print(
-        f"[COMPLETED] Test {test_index + 1}/{total_tests}: {checks_passed} out of {checks_total} checks passed ({duration:.1f}s)",
-    )
+    if _all_checks_passed(result):
+        _print_pass_progress()
+    else:
+        _print_failure_details(test_case, test_index, total_tests, result, duration)
 
     return result
 
@@ -134,7 +191,8 @@ async def run_csv_tests(config) -> list[TestResult]:
         results = await asyncio.gather(*tasks)
 
     total_duration = time.time() - start_time
-    print(f"\nAll tests completed in {total_duration:.1f} seconds")
+    print()
+    print(f"All tests completed in {total_duration:.1f} seconds")
 
     # Print summary
     summary_context = build_run_summary_context(
