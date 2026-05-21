@@ -124,7 +124,7 @@ def llm_judge(
                 - Scoring: Exact semantic match required
                 - **First, extract the boolean value from the actual answer** (usually at the start: "True", "False", "yes", "no")
                 - **Then compare**: TRUE matches with yes/true/affirmative, FALSE matches with no/false/negative
-                - Examples: 
+                - Examples:
                   - Expected "TRUE" vs Actual "true" → MATCH (1)
                   - Expected "TRUE" vs Actual "yes" → MATCH (1)
                   - Expected "TRUE" vs Actual "False." → NO MATCH (0) [opposite values]
@@ -132,7 +132,7 @@ def llm_judge(
                   - Expected "FALSE" vs Actual "TRUE" → NO MATCH (0) [opposite values]
                   - Expected "FALSE" vs Actual "false" → MATCH (1)
                   - Expected "TRUE" vs Actual "The statement is correct" → MATCH (1) [affirms without explicit FALSE]
-                - **CRITICAL**: If the actual answer contains "False", "false", "no", or "No", it CANNOT match "TRUE". Vice versa.                
+                - **CRITICAL**: If the actual answer contains "False", "false", "no", or "No", it CANNOT match "TRUE". Vice versa.
 
                 **NUMERIC** (numbers with optional units):
                 - Expected answer contains numbers: "198.4 hectares", "0.20%", "211 kha", "924,000 km²"
@@ -161,7 +161,7 @@ def llm_judge(
                   - Expected "2015" vs Actual "2016" → NO MATCH (0)
 
                 **NAMED_ENTITY** (countries, regions, places, land cover types):
-                - Expected answer is a proper noun or descriptive term: "Brazil", "South Dakota" 
+                - Expected answer is a proper noun or descriptive term: "Brazil", "South Dakota"
                 - Scoring: Semantic similarity - the actual answer should clearly identify the same entity or category
                 - Examples:
                   - Expected "Brazil" vs Actual "Brazil had the most" → MATCH (1)

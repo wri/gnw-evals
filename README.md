@@ -62,15 +62,15 @@ When a test case can have multiple valid values for a field (e.g., comparing mul
 The Eval harness will execute tests based on "expected" columns and values when
 they are provided. Where the necessary expected value is not provided (either
 the column does not exist or the cell is empty), the corresponding score is not
-computed. 
+computed.
 
 The following column(s) are always required for the test to run :
 - **`query`** - The user query to test (string)
 
 
 For the corresponding score to be computed, expected values must be provided. The `expected_*` columns must be named exactly as follows:
-- `expected_aoi_ids`  - Expected AOI identifier / GADM id. 
-- `expected_subregion` - Expected subregion 
+- `expected_aoi_ids`  - Expected AOI identifier / GADM id.
+- `expected_subregion` - Expected subregion
 - `expected_dataset_id` - Expected dataset ID (0-8 for current datasets). For queries that may match multiple datasets, separate IDs with semicolons (e.g., "0;1" for DIST-ALERT and another dataset). Can be empty if not applicable.
 - `expected_context_layer` - Expected context layer (varies by dataset). Multiple values can be separated by semicolons if multiple layers are acceptable. Can be empty if not applicable. Can put `no_selection` to enforce context layer value is empty.
 - `expected_dataset_name` - Expected dataset name (for reference, not evaluated)
@@ -79,10 +79,10 @@ For the corresponding score to be computed, expected values must be provided. Th
 - `expected_answer` - Expected answer text for LLM-as-a-judge comparison. Can be empty if not applicable.
 - `expected_text` - Expected information, phrasing, or behavior that should appear in the final agent response. This is a semantic inclusion check, not an exact match. Use it for text such as "30 x 30 resolution" or instructions such as "clarifies to user that dataset isn't available". Can be empty if not applicable.
 - `expected_clarification` - Boolean flag indicating whether agent should request clarification instead of completing the task (default: `False`)
-- `expected_` 
+- `expected_`
 
 
-Other columns, optional: 
+Other columns, optional:
 - **`priority`** - Test priority ("high", "medium", "low")
 - **`test_group`** - Test grouping for filtering (e.g., "dataset", "rel-accuracy", "abs-accuracy" etc). Default: "unknown"
 - **`status`** - Test execution status. Default: "ready". Use `--status-filter` to filter by status:
@@ -94,16 +94,16 @@ Other columns, optional:
 
 ### Golden eval set
 
-For the GOLDEN eval set, it is recommended to include the following complete columns (fill in all values, no empty cells): 
+For the GOLDEN eval set, it is recommended to include the following complete columns (fill in all values, no empty cells):
 - `query`
-- `test_group`, `status` 
-- Expected columns: `expected_aoi_ids`, `expected_dataset_id`, `expected_start_date`,  `expected_end_date`,  `expected_answer`, `expected_clarification`  
+- `test_group`, `status`
+- Expected columns: `expected_aoi_ids`, `expected_dataset_id`, `expected_start_date`,  `expected_end_date`,  `expected_answer`, `expected_clarification`
 
 **A "golden set" for evaluations should follow best practice. A summary of these best practices is provided here: [GOLDENSET_GUIDELINES.md](GOLDENSET_GUIDELINES.md).**
 
 ## Running E2E Tests
 
-Simple end-to-end agent test runner for API testing. 
+Simple end-to-end agent test runner for API testing.
 
 Evals source. By default, gnw_evals will run tests against the live spreadsheet, URL specified in the `.env` file.
 
@@ -122,18 +122,18 @@ uv run gnw_evals --api-token your_token --sample-size 10
 ```
 
 Suggested basis usage
-* Add the following in the .env file: 
-    * API_TOKEN 
+* Add the following in the .env file:
+    * API_TOKEN
     * ANTHROPIC_API_KEY
     * SPREADSHEET_ID
     * NUM_WORKERS=5
 
 ```bash
 # run first 5 rows of the LOCATION ID tests
-uv run gnw_evals --sample-size 5 --eval-set location_id --output-filename "sample_locationid_evals" 
+uv run gnw_evals --sample-size 5 --eval-set location_id --output-filename "sample_locationid_evals"
 
-# run all tests 
-uv run gnw_evals --sample-size -1 --eval-set all --output-filename "all_evals" 
+# run all tests
+uv run gnw_evals --sample-size -1 --eval-set all --output-filename "all_evals"
 
 ```
 
@@ -161,9 +161,9 @@ The framework supports multiple specialized eval sets, not just the GOLDEN SET
 - `location_id` - Location/AOI identification tests
 - `dataset_id` - Dataset selection tests
 - `date_selection` - Date selection tests
-- and others.. 
+- and others..
 
-**Note:** 
+**Note:**
 - REMINDER: Make sure the spreadsheet is properly specified in the `.env` file using `SPREADSHEET_ID`
 - When using `--eval-set all`, separate output files are generated for each eval set (e.g., `gold_test_TIMESTAMP.csv`, `location_id_test_TIMESTAMP.csv`, etc.)
 - You cannot use `--eval-set` and `--test-file` together. Use one or the other.
@@ -212,7 +212,7 @@ Scores are only calculated when the corresponding `expected_*` value is provided
 
 **For complete details on score calculation, see [SCORING_METHODOLOGY.md](SCORING_METHODOLOGY.md).**
 
---- 
+---
 
 ## Common Issues and Troubleshooting
 

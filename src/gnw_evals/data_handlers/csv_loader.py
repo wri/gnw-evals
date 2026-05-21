@@ -33,12 +33,13 @@ class CSVLoader:
             List of ExpectedData objects
 
         """
+        csv_path: str | Path = csv_file
         if not csv_file.startswith("http"):
             project_root = Path(__file__).parent.parent.parent.parent
-            csv_file = project_root / csv_file
+            csv_path = project_root / csv_file
 
         # load the eval data without the header row
-        df_raw = pd.read_csv(csv_file, dtype=str, keep_default_na=False, header=None)
+        df_raw = pd.read_csv(csv_path, dtype=str, keep_default_na=False, header=None)
 
         # find and set header row
         # useful if the spreadsheet has rows at the top with information for the user

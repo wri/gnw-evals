@@ -10,8 +10,8 @@
 
 ### Task: Create a new Overall Score
 
-**Priority:** Low  
-**Status:** [ ]  
+**Priority:** Low
+**Status:** [ ]
 **Category:** Refactor
 
 Currently all scores get equal weight, but they are dependent. If AOI selection fails, answer will surely be wrong
@@ -23,25 +23,25 @@ Possible approaches
 
 ## Task: check GADM Normalization Logic
 
-**Priority:** TBD  
-**Status:** [ ]  
+**Priority:** TBD
+**Status:** [ ]
 **Category:** Fix
 
 Double-check GADM normalization logic to ensure it's working correctly.
-- normalize_gadm_id() strips everything after _ and converts - to .   Is this okay, or might it create false positives? 
+- normalize_gadm_id() strips everything after _ and converts - to .   Is this okay, or might it create false positives?
 - example
     - "USA.5_1" → "usa.5"
     - "USA.5_2" → "usa.5"  ← Different subregion, same normalized ID!
 
 ## Check: Multiple AOI_IDs Handling
 
-**Priority:** Medium  
-**Status:** [ ]  
+**Priority:** Medium
+**Status:** [ ]
 **Category:** New Feature
 
-Make sure the system is scoring correctly when multiple AOIs are provided either in the actual or expected fields. 
-* Add unittests first, ensure they are passing. 
-* Do the same for other fields that may contain multiple values.  
+Make sure the system is scoring correctly when multiple AOIs are provided either in the actual or expected fields.
+* Add unittests first, ensure they are passing.
+* Do the same for other fields that may contain multiple values.
 
 Notes
 - Currently checking with "OR" behavior -- if actual is in expected_set, full score
@@ -53,8 +53,8 @@ Notes
 
 ## Idea: Add Row Numbers to CSV Output
 
-**Priority:** Low  
-**Status:** [ ]  
+**Priority:** Low
+**Status:** [ ]
 **Category:** New Feature
 
 There's no row number for the CSV, so with sampling, it's hard to match result with CSV.
@@ -64,8 +64,8 @@ There's no row number for the CSV, so with sampling, it's hard to match result w
 
 ## Task: Non-E2E Sheets Handling
 
-**Priority:** Medium  
-**Status:** [ ]  
+**Priority:** Medium
+**Status:** [ ]
 **Category:** New Feature
 
 
@@ -81,19 +81,19 @@ Notes
 ---
 
 
-## Task: simplify the unittests 
+## Task: simplify the unittests
 
-**Priority:** Medium  
-**Status:** [ ]  
+**Priority:** Medium
+**Status:** [ ]
 **Category:** Refactor
 
-* Simplify the unittests. 
-* They're getting unncessarily long, the coding agents like adding a ton of tests. 
-* All unittests are currently in the same file. 
+* Simplify the unittests.
+* They're getting unncessarily long, the coding agents like adding a ton of tests.
+* All unittests are currently in the same file.
 
 
-# Additional things to look into. 
+# Additional things to look into.
 
-Things to look into later: 
+Things to look into later:
 * Currently data pull is only evaluated if expected_dataset_id exists. Should we make data pull checks independent?
 * write a file that explains all the scores and how they are calculated. input column from spreadsheet --> logic --> output score. remove this from the readme
