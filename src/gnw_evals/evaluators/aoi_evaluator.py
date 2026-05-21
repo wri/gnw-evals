@@ -26,7 +26,7 @@ def evaluate_aoi_selection(
 
     """
     # Initialize result dict with all fields
-    result = {
+    result: dict[str, Any] = {
         "aoi_id_match_score": None,
         "actual_id": None,
         "actual_name": None,

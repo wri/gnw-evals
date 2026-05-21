@@ -202,7 +202,7 @@ async def run_csv_tests(config) -> list[TestResult]:
         durations=[
             float(r.duration_seconds)
             for r in results
-            if isinstance(r.duration_seconds, (int, float))
+            if isinstance(r.duration_seconds, int | float)
         ],
     )
     _print_csv_summary(results, summary_context)

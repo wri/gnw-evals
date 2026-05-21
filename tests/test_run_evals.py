@@ -219,12 +219,12 @@ async def test_run_csv_tests_with_mocked_data(
 
                         # Assertions
                         assert len(results) == 3, "Should return 3 test results"
-                        assert all(r.overall_score >= 0 for r in results), (
-                            "All scores should be non-negative"
-                        )
-                        assert all(r.query for r in results), (
-                            "All results should have a query"
-                        )
+                        assert all(
+                            r.overall_score >= 0 for r in results
+                        ), "All scores should be non-negative"
+                        assert all(
+                            r.query for r in results
+                        ), "All results should have a query"
 
                         # Verify score structure
                         first_result = results[0]
@@ -244,9 +244,9 @@ async def test_run_csv_tests_with_mocked_data(
                             first_result,
                             "context_layer_match_score",
                         ), "Should have context_layer_match_score field"
-                        assert first_result.dataset_parameter_match_score == 1.0, (
-                            "Dataset parameters should match"
-                        )
+                        assert (
+                            first_result.dataset_parameter_match_score == 1.0
+                        ), "Dataset parameters should match"
                         assert hasattr(
                             first_result,
                             "actual_dataset_parameters",
@@ -348,9 +348,9 @@ async def test_run_csv_tests_with_multiple_workers(
 
                         # Assertions
                         assert len(results) == 3, "Should return 3 test results"
-                        assert all(r.overall_score >= 0 for r in results), (
-                            "All scores should be non-negative"
-                        )
+                        assert all(
+                            r.overall_score >= 0 for r in results
+                        ), "All scores should be non-negative"
 
 
 @pytest.mark.asyncio
@@ -421,15 +421,15 @@ async def test_run_csv_tests_with_api_error(mock_test_cases, mock_config):
                             results = await run_csv_tests(mock_config)
 
                             # Should still return a result, but with error
-                            assert len(results) == 1, (
-                                "Should return 1 test result even on error"
-                            )
-                            assert results[0].overall_score == 0.0, (
-                                "Error should result in 0 score"
-                            )
-                            assert results[0].error is not None, (
-                                "Error should be recorded"
-                            )
+                            assert (
+                                len(results) == 1
+                            ), "Should return 1 test result even on error"
+                            assert (
+                                results[0].overall_score == 0.0
+                            ), "Error should result in 0 score"
+                            assert (
+                                results[0].error is not None
+                            ), "Error should be recorded"
 
 
 @pytest.mark.asyncio
@@ -509,15 +509,15 @@ def test_dataset_evaluator_missing_expected_context_layer():
     )
 
     assert result["dataset_id_match_score"] == 1.0, "Dataset ID should match"
-    assert result["dataset_parameter_match_score"] is None, (
-        "Dataset parameter score should be None when expected is empty"
-    )
+    assert (
+        result["dataset_parameter_match_score"] is None
+    ), "Dataset parameter score should be None when expected is empty"
     assert result["actual_dataset_parameters"] == (
         '[{"name":"canopy_cover","values":[30]}]'
     )
-    assert result["context_layer_match_score"] is None, (
-        "Context layer score should be None when expected is empty"
-    )
+    assert (
+        result["context_layer_match_score"] is None
+    ), "Context layer score should be None when expected is empty"
 
 
 def test_dataset_evaluator_none_expected_context_layer():
@@ -544,9 +544,9 @@ def test_dataset_evaluator_none_expected_context_layer():
     )
 
     assert result["dataset_id_match_score"] == 1.0, "Dataset ID should match"
-    assert result["context_layer_match_score"] == 1.0, (
-        "Context layer score should be 1.0 if no context_layer is selected."
-    )
+    assert (
+        result["context_layer_match_score"] == 1.0
+    ), "Context layer score should be 1.0 if no context_layer is selected."
 
 
 def test_dataset_evaluator_incorrect_expected_context_layer():
@@ -570,9 +570,9 @@ def test_dataset_evaluator_incorrect_expected_context_layer():
     )
 
     assert result["dataset_id_match_score"] == 1.0, "Dataset ID should match"
-    assert result["context_layer_match_score"] == 0.0, (
-        "Context layer score should be 0.0 if since context layers don't match."
-    )
+    assert (
+        result["context_layer_match_score"] == 0.0
+    ), "Context layer score should be 0.0 if since context layers don't match."
 
 
 def test_data_pull_evaluator_missing_expected_dates():
@@ -611,9 +611,9 @@ def test_data_pull_evaluator_missing_expected_dates():
     )
 
     assert data_result["data_pull_exists_score"] == 1.0, "Data pull should succeed"
-    assert date_result["date_match_score"] is None, (
-        "Date score should be None when expected dates are missing"
-    )
+    assert (
+        date_result["date_match_score"] is None
+    ), "Date score should be None when expected dates are missing"
 
 
 def test_data_pull_evaluator_missing_expected_answer():
@@ -636,9 +636,9 @@ def test_data_pull_evaluator_missing_expected_answer():
         query="",
     )
 
-    assert data_result["data_pull_exists_score"] is None, (
-        "Data pull score should be None when expected_answer is missing"
-    )
+    assert (
+        data_result["data_pull_exists_score"] is None
+    ), "Data pull score should be None when expected_answer is missing"
 
 
 def test_overall_score_excludes_none_values():
@@ -678,9 +678,9 @@ def test_overall_score_excludes_none_values():
     # Should average only: aoi_id (1.0), dataset_id (1.0), data_pull (1.0),
     #                      charts_answer (0.0), agent_answer (1.0)
     # = (1.0 + 1.0 + 1.0 + 0.0 + 1.0) / 5 = 0.8
-    assert score == 0.8, (
-        f"Expected 0.8, got {score}. None values should be excluded from average"
-    )
+    assert (
+        score == 0.8
+    ), f"Expected 0.8, got {score}. None values should be excluded from average"
 
 
 def test_aoi_evaluator_all_fields_present():
@@ -739,9 +739,9 @@ def test_dataset_evaluator_all_fields_present():
     )
 
     assert result["dataset_id_match_score"] == 1.0, "Dataset ID should match"
-    assert result["dataset_parameter_match_score"] == 1.0, (
-        "Dataset parameters should match"
-    )
+    assert (
+        result["dataset_parameter_match_score"] == 1.0
+    ), "Dataset parameters should match"
     assert result["context_layer_match_score"] == 1.0, "Context layer should match"
 
 
@@ -773,9 +773,9 @@ def test_dataset_evaluator_incorrect_expected_dataset_parameters():
         query="",
     )
 
-    assert equivalent_result["dataset_parameter_match_score"] == 1.0, (
-        "Dataset parameter score should ignore fields other than name and values."
-    )
+    assert (
+        equivalent_result["dataset_parameter_match_score"] == 1.0
+    ), "Dataset parameter score should ignore fields other than name and values."
 
     mismatch_result = evaluate_dataset_selection(
         agent_state=agent_state,
@@ -785,9 +785,9 @@ def test_dataset_evaluator_incorrect_expected_dataset_parameters():
         query="",
     )
 
-    assert mismatch_result["dataset_parameter_match_score"] == 0.0, (
-        "Dataset parameter score should be 0.0 if parameters don't match."
-    )
+    assert (
+        mismatch_result["dataset_parameter_match_score"] == 0.0
+    ), "Dataset parameter score should be 0.0 if parameters don't match."
 
 
 def test_data_pull_evaluator_all_fields_present():
@@ -866,12 +866,12 @@ def test_clarification_evaluator_all_scenarios():
             expected_clarification=True,
             query="test",
         )
-        assert result["actual_clarification_requested"] is True, (
-            "Case 1: Should detect clarification was requested"
-        )
-        assert result["clarification_requested_score"] == 1.0, (
-            "Case 1: expected=True, actual=True should score 1.0"
-        )
+        assert (
+            result["actual_clarification_requested"] is True
+        ), "Case 1: Should detect clarification was requested"
+        assert (
+            result["clarification_requested_score"] == 1.0
+        ), "Case 1: expected=True, actual=True should score 1.0"
 
     # Case 2: expected=True, actual=False → 0.0
     with patch(
@@ -883,12 +883,12 @@ def test_clarification_evaluator_all_scenarios():
             expected_clarification=True,
             query="test",
         )
-        assert result["actual_clarification_requested"] is False, (
-            "Case 2: Should detect clarification was NOT requested"
-        )
-        assert result["clarification_requested_score"] == 0.0, (
-            "Case 2: expected=True, actual=False should score 0.0"
-        )
+        assert (
+            result["actual_clarification_requested"] is False
+        ), "Case 2: Should detect clarification was NOT requested"
+        assert (
+            result["clarification_requested_score"] == 0.0
+        ), "Case 2: expected=True, actual=False should score 0.0"
 
     # Case 3: expected=False, actual=True → 0.0
     with patch(
@@ -900,12 +900,12 @@ def test_clarification_evaluator_all_scenarios():
             expected_clarification=False,
             query="test",
         )
-        assert result["actual_clarification_requested"] is True, (
-            "Case 3: Should detect clarification was requested"
-        )
-        assert result["clarification_requested_score"] == 0.0, (
-            "Case 3: expected=False, actual=True should score 0.0"
-        )
+        assert (
+            result["actual_clarification_requested"] is True
+        ), "Case 3: Should detect clarification was requested"
+        assert (
+            result["clarification_requested_score"] == 0.0
+        ), "Case 3: expected=False, actual=True should score 0.0"
 
     # Case 4: expected=False, actual=False → 1.0
     with patch(
@@ -917,12 +917,12 @@ def test_clarification_evaluator_all_scenarios():
             expected_clarification=False,
             query="test",
         )
-        assert result["actual_clarification_requested"] is False, (
-            "Case 4: Should detect clarification was NOT requested"
-        )
-        assert result["clarification_requested_score"] == 1.0, (
-            "Case 4: expected=False, actual=False should score 1.0"
-        )
+        assert (
+            result["actual_clarification_requested"] is False
+        ), "Case 4: Should detect clarification was NOT requested"
+        assert (
+            result["clarification_requested_score"] == 1.0
+        ), "Case 4: expected=False, actual=False should score 1.0"
 
     # Case 5: expected=None (empty string), actual=True → 0.0
     with patch(
@@ -934,12 +934,12 @@ def test_clarification_evaluator_all_scenarios():
             expected_clarification=None,
             query="test",
         )
-        assert result["actual_clarification_requested"] is True, (
-            "Case 5: Should detect clarification was requested"
-        )
-        assert result["clarification_requested_score"] == 0.0, (
-            "Case 5: expected=None, actual=True should score 0.0 (unsolicited clarification)"
-        )
+        assert (
+            result["actual_clarification_requested"] is True
+        ), "Case 5: Should detect clarification was requested"
+        assert (
+            result["clarification_requested_score"] == 0.0
+        ), "Case 5: expected=None, actual=True should score 0.0 (unsolicited clarification)"
 
     # Case 6: expected=None (empty string), actual=False → None
     with patch(
@@ -951,12 +951,12 @@ def test_clarification_evaluator_all_scenarios():
             expected_clarification=None,
             query="test",
         )
-        assert result["actual_clarification_requested"] is False, (
-            "Case 6: Should detect clarification was NOT requested"
-        )
-        assert result["clarification_requested_score"] is None, (
-            "Case 6: expected=None, actual=False should score None (not evaluated)"
-        )
+        assert (
+            result["actual_clarification_requested"] is False
+        ), "Case 6: Should detect clarification was NOT requested"
+        assert (
+            result["clarification_requested_score"] is None
+        ), "Case 6: expected=None, actual=False should score None (not evaluated)"
 
 
 def test_clarification_evaluator_no_query():
@@ -967,26 +967,26 @@ def test_clarification_evaluator_no_query():
 
     # No query provided - expected=False
     result = evaluate_clarification(agent_state, expected_clarification=False, query="")
-    assert result["actual_clarification_requested"] is False, (
-        "No query should result in no clarification requested"
-    )
-    assert result["clarification_requested_score"] == 1.0, (
-        "expected=False, actual=False should score 1.0"
-    )
+    assert (
+        result["actual_clarification_requested"] is False
+    ), "No query should result in no clarification requested"
+    assert (
+        result["clarification_requested_score"] == 1.0
+    ), "expected=False, actual=False should score 1.0"
 
     # No query provided - expected=True
     result = evaluate_clarification(agent_state, expected_clarification=True, query="")
     assert result["actual_clarification_requested"] is False
-    assert result["clarification_requested_score"] == 0.0, (
-        "expected=True, actual=False should score 0.0"
-    )
+    assert (
+        result["clarification_requested_score"] == 0.0
+    ), "expected=True, actual=False should score 0.0"
 
     # No query provided - expected=None
     result = evaluate_clarification(agent_state, expected_clarification=None, query="")
     assert result["actual_clarification_requested"] is False
-    assert result["clarification_requested_score"] is None, (
-        "expected=None, actual=False should score None"
-    )
+    assert (
+        result["clarification_requested_score"] is None
+    ), "expected=None, actual=False should score None"
 
 
 def test_clarification_judge_allows_optional_follow_up_questions():
@@ -1056,20 +1056,20 @@ def test_clarification_and_other_evaluations_run_together():
         )
 
         # Verify clarification was detected and scored
-        assert evaluations["actual_clarification_requested"] is True, (
-            "Should detect that clarification was requested"
-        )
-        assert evaluations["clarification_requested_score"] == 1.0, (
-            "Clarification score should be 1.0 (expected and given)"
-        )
+        assert (
+            evaluations["actual_clarification_requested"] is True
+        ), "Should detect that clarification was requested"
+        assert (
+            evaluations["clarification_requested_score"] == 1.0
+        ), "Clarification score should be 1.0 (expected and given)"
 
         # Verify AOI evaluation still ran (not blocked by clarification)
-        assert evaluations["aoi_id_match_score"] == 1.0, (
-            "AOI evaluation should run and match even when clarification requested"
-        )
-        assert evaluations["actual_id"] == "['BRA']", (
-            "AOI ID should be extracted even when clarification requested"
-        )
+        assert (
+            evaluations["aoi_id_match_score"] == 1.0
+        ), "AOI evaluation should run and match even when clarification requested"
+        assert (
+            evaluations["actual_id"] == "['BRA']"
+        ), "AOI ID should be extracted even when clarification requested"
 
 
 # ============================================================================
@@ -1130,9 +1130,9 @@ def test_answer_evaluator_both_answers_present():
             )
 
             assert result["charts_answer_score"] == 1.0, "Chart JSON should score 1.0"
-            assert result["agent_answer_score"] == 0.0, (
-                "Agent answer should score 0.0 (wrong)"
-            )
+            assert (
+                result["agent_answer_score"] == 0.0
+            ), "Agent answer should score 0.0 (wrong)"
             assert (
                 result["chart_answer_score_reason"]
                 == "The chart compares Brazil and Australia correctly."
@@ -1146,9 +1146,9 @@ def test_answer_evaluator_both_answers_present():
                 == "The answer is Brazil with 500 hectares."
             ), "Should still capture charts insight"
             assert result["actual_charts_json"] is not None, "Should capture chart JSON"
-            assert "insight" not in result["actual_charts_json"], (
-                "Chart JSON judge should not receive prose insight text"
-            )
+            assert (
+                "insight" not in result["actual_charts_json"]
+            ), "Chart JSON judge should not receive prose insight text"
             assert (
                 result["actual_agent_answer"]
                 == "Based on the data, Australia has more."
@@ -1191,24 +1191,24 @@ def test_answer_evaluator_no_charts_data():
             expected_answer="Brazil",
         )
 
-        assert result["charts_answer_score"] is None, (
-            "Charts score should be None when no charts_data exists (not applicable)"
-        )
-        assert result["agent_answer_score"] == 0.0, (
-            "Agent answer should still be evaluated and score 0.0"
-        )
+        assert (
+            result["charts_answer_score"] is None
+        ), "Charts score should be None when no charts_data exists (not applicable)"
+        assert (
+            result["agent_answer_score"] == 0.0
+        ), "Agent answer should still be evaluated and score 0.0"
         assert result["chart_answer_score_reason"] is None
         assert (
             result["agent_answer_score_reason"]
             == "The response asks for more information instead of answering Brazil."
         )
-        assert result["actual_charts_answer"] is None, (
-            "No charts answer should be recorded"
-        )
+        assert (
+            result["actual_charts_answer"] is None
+        ), "No charts answer should be recorded"
         assert result["actual_charts_json"] is None, "No chart JSON should be recorded"
-        assert result["actual_agent_answer"] == "I need more information to answer.", (
-            "Should capture agent message"
-        )
+        assert (
+            result["actual_agent_answer"] == "I need more information to answer."
+        ), "Should capture agent message"
         # Verify LLM judge was called only once (for agent answer)
         mock_judge.assert_called_once_with(
             "Brazil",
@@ -1305,9 +1305,9 @@ def test_overall_score_with_both_answer_scores():
     # Should average: aoi_id (1.0), dataset_id (1.0), data_pull (1.0),
     #                 charts_answer (1.0), agent_answer (0.0)
     # = (1.0 + 1.0 + 1.0 + 1.0 + 0.0) / 5 = 0.8
-    assert score == 0.8, (
-        f"Expected 0.8, got {score}. Both answer scores should be included in average"
-    )
+    assert (
+        score == 0.8
+    ), f"Expected 0.8, got {score}. Both answer scores should be included in average"
 
 
 def test_overall_score_with_expected_text_score():
@@ -1333,9 +1333,9 @@ def test_overall_score_with_expected_text_score():
 
     score = runner._calculate_overall_score(evaluations, expected_data)
 
-    assert score == 1.0, (
-        f"Expected 1.0, got {score}. Expected text score should be included"
-    )
+    assert (
+        score == 1.0
+    ), f"Expected 1.0, got {score}. Expected text score should be included"
 
 
 # ============================================================================
@@ -1534,9 +1534,9 @@ def test_evaluate_data_pull_with_date_format_mismatch():
         expected_end_date="12/31/2023",
     )
 
-    assert result_matching["date_match_score"] == 1.0, (
-        "Dates should match despite format difference"
-    )
+    assert (
+        result_matching["date_match_score"] == 1.0
+    ), "Dates should match despite format difference"
     assert result_matching["date_success"] is True
 
     # Test 2: Different dates -> should FAIL
@@ -1552,9 +1552,9 @@ def test_evaluate_data_pull_with_date_format_mismatch():
         expected_end_date="12/31/2023",  # December
     )
 
-    assert result_different["date_match_score"] == 0.0, (
-        "Different dates should not match even after normalization"
-    )
+    assert (
+        result_different["date_match_score"] == 0.0
+    ), "Different dates should not match even after normalization"
     assert result_different["date_success"] is False
 
     # Test 3: Invalid expected dates -> should return None
@@ -1570,9 +1570,9 @@ def test_evaluate_data_pull_with_date_format_mismatch():
         expected_end_date="also-invalid",
     )
 
-    assert result_invalid["date_match_score"] is None, (
-        "Invalid expected dates should result in None score (not evaluated)"
-    )
+    assert (
+        result_invalid["date_match_score"] is None
+    ), "Invalid expected dates should result in None score (not evaluated)"
     assert result_invalid["date_success"] is None
 
 
@@ -1591,23 +1591,23 @@ def test_expected_data_clarification_string_parsing():
 
     # Test empty string (most common case from CSV) -> None
     data_empty = ExpectedData(expected_clarification="")
-    assert data_empty.expected_clarification is None, (
-        "Empty string should be parsed as None (no expectation)"
-    )
+    assert (
+        data_empty.expected_clarification is None
+    ), "Empty string should be parsed as None (no expectation)"
 
     # Test string "true" values
     for true_val in ["true", "True", "TRUE", "1", "yes", "Yes"]:
         data = ExpectedData(expected_clarification=true_val)
-        assert data.expected_clarification is True, (
-            f"'{true_val}' should be parsed as True"
-        )
+        assert (
+            data.expected_clarification is True
+        ), f"'{true_val}' should be parsed as True"
 
     # Test string "false" values
     for false_val in ["false", "False", "FALSE", "0", "no", "No"]:
         data = ExpectedData(expected_clarification=false_val)
-        assert data.expected_clarification is False, (
-            f"'{false_val}' should be parsed as False"
-        )
+        assert (
+            data.expected_clarification is False
+        ), f"'{false_val}' should be parsed as False"
 
     # Test actual boolean values pass through
     data_true = ExpectedData(expected_clarification=True)
@@ -1654,9 +1654,9 @@ def test_status_filter_skips_matching_rows(tmp_path):
     assert "q1" not in queries, "status='skip' should be skipped"
     assert "q2" not in queries, "status='SKIP' should be skipped (case-insensitive)"
     assert "q3" not in queries, "status='not doing' should be skipped"
-    assert "q6" not in queries, (
-        "status='Not Doing' should be skipped (case-insensitive)"
-    )
+    assert (
+        "q6" not in queries
+    ), "status='Not Doing' should be skipped (case-insensitive)"
     assert "q4" in queries, "status='rerun' should be kept"
     assert "q5" in queries, "empty status should be kept"
 

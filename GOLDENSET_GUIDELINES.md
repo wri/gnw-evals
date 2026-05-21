@@ -89,4 +89,3 @@ For gold standard tests:
 - **Success Criteria:** Agent produces complete response without clarification requests
 - **Scoring:** Binary pass/fail based on answer accuracy
 - **Frequency:** Run before major releases and after significant changes
-

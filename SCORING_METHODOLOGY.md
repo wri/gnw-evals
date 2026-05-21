@@ -13,7 +13,7 @@ All individual scores are **binary** (0 or 1) or `None`:
 
 The following comparisons (i.e. between expected and actual values) are performed using LLM-as-a-Judge
 * Answer quality evaluation (`charts_answer_score`, `agent_answer_score`)
-* Clarification detection (`clarification_requested_score`) 
+* Clarification detection (`clarification_requested_score`)
 
 ## Individual Score Components
 
@@ -84,7 +84,7 @@ The following comparisons (i.e. between expected and actual values) are performe
 - **Comparison:** LLM-as-a-judge
   - First, detects if agent response is a clarification request
   - Then, compares against `expected_clarification` flag
-- **Score:** 
+- **Score:**
   - 1 if clarification was expected (`expected_clarification=True`) and agent requested it
   - 0 if clarification was NOT expected (`expected_clarification=False`) but agent requested it
   - `None` if agent did not request clarification

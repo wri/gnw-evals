@@ -7,16 +7,16 @@
 
 # PR #1: FIXES & CORRECTIONS
 
-**Branch:** `fix/scoring-corrections`  
-**Target:** `main`  
+**Branch:** `fix/scoring-corrections`
+**Target:** `main`
 **Execute in order (respecting dependencies)**
 
 ---
 
 ## Task 1: Missing "Expected" Values Handling ⭐ FOUNDATIONAL
 
-**Priority:** High  
-**Status:** [x]  
+**Priority:** High
+**Status:** [x]
 **Category:** Fix
 
 ### Problem
@@ -51,8 +51,8 @@ Missing "Expected" values should result in `None` (NaN) score results, not posit
 
 ## Task 2: Clarification Score Fix
 
-**Priority:** High  
-**Status:** [x]  
+**Priority:** High
+**Status:** [x]
 **Category:** Fix
 
 ### Problem
@@ -85,8 +85,8 @@ Clarification requests returned score of 1.0 in:
 
 ## Task 3: Answer Score - No Data Scenario
 
-**Priority:** Medium  
-**Status:** [x]  
+**Priority:** Medium
+**Status:** [x]
 **Category:** Fix
 
 ### Problem
@@ -120,8 +120,8 @@ If no charts data or answer, the answer score is zero. This seems different than
 
 ## Task 4: Answer Score Improvements
 
-**Priority:** Medium  
-**Status:** [x]  
+**Priority:** Medium
+**Status:** [x]
 **Category:** Fix
 
 ### Problem
@@ -166,11 +166,11 @@ If no charts data or answer, the answer score is zero. This seems different than
 
 ## Task 5: Overall Score Calculation Improvements
 
-**Priority:** Medium  
-**Status:** [x]  
+**Priority:** Medium
+**Status:** [x]
 **Category:** Fix
 
-### Current Issues 
+### Current Issues
 ```
 Old: overall_score = round(sum(scores) / len(scores), 2)  # Included None values, 0.25 increments
 ```
@@ -190,8 +190,8 @@ Old: overall_score = round(sum(scores) / len(scores), 2)  # Included None values
 
 ## Task 6: Date Check Range Implementation
 
-**Priority:** Low  
-**Status:** [x]  
+**Priority:** Low
+**Status:** [x]
 **Category:** Fix
 
 ### Problem
@@ -228,8 +228,8 @@ Date range checking in `evaluate_data_pull` was failing due to format mismatch b
 
 ## Task 7: Centralized Clarification Detection
 
-**Priority:** High  
-**Status:** [x]  
+**Priority:** High
+**Status:** [x]
 **Category:** Fix / Performance
 
 ### Problem
@@ -259,8 +259,8 @@ Clarification detection duplicated across 3 evaluators, causing up to 3 LLM call
 
 ## Task 8: Column Name Changes in Spreadsheet
 
-**Priority:** Medium  
-**Status:** [x]  
+**Priority:** Medium
+**Status:** [x]
 **Category:** New Feature
 
 ### Changes Required
@@ -278,12 +278,12 @@ Also added clarification expected column in the golden set with example rows.
 ## Task 9: Bitmap Style Cheatsheet
 
 **Priority:** Medium
-**Status:** [x]  
+**Status:** [x]
 **Category:** New Feature
 
 ### Implementation
 Created a bitmap style cheatsheet of results where each row is an eval row, and each column is a test score: neutral if None, green/red for pass/fail scores.
-* prototype implemented in notebook/simple.py, 
+* prototype implemented in notebook/simple.py,
 * branch: `notebook`
 
 ---
