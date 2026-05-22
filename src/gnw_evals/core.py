@@ -1,4 +1,5 @@
 import asyncio
+import statistics
 import time
 from datetime import UTC, datetime
 
@@ -125,6 +126,60 @@ async def run_single_test(
     return result
 
 
+_SCORE_FIELDS = [
+    "overall_score",
+    "aoi_id_match_score",
+    "dataset_id_match_score",
+    "dataset_parameter_match_score",
+    "context_layer_match_score",
+    "data_pull_exists_score",
+    "date_match_score",
+    "charts_answer_score",
+    "agent_answer_score",
+    "expected_text_match_score",
+    "clarification_requested_score",
+]
+
+
+def _aggregate_trial_results(trial_results: list[TestResult]) -> TestResult:
+    """Aggregate N trial results into a single result using mean and std."""
+    base = trial_results[0].model_copy(deep=True)
+    base.num_trials = len(trial_results)
+
+    for field in _SCORE_FIELDS:
+        values = [v for r in trial_results if (v := getattr(r, field)) is not None]
+        if values:
+            mean = round(sum(values) / len(values), 4)
+            std = round(statistics.stdev(values), 4) if len(values) > 1 else 0.0
+            setattr(base, field, mean)
+            setattr(base, f"{field}_std", std)
+        else:
+            setattr(base, field, None)
+            setattr(base, f"{field}_std", None)
+
+    return base
+
+
+async def run_trials_for_test(
+    runner,
+    test_case,
+    test_index: int,
+    total_tests: int,
+    num_trials: int,
+) -> TestResult:
+    """Run a single test case num_trials times and return an aggregated result."""
+    if num_trials == 1:
+        return await run_single_test(runner, test_case, test_index, total_tests)
+
+    trial_results = []
+    for t in range(num_trials):
+        print(f"  [trial {t + 1}/{num_trials}] ", end="")
+        result = await run_single_test(runner, test_case, test_index, total_tests)
+        trial_results.append(result)
+
+    return _aggregate_trial_results(trial_results)
+
+
 async def run_csv_tests(config) -> list[TestResult]:
     """Run E2E tests using CSV data files with parallel execution."""
     print(f"Loading test data from: {config.test_file}")
@@ -140,8 +195,11 @@ async def run_csv_tests(config) -> list[TestResult]:
         config.offset,
     )
     effective_num_workers = min(config.num_workers, 5, len(test_cases))
+    num_trials = getattr(config, "num_trials", 1)
     print(
-        f"Running {len(test_cases)} tests with {effective_num_workers} workers...",
+        f"Running {len(test_cases)} tests with {effective_num_workers} workers"
+        + (f", {num_trials} trials each" if num_trials > 1 else "")
+        + "...",
     )
 
     # Setup test runner
@@ -161,11 +219,12 @@ async def run_csv_tests(config) -> list[TestResult]:
         # Sequential execution for single worker
         results = []
         for i, test_case in enumerate(test_cases):
-            result = await run_single_test(
+            result = await run_trials_for_test(
                 runner,
                 test_case,
                 i,
                 len(test_cases),
+                num_trials,
             )
             results.append(result)
     else:
@@ -174,11 +233,12 @@ async def run_csv_tests(config) -> list[TestResult]:
 
         async def run_test_with_semaphore(test_case, test_index):
             async with semaphore:
-                return await run_single_test(
+                return await run_trials_for_test(
                     runner,
                     test_case,
                     test_index,
                     len(test_cases),
+                    num_trials,
                 )
 
         # Create tasks for all tests
@@ -219,20 +279,30 @@ def _print_csv_summary(
         return
 
     passed = sum(1 for r in results if r.overall_score >= 0.7)
+    num_trials = max(r.num_trials for r in results)
+    multi_trial = num_trials > 1
 
     # Label column width based on longest label ("Dataset Parameter Match" = 23 chars)
     LABEL_WIDTH = 25
 
-    def _metric_line(label: str, scores: list) -> str:
+    def _metric_line(label: str, score_field: str) -> str:
         label_col = f"{label}:"
+        scores = [v for r in results if (v := getattr(r, score_field)) is not None]
+        if not scores:
+            return f"{label_col:<{LABEL_WIDTH}} {0:>3} / {0:>3}"
+        if multi_trial:
+            mean = sum(scores) / len(scores)
+            std_values = [
+                v
+                for r in results
+                if (v := getattr(r, f"{score_field}_std", None)) is not None
+            ]
+            avg_std = sum(std_values) / len(std_values) if std_values else 0.0
+            return f"{label_col:<{LABEL_WIDTH}} {mean:.2f} ± {avg_std:.2f} (n={len(scores)}, {num_trials} trials)"
         evaluated = len(scores)
-        passed = sum(1 for s in scores if s == 1.0)
-        if evaluated > 0:
-            avg = passed / evaluated
-            return (
-                f"{label_col:<{LABEL_WIDTH}} {passed:>3} / {evaluated:>3} ({avg:.2f})"
-            )
-        return f"{label_col:<{LABEL_WIDTH}} {0:>3} / {0:>3}"
+        n_passed = sum(1 for s in scores if s == 1.0)
+        avg = n_passed / evaluated
+        return f"{label_col:<{LABEL_WIDTH}} {n_passed:>3} / {evaluated:>3} ({avg:.2f})"
 
     print(f"\n{'=' * 50}")
     print("EVALUATION SUMMARY")
@@ -240,72 +310,24 @@ def _print_csv_summary(
     if summary_context is not None:
         print_run_summary_header(summary_context)
     print(f"Tests Run (after filters): {total_tests}")
+    if multi_trial:
+        print(f"Trials per test: {num_trials}")
     print()
 
     # Agent Answer first - most important metric
-    agent_answer_scores = [
-        r.agent_answer_score for r in results if r.agent_answer_score is not None
-    ]
-    print(_metric_line("Agent Answer", agent_answer_scores))
+    print(_metric_line("Agent Answer", "agent_answer_score"))
     print()
 
     # Component-specific stats
-    aoi_scores = [
-        r.aoi_id_match_score for r in results if r.aoi_id_match_score is not None
-    ]
-    print(_metric_line("AOI ID Match", aoi_scores))
-
-    dataset_id_scores = [
-        r.dataset_id_match_score
-        for r in results
-        if r.dataset_id_match_score is not None
-    ]
-    print(_metric_line("Dataset ID Match", dataset_id_scores))
-
-    dataset_parameter_scores = [
-        r.dataset_parameter_match_score
-        for r in results
-        if r.dataset_parameter_match_score is not None
-    ]
-    print(_metric_line("Dataset Parameter Match", dataset_parameter_scores))
-
-    context_scores = [
-        r.context_layer_match_score
-        for r in results
-        if r.context_layer_match_score is not None
-    ]
-    print(_metric_line("Context Layer Match", context_scores))
-
-    data_pull_scores = [
-        r.data_pull_exists_score
-        for r in results
-        if r.data_pull_exists_score is not None
-    ]
-    print(_metric_line("Data Pull Exists", data_pull_scores))
-
-    date_scores = [
-        r.date_match_score for r in results if r.date_match_score is not None
-    ]
-    print(_metric_line("Date Match", date_scores))
-
-    charts_scores = [
-        r.charts_answer_score for r in results if r.charts_answer_score is not None
-    ]
-    print(_metric_line("Charts Answer", charts_scores))
-
-    expected_text_scores = [
-        r.expected_text_match_score
-        for r in results
-        if r.expected_text_match_score is not None
-    ]
-    print(_metric_line("Expected Text Match", expected_text_scores))
-
-    clarification_scores = [
-        r.clarification_requested_score
-        for r in results
-        if r.clarification_requested_score is not None
-    ]
-    print(_metric_line("Clarification Requested", clarification_scores))
+    print(_metric_line("AOI ID Match", "aoi_id_match_score"))
+    print(_metric_line("Dataset ID Match", "dataset_id_match_score"))
+    print(_metric_line("Dataset Parameter Match", "dataset_parameter_match_score"))
+    print(_metric_line("Context Layer Match", "context_layer_match_score"))
+    print(_metric_line("Data Pull Exists", "data_pull_exists_score"))
+    print(_metric_line("Date Match", "date_match_score"))
+    print(_metric_line("Charts Answer", "charts_answer_score"))
+    print(_metric_line("Expected Text Match", "expected_text_match_score"))
+    print(_metric_line("Clarification Requested", "clarification_requested_score"))
 
     # Experimental section
     print()
@@ -388,6 +410,13 @@ def _print_csv_summary(
     envvar="OFFSET",
     help="Offset for getting subset. Ignored if random_seed is not 0 (can also be set via OFFSET env var)",
 )
+@click.option(
+    "--num-trials",
+    default=1,
+    type=int,
+    envvar="NUM_TRIALS",
+    help="Number of trials per test for robustness measurement (can also be set via NUM_TRIALS env var)",
+)
 def run_evals(
     api_base_url: str,
     api_token: str | None,
@@ -400,6 +429,7 @@ def run_evals(
     num_workers: int,
     random_seed: int,
     offset: int,
+    num_trials: int,
 ):
     """Run main E2E test function for CSV based evaluation."""
     # Validate API token
@@ -428,6 +458,7 @@ def run_evals(
             num_workers=num_workers,
             random_seed=random_seed,
             offset=offset,
+            num_trials=num_trials,
         )
         return
 
@@ -457,6 +488,7 @@ def run_evals(
             num_workers=num_workers,
             random_seed=random_seed,
             offset=offset,
+            num_trials=num_trials,
         )
 
         # Tag results with eval_set and accumulate
@@ -490,6 +522,7 @@ def _run_custom_test_file(
     num_workers: int,
     random_seed: int,
     offset: int,
+    num_trials: int = 1,
 ) -> None:
     """Run evals with a custom test file (not from standard eval sets).
 
@@ -510,6 +543,7 @@ def _run_custom_test_file(
         num_workers=num_workers,
         random_seed=random_seed,
         offset=offset,
+        num_trials=num_trials,
     )
 
     # Tag results with eval_set = "custom"
@@ -543,6 +577,7 @@ def _run_single_eval_set(
     num_workers: int,
     random_seed: int,
     offset: int,
+    num_trials: int = 1,
 ) -> list[TestResult]:
     """Run evals for a single eval set. Internal helper function.
 
@@ -573,6 +608,7 @@ EVALUATION CONFIGURATION
   Status Filter:     {status_filter or "None"}
   Output Filename:   {output_filename or "Auto-generated"}
   Num Workers:       {num_workers}
+  Num Trials:        {num_trials}
   Random Seed:       {random_seed}
   Offset:            {offset}
 ========================
@@ -603,6 +639,7 @@ EVALUATION CONFIGURATION
             self.num_workers = num_workers
             self.random_seed = random_seed
             self.offset = offset
+            self.num_trials = num_trials
 
     config = Config()
     try:
