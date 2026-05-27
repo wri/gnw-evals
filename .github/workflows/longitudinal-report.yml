@@ -49,12 +49,9 @@ jobs:
           n_runs="${{ inputs.n_runs }}"
 
           gh api "repos/$repo/actions/artifacts?per_page=100" \
-            --jq \
-              --arg prefix "$prefix" \
-              --argjson n "$n_runs" \
-              '[.artifacts[]
-                | select(.name | startswith($prefix))
-              ] | sort_by(.created_at) | reverse | .[0:$n][] | [(.id | tostring), .name] | join("\t")' \
+            --jq "[.artifacts[]
+                | select(.name | startswith(\"$prefix\"))
+              ] | sort_by(.created_at) | reverse | .[:$n_runs][] | [(.id | tostring), .name] | join(\"\t\")" \
             > /tmp/artifacts.txt
 
           echo "Artifacts to download:"
