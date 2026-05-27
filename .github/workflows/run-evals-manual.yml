@@ -154,3 +154,4 @@ jobs:
           dest="s3://$AWS_S3_BUCKET/${{ inputs.target_env }}/${run_date}/${{ github.run_id }}/"
           echo "Uploading outputs/*.csv to $dest"
           uv run --with awscli aws s3 cp outputs/ "$dest" --recursive --exclude "*" --include "*.csv"
+
