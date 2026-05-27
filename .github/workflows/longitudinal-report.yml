@@ -49,12 +49,9 @@ jobs:
           n_runs="${{ inputs.n_runs }}"
 
           gh api "repos/$repo/actions/artifacts?per_page=100" \
-            --jq \
-              --arg prefix "$prefix" \
-              --argjson n "$n_runs" \
-              '[.artifacts[]
-                | select(.name | startswith($prefix))
-              ] | sort_by(.created_at) | reverse | .[0:$n][] | [(.id | tostring), .name] | join("\t")' \
+            --jq "[.artifacts[]
+                | select(.name | startswith(\"$prefix\"))
+              ] | sort_by(.created_at) | reverse | .[:$n_runs][] | [(.id | tostring), .name] | join(\"\t\")" \
             > /tmp/artifacts.txt
 
           echo "Artifacts to download:"
@@ -71,7 +68,7 @@ jobs:
 
       - name: Install notebook dependencies
         run: |
-          uv pip install \
+          uv pip install --system \
             "marimo" \
             "altair==6.1.0" \
             "great-tables==0.21.0" \
@@ -81,8 +78,8 @@ jobs:
 
       - name: Export longitudinal report as HTML
         run: |
-          uv run marimo export html notebooks/longitudinal_analysis.py \
-            --no-show-code \
+          marimo export html notebooks/longitudinal_analysis.py \
+            --no-include-code \
             -o outputs/longitudinal_report.html
 
       - name: Set report timestamp
