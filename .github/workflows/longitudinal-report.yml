@@ -79,7 +79,7 @@ jobs:
       - name: Export longitudinal report as HTML
         run: |
           marimo export html notebooks/longitudinal_analysis.py \
-            --no-show-code \
+            --no-include-code \
             -o outputs/longitudinal_report.html
 
       - name: Set report timestamp
