@@ -68,7 +68,7 @@ jobs:
 
       - name: Install notebook dependencies
         run: |
-          uv pip install \
+          uv pip install --system \
             "marimo" \
             "altair==6.1.0" \
             "great-tables==0.21.0" \
@@ -78,7 +78,7 @@ jobs:
 
       - name: Export longitudinal report as HTML
         run: |
-          uv run marimo export html notebooks/longitudinal_analysis.py \
+          marimo export html notebooks/longitudinal_analysis.py \
             --no-show-code \
             -o outputs/longitudinal_report.html
 
