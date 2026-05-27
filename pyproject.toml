@@ -30,6 +30,9 @@ dev = [
 ]
 
 
+[tool.ruff]
+exclude = ["notebooks/"]
+
 [tool.ruff.lint]
 select = [
     "COM",  # flake8-commas
