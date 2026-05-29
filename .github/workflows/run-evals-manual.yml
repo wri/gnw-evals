@@ -44,6 +44,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   run-evals:
@@ -154,3 +155,42 @@ jobs:
           dest="s3://$AWS_S3_BUCKET/${{ inputs.target_env }}/${run_date}/${{ github.run_id }}/"
           echo "Uploading outputs/*.csv to $dest"
           uv run --with awscli aws s3 cp outputs/ "$dest" --recursive --exclude "*" --include "*.csv"
+
+      # ── Regression check ────────────────────────────────────────────────────────
+
+      - name: Organize current run CSVs into named folder
+        run: |
+          folder="outputs/eval-csv-${{ inputs.target_env }}-${{ steps.artifact_ts.outputs.value }}-${{ github.run_id }}"
+          mkdir -p "$folder"
+          cp outputs/*.csv "$folder/"
+
+      - name: Download last 9 previous eval-csv artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          prefix="eval-csv-${{ inputs.target_env }}-"
+          repo="${{ github.repository }}"
+          run_id="${{ github.run_id }}"
+
+          gh api "repos/$repo/actions/artifacts?per_page=100" \
+            --jq "[.artifacts[]
+                | select(.name | startswith(\"$prefix\"))
+                | select(.workflow_run.id | tostring != \"$run_id\")
+              ] | sort_by(.created_at) | reverse | .[:9][] | [(.id | tostring), .name] | join(\"\t\")" \
+            > /tmp/prev_artifacts.txt || true
+
+          while IFS=$'\t' read -r artifact_id artifact_name; do
+            [ -z "$artifact_id" ] && continue
+            mkdir -p "outputs/$artifact_name"
+            gh api "repos/$repo/actions/artifacts/$artifact_id/zip" > /tmp/artifact.zip
+            unzip -j -o /tmp/artifact.zip -d "outputs/$artifact_name/"
+            rm /tmp/artifact.zip
+          done < /tmp/prev_artifacts.txt
+
+      - name: Check for score regressions
+        run: |
+          uv run python scripts/regression_check.py \
+            --base-dir outputs \
+            --eval-set "${{ inputs.eval_set }}" \
+            --n-runs 10 \
+            --threshold 1.0
