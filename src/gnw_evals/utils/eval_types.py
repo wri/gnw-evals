@@ -85,6 +85,22 @@ class TestResult(BaseModel):
     # Error handling
     error: str | None = None
 
+    # Trial metadata
+    num_trials: int = 1
+
+    # Std deviation per score (only populated when num_trials > 1)
+    overall_score_std: float | None = None
+    aoi_id_match_score_std: float | None = None
+    dataset_id_match_score_std: float | None = None
+    dataset_parameter_match_score_std: float | None = None
+    context_layer_match_score_std: float | None = None
+    data_pull_exists_score_std: float | None = None
+    date_match_score_std: float | None = None
+    charts_answer_score_std: float | None = None
+    agent_answer_score_std: float | None = None
+    expected_text_match_score_std: float | None = None
+    clarification_requested_score_std: float | None = None
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for CSV export."""
         return self.model_dump(exclude_none=False)

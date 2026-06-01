@@ -1,0 +1,94 @@
+name: Longitudinal Report
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: "Environment to pull artifacts from"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - prod
+      n_runs:
+        description: "Number of recent eval-csv artifacts to include"
+        required: false
+        default: "5"
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          version: "latest"
+
+      - name: Download eval-csv artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          prefix="eval-csv-${{ inputs.target_env }}-"
+          repo="${{ github.repository }}"
+          n_runs="${{ inputs.n_runs }}"
+
+          gh api "repos/$repo/actions/artifacts?per_page=100" \
+            --jq "[.artifacts[]
+                | select(.name | startswith(\"$prefix\"))
+              ] | sort_by(.created_at) | reverse | .[:$n_runs][] | [(.id | tostring), .name] | join(\"\t\")" \
+            > /tmp/artifacts.txt
+
+          echo "Artifacts to download:"
+          cat /tmp/artifacts.txt
+
+          while IFS=$'\t' read -r artifact_id artifact_name; do
+            [ -z "$artifact_id" ] && continue
+            echo "Downloading: $artifact_name (id: $artifact_id)"
+            mkdir -p "outputs/$artifact_name"
+            gh api "repos/$repo/actions/artifacts/$artifact_id/zip" > /tmp/artifact.zip
+            unzip -j -o /tmp/artifact.zip -d "outputs/$artifact_name/"
+            rm /tmp/artifact.zip
+          done < /tmp/artifacts.txt
+
+      - name: Install notebook dependencies
+        run: |
+          uv pip install --system \
+            "marimo" \
+            "altair==6.1.0" \
+            "great-tables==0.21.0" \
+            "numpy==2.4.4" \
+            "pandas==3.0.3" \
+            "pyarrow==24.0.0"
+
+      - name: Export longitudinal report as HTML
+        run: |
+          marimo export html notebooks/longitudinal_analysis.py \
+            --no-include-code \
+            -o outputs/longitudinal_report.html
+
+      - name: Set report timestamp
+        id: report_ts
+        run: echo "value=$(date -u +%Y%m%d_%H%M%S)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload longitudinal report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: longitudinal-report-${{ inputs.target_env }}-${{ steps.report_ts.outputs.value }}
+          path: outputs/longitudinal_report.html
+          if-no-files-found: error
