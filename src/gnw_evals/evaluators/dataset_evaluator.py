@@ -77,6 +77,22 @@ def evaluate_dataset_selection(
 
     dataset = agent_state.get("dataset")
 
+    if normalize_value(expected_dataset_id) == "no_selection":
+        dataset_selected = bool(dataset and dataset.get("dataset_id"))
+        actual_dataset_id = str(dataset.get("dataset_id", "")) if dataset else None
+        actual_dataset_name = dataset.get("dataset_name", "") if dataset else None
+        actual_context_layer = dataset.get("context_layer", "") if dataset else None
+        return {
+            "dataset_id_match_score": 0.0 if dataset_selected else 1.0,
+            "dataset_parameter_match_score": None,
+            "context_layer_match_score": None,
+            "actual_dataset_id": actual_dataset_id,
+            "actual_dataset_name": actual_dataset_name,
+            "actual_dataset_parameters": None,
+            "actual_context_layer": actual_context_layer,
+            "error": "",
+        }
+
     if not dataset:
         return {
             "dataset_id_match_score": 0.0,
