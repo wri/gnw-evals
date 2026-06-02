@@ -20,6 +20,9 @@ from gnw_evals.utils.sheet_registry import EVAL_SETS, get_sheet_url
 dotenv.load_dotenv()
 
 _OVERALL_SCORE_FIELD = "overall_score"
+_REASON_BY_SCORE = {
+    "agent_answer_score": "agent_answer_score_reason",
+}
 
 
 def _check_scores_from_result(result: TestResult) -> list[tuple[str, float]]:
@@ -87,6 +90,11 @@ def _print_failure_details(
     for name, score in failed_checks:
         label = name.removesuffix("_score").replace("_", " ")
         print(f"  {label}: {score}")
+        reason_field = _REASON_BY_SCORE.get(name)
+        if reason_field:
+            reason = getattr(result, reason_field, None)
+            if reason:
+                print(f"    reason: {reason}")
 
 
 def _build_default_output_filename(

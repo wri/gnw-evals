@@ -1775,6 +1775,31 @@ def test_print_failure_details_includes_langfuse_link(capsys):
     assert "langfuse: https://langfuse.example/trace/abc123" in out
 
 
+def test_print_failure_details_includes_agent_answer_failure_reason(capsys):
+    """Failing agent-answer checks should show the evaluator reason."""
+    test_case = ExpectedData(query="test question", test_id="test-123")
+    result = TestResult(
+        thread_id="thread-1",
+        query="test question",
+        overall_score=0.0,
+        execution_time="2026-01-01T00:00:00Z",
+        agent_answer_score=0.0,
+        agent_answer_score_reason="Answer picked Australia instead of Brazil.",
+    )
+
+    _print_failure_details(
+        test_case=test_case,
+        test_index=0,
+        total_tests=1,
+        result=result,
+        duration=1.2,
+    )
+
+    out = capsys.readouterr().out
+    assert "agent answer: 0.0" in out
+    assert "reason: Answer picked Australia instead of Brazil." in out
+
+
 def test_build_app_thread_url_uses_thread_id_not_trace_id():
     """App URL should map API host to app host and use session/thread UUID."""
     from gnw_evals.runners.api import APITestRunner
