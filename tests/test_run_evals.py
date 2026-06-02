@@ -146,6 +146,7 @@ class TestConfig:
     test_file: str = "gnw-eval-sets-gold.csv"
     test_group_filter: str | None = None
     status_filter: list[str] | None = None
+    test_id_filter: str | None = None
     output_filename: str = "test_results.csv"
     num_workers: int = 1
     random_seed: int = 0
@@ -282,6 +283,7 @@ async def test_run_csv_tests_with_mocked_data(
                             mock_config.sample_size,
                             mock_config.test_group_filter,
                             mock_config.status_filter,
+                            mock_config.test_id_filter,
                             mock_config.random_seed,
                             mock_config.offset,
                         )
@@ -1682,6 +1684,45 @@ def test_status_filter_none_keeps_all_rows(tmp_path):
     results = CSVLoader.load_test_data(str(csv_file), status_filter=None)
 
     assert len(results) == 4, "All rows should be kept when status_filter is None"
+
+
+def test_test_id_filter_matches_single_row(tmp_path):
+    """Test that test_id_filter keeps only the matching row."""
+    import pandas as pd
+
+    from gnw_evals.data_handlers.csv_loader import CSVLoader
+
+    csv_file = tmp_path / "test.csv"
+    pd.DataFrame(
+        {
+            "test_id": ["GOLD-001", "GOLD-002", "GOLD-003"],
+            "query": ["q1", "q2", "q3"],
+        },
+    ).to_csv(csv_file, index=False)
+
+    results = CSVLoader.load_test_data(str(csv_file), test_id_filter="gold-002")
+
+    assert len(results) == 1
+    assert results[0].test_id == "GOLD-002"
+    assert results[0].query == "q2"
+
+
+def test_test_id_filter_no_test_id_column_returns_no_rows(tmp_path):
+    """test_id_filter should return no rows when CSV has no test_id column."""
+    import pandas as pd
+
+    from gnw_evals.data_handlers.csv_loader import CSVLoader
+
+    csv_file = tmp_path / "test.csv"
+    pd.DataFrame(
+        {
+            "query": ["q1", "q2"],
+        },
+    ).to_csv(csv_file, index=False)
+
+    results = CSVLoader.load_test_data(str(csv_file), test_id_filter="gold-001")
+
+    assert len(results) == 0
 
 
 def test_default_output_filename_builder_for_single_eval_set():

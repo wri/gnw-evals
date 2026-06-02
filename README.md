@@ -154,6 +154,9 @@ uv run gnw_evals --api-token your_token --test-group-filter rel-accuracy
 # Filter by status (comma-separated)
 uv run gnw_evals --api-token your_token --status-filter ready,rerun
 
+# Run one specific test by test_id
+uv run gnw_evals --api-token your_token --test-id GOLD-001
+
 ```
 
 The framework supports multiple specialized eval sets, not just the GOLDEN SET
