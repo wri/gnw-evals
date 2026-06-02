@@ -157,6 +157,9 @@ uv run gnw_evals --api-token your_token --status-filter ready,rerun
 # Print per-test results to screen instead of writing CSV files
 uv run gnw_evals --api-token your_token --print-results
 
+# Optionally prepend proactive guidance in front of every test query
+uv run gnw_evals --api-token your_token --prepend-proactive-flag
+
 ```
 
 The framework supports multiple specialized eval sets, not just the GOLDEN SET

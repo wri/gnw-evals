@@ -14,6 +14,7 @@ from click.testing import CliRunner
 
 from gnw_evals.core import (
     _build_default_output_filename,
+    _build_query_for_run,
     _print_failure_details,
     run_csv_tests,
     run_evals,
@@ -155,6 +156,7 @@ class TestConfig:
     output_filename: str = "test_results.csv"
     num_workers: int = 1
     random_seed: int = 0
+    prepend_proactive_flag: bool = False
     offset: int = 0
 
 
@@ -1842,3 +1844,22 @@ def test_build_app_thread_url_uses_localhost_3000_for_local_api():
     assert (
         url == "http://localhost:3000/app/threads/2ebdb2fc-ed24-4b7e-b402-c043d468e940"
     )
+
+
+def test_build_query_for_run_prepends_when_flag_enabled():
+    """Query should be prefixed with proactive guidance when enabled."""
+    query = "What changed in forest disturbance in 2024?"
+
+    updated_query = _build_query_for_run(query, prepend_proactive_flag=True)
+
+    assert updated_query.startswith("be proactive running the analysis")
+    assert updated_query.endswith(query)
+
+
+def test_build_query_for_run_noop_when_flag_disabled():
+    """Query should remain unchanged when proactive prefix is disabled."""
+    query = "Show me alerts in Brazil"
+
+    updated_query = _build_query_for_run(query, prepend_proactive_flag=False)
+
+    assert updated_query == query

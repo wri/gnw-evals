@@ -23,6 +23,10 @@ _OVERALL_SCORE_FIELD = "overall_score"
 _REASON_BY_SCORE = {
     "agent_answer_score": "agent_answer_score_reason",
 }
+_PROACTIVE_ANALYSIS_PREFIX = (
+    "be proactive running the analysis, I am ok for you to make assumptions "
+    "about my question and prefer if you move forward with best possible pick"
+)
 
 
 def _check_scores_from_result(result: TestResult) -> list[tuple[str, float]]:
@@ -112,6 +116,16 @@ def _build_default_output_filename(
     )
 
 
+def _build_query_for_run(query: str, prepend_proactive_flag: bool) -> str:
+    """Optionally prepend proactive analysis guidance to each query."""
+    if not prepend_proactive_flag:
+        return query
+    clean_query = query.strip()
+    if not clean_query:
+        return _PROACTIVE_ANALYSIS_PREFIX
+    return f"{_PROACTIVE_ANALYSIS_PREFIX}\n\n{clean_query}"
+
+
 def _save_or_print_results(
     results: list[TestResult],
     *,
@@ -136,6 +150,7 @@ async def run_single_test(
     test_case,
     test_index,
     total_tests,
+    prepend_proactive_flag: bool = False,
 ) -> TestResult:
     """Run a single test case."""
     start_time = time.time()
@@ -145,7 +160,8 @@ async def run_single_test(
     expected_data = ExpectedData(
         **{k: v for k, v in test_dict.items() if k != "query"},
     )
-    result = await runner.run_test(test_case.query, expected_data)
+    run_query = _build_query_for_run(test_case.query, prepend_proactive_flag)
+    result = await runner.run_test(run_query, expected_data)
     duration = time.time() - start_time
     result.duration_seconds = duration
 
@@ -198,6 +214,7 @@ async def run_csv_tests(config) -> list[TestResult]:
                 test_case,
                 i,
                 len(test_cases),
+                config.prepend_proactive_flag,
             )
             results.append(result)
     else:
@@ -211,6 +228,7 @@ async def run_csv_tests(config) -> list[TestResult]:
                     test_case,
                     test_index,
                     len(test_cases),
+                    config.prepend_proactive_flag,
                 )
 
         # Create tasks for all tests
@@ -420,6 +438,13 @@ def _print_csv_summary(
     help="Random seed for sampling (0 means no random sampling) (can also be set via RANDOM_SEED env var)",
 )
 @click.option(
+    "--prepend-proactive-flag",
+    is_flag=True,
+    default=False,
+    envvar="PREPEND_PROACTIVE_FLAG",
+    help='Prepend "be proactive running the analysis..." guidance to each query',
+)
+@click.option(
     "--offset",
     default=0,
     type=int,
@@ -438,6 +463,7 @@ def run_evals(
     output_filename: str | None,
     num_workers: int,
     random_seed: int,
+    prepend_proactive_flag: bool,
     offset: int,
 ):
     """Run main E2E test function for CSV based evaluation."""
@@ -467,6 +493,7 @@ def run_evals(
             output_filename=output_filename,
             num_workers=num_workers,
             random_seed=random_seed,
+            prepend_proactive_flag=prepend_proactive_flag,
             offset=offset,
         )
         return
@@ -497,6 +524,7 @@ def run_evals(
             output_filename=None,
             num_workers=num_workers,
             random_seed=random_seed,
+            prepend_proactive_flag=prepend_proactive_flag,
             offset=offset,
         )
 
@@ -530,6 +558,7 @@ def _run_custom_test_file(
     output_filename: str | None,
     num_workers: int,
     random_seed: int,
+    prepend_proactive_flag: bool,
     offset: int,
 ) -> None:
     """Run evals with a custom test file (not from standard eval sets).
@@ -551,6 +580,7 @@ def _run_custom_test_file(
         output_filename=None,
         num_workers=num_workers,
         random_seed=random_seed,
+        prepend_proactive_flag=prepend_proactive_flag,
         offset=offset,
     )
 
@@ -585,6 +615,7 @@ def _run_single_eval_set(
     output_filename: str | None,
     num_workers: int,
     random_seed: int,
+    prepend_proactive_flag: bool,
     offset: int,
 ) -> list[TestResult]:
     """Run evals for a single eval set. Internal helper function.
@@ -618,6 +649,7 @@ EVALUATION CONFIGURATION
   Output Filename:   {output_filename or "Auto-generated"}
   Num Workers:       {num_workers}
   Random Seed:       {random_seed}
+  Proactive Prefix:  {prepend_proactive_flag}
   Offset:            {offset}
 ========================
 """,
@@ -646,6 +678,7 @@ EVALUATION CONFIGURATION
             self.output_filename = output_filename
             self.num_workers = num_workers
             self.random_seed = random_seed
+            self.prepend_proactive_flag = prepend_proactive_flag
             self.offset = offset
 
     config = Config()
