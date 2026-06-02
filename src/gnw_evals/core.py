@@ -138,6 +138,7 @@ _SCORE_FIELDS = [
     "agent_answer_score",
     "expected_text_match_score",
     "clarification_requested_score",
+    "suggested_datasets_match_score",
 ]
 
 

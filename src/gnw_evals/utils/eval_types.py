@@ -100,6 +100,7 @@ class TestResult(BaseModel):
     agent_answer_score_std: float | None = None
     expected_text_match_score_std: float | None = None
     clarification_requested_score_std: float | None = None
+    suggested_datasets_match_score_std: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for CSV export."""
