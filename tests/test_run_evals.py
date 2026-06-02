@@ -1713,7 +1713,7 @@ def test_run_evals_print_results_skips_file_export():
     fake_result = MagicMock()
 
     with patch("gnw_evals.core._run_single_eval_set", return_value=[fake_result]):
-        with patch("gnw_evals.core._print_results_to_screen") as mock_print:
+        with patch("gnw_evals.core.print_results_to_screen") as mock_print:
             with patch("gnw_evals.core.ResultExporter") as mock_exporter_class:
                 result = runner.invoke(
                     run_evals,
@@ -1730,7 +1730,7 @@ def test_run_evals_with_no_results_writes_nothing():
     runner = CliRunner()
 
     with patch("gnw_evals.core._run_single_eval_set", return_value=[]):
-        with patch("gnw_evals.core._print_results_to_screen") as mock_print:
+        with patch("gnw_evals.core.print_results_to_screen") as mock_print:
             with patch("gnw_evals.core.ResultExporter") as mock_exporter_class:
                 result = runner.invoke(
                     run_evals,

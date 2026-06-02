@@ -1,5 +1,4 @@
 import asyncio
-import json
 import time
 from datetime import UTC, datetime
 
@@ -9,6 +8,7 @@ import dotenv
 from gnw_evals.data_handlers import CSVLoader, ResultExporter
 from gnw_evals.runners import APITestRunner
 from gnw_evals.utils.eval_types import ExpectedData, TestResult
+from gnw_evals.utils.result_display import print_results_to_screen
 from gnw_evals.utils.run_metadata import (
     RunSummaryContext,
     build_run_summary_context,
@@ -100,14 +100,6 @@ def _build_default_output_filename(
     )
 
 
-def _print_results_to_screen(results: list[TestResult]) -> None:
-    """Print detailed per-test results to stdout as JSON."""
-    print(f"\nPrinting {len(results)} test result(s):")
-    for i, result in enumerate(results, 1):
-        print(f"\n--- Result {i}/{len(results)} ---")
-        print(json.dumps(result.to_dict(), indent=2, default=str))
-
-
 def _save_or_print_results(
     results: list[TestResult],
     *,
@@ -120,7 +112,7 @@ def _save_or_print_results(
         return
 
     if print_results:
-        _print_results_to_screen(results)
+        print_results_to_screen(results)
         return
 
     exporter = ResultExporter()
