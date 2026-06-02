@@ -36,6 +36,7 @@ class BaseTestRunner(ABC):
         self,
         thread_id: str,
         trace_url: str,
+        app_thread_url: str | None,
         query: str,
         expected_data: ExpectedData,
         error: str,
@@ -52,6 +53,7 @@ class BaseTestRunner(ABC):
 
         return TestResult(
             thread_id=thread_id,
+            app_thread_url=app_thread_url,
             trace_id=None,
             trace_url=trace_url,
             query=query,

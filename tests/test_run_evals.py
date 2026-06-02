@@ -12,8 +12,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from click.testing import CliRunner
 
-from gnw_evals.core import _build_default_output_filename, run_csv_tests, run_evals
-from gnw_evals.utils.eval_types import ExpectedData
+from gnw_evals.core import (
+    _build_default_output_filename,
+    _print_failure_details,
+    run_csv_tests,
+    run_evals,
+)
+from gnw_evals.utils.eval_types import ExpectedData, TestResult
 
 
 class MockStreamContextManager:
@@ -1740,3 +1745,75 @@ def test_run_evals_with_no_results_writes_nothing():
     assert result.exit_code == 0
     mock_print.assert_not_called()
     mock_exporter_class.assert_not_called()
+
+
+def test_print_failure_details_includes_langfuse_link(capsys):
+    """Failing output should include app thread and trace URLs when available."""
+    test_case = ExpectedData(query="test question", test_id="test-123")
+    result = TestResult(
+        thread_id="thread-1",
+        app_thread_url="https://staging.globalnaturewatch.org/app/threads/thread-1",
+        query="test question",
+        overall_score=0.0,
+        execution_time="2026-01-01T00:00:00Z",
+        trace_url="https://langfuse.example/trace/abc123",
+        aoi_id_match_score=0.0,
+    )
+
+    _print_failure_details(
+        test_case=test_case,
+        test_index=0,
+        total_tests=1,
+        result=result,
+        duration=1.2,
+    )
+
+    out = capsys.readouterr().out
+    assert (
+        "app thread: https://staging.globalnaturewatch.org/app/threads/thread-1" in out
+    )
+    assert "langfuse: https://langfuse.example/trace/abc123" in out
+
+
+def test_build_app_thread_url_uses_thread_id_not_trace_id():
+    """App URL should map API host to app host and use session/thread UUID."""
+    from gnw_evals.runners.api import APITestRunner
+
+    url = APITestRunner._build_app_thread_url(
+        "https://api.staging.globalnaturewatch.org",
+        "2ebdb2fc-ed24-4b7e-b402-c043d468e940",
+    )
+
+    assert (
+        url
+        == "https://staging.globalnaturewatch.org/app/threads/2ebdb2fc-ed24-4b7e-b402-c043d468e940"
+    )
+
+
+def test_build_app_thread_url_uses_root_domain_for_production():
+    """Production API host should map to production app root domain."""
+    from gnw_evals.runners.api import APITestRunner
+
+    url = APITestRunner._build_app_thread_url(
+        "https://api.globalnaturewatch.org",
+        "2ebdb2fc-ed24-4b7e-b402-c043d468e940",
+    )
+
+    assert (
+        url
+        == "https://globalnaturewatch.org/app/threads/2ebdb2fc-ed24-4b7e-b402-c043d468e940"
+    )
+
+
+def test_build_app_thread_url_uses_localhost_3000_for_local_api():
+    """Local API hosts should point to local app at port 3000."""
+    from gnw_evals.runners.api import APITestRunner
+
+    url = APITestRunner._build_app_thread_url(
+        "http://localhost:8000",
+        "2ebdb2fc-ed24-4b7e-b402-c043d468e940",
+    )
+
+    assert (
+        url == "http://localhost:3000/app/threads/2ebdb2fc-ed24-4b7e-b402-c043d468e940"
+    )

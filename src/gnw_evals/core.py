@@ -78,6 +78,10 @@ def _print_failure_details(
         print(f"  query: {query[:120]}{'...' if len(query) > 120 else ''}")
     if result.error:
         print(f"  error: {result.error}")
+    if result.app_thread_url:
+        print(f"  app thread: {result.app_thread_url}")
+    if result.trace_url:
+        print(f"  langfuse: {result.trace_url}")
 
     failed_checks = [(name, score) for name, score in scores if score != 1.0]
     for name, score in failed_checks:

@@ -11,6 +11,7 @@ class TestResult(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     thread_id: str
+    app_thread_url: str | None = None
     trace_id: str | None = None
     trace_url: str | None = None
     test_id: str = ""
