@@ -154,6 +154,9 @@ uv run gnw_evals --api-token your_token --test-group-filter rel-accuracy
 # Filter by status (comma-separated)
 uv run gnw_evals --api-token your_token --status-filter ready,rerun
 
+# Print per-test results to screen instead of writing CSV files
+uv run gnw_evals --api-token your_token --print-results
+
 ```
 
 The framework supports multiple specialized eval sets, not just the GOLDEN SET

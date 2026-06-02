@@ -10,8 +10,9 @@ from dataclasses import dataclass
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from click.testing import CliRunner
 
-from gnw_evals.core import _build_default_output_filename, run_csv_tests
+from gnw_evals.core import _build_default_output_filename, run_csv_tests, run_evals
 from gnw_evals.utils.eval_types import ExpectedData
 
 
@@ -1704,3 +1705,38 @@ def test_default_output_filename_builder_for_all_eval_sets():
         offset=10,
     )
     assert filename == "eval_results_all_sample_5_workers_4_offset_10"
+
+
+def test_run_evals_print_results_skips_file_export():
+    """When --print-results is set, output should be printed, not saved."""
+    runner = CliRunner()
+    fake_result = MagicMock()
+
+    with patch("gnw_evals.core._run_single_eval_set", return_value=[fake_result]):
+        with patch("gnw_evals.core._print_results_to_screen") as mock_print:
+            with patch("gnw_evals.core.ResultExporter") as mock_exporter_class:
+                result = runner.invoke(
+                    run_evals,
+                    ["--api-token", "test-token", "--print-results"],
+                )
+
+    assert result.exit_code == 0
+    mock_print.assert_called_once()
+    mock_exporter_class.assert_not_called()
+
+
+def test_run_evals_with_no_results_writes_nothing():
+    """No CSV files or screen output when no tests are collected."""
+    runner = CliRunner()
+
+    with patch("gnw_evals.core._run_single_eval_set", return_value=[]):
+        with patch("gnw_evals.core._print_results_to_screen") as mock_print:
+            with patch("gnw_evals.core.ResultExporter") as mock_exporter_class:
+                result = runner.invoke(
+                    run_evals,
+                    ["--api-token", "test-token"],
+                )
+
+    assert result.exit_code == 0
+    mock_print.assert_not_called()
+    mock_exporter_class.assert_not_called()

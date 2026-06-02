@@ -1,4 +1,5 @@
 import asyncio
+import json
 import time
 from datetime import UTC, datetime
 
@@ -97,6 +98,33 @@ def _build_default_output_filename(
         f"_workers_{num_workers}"
         f"_offset_{offset}"
     )
+
+
+def _print_results_to_screen(results: list[TestResult]) -> None:
+    """Print detailed per-test results to stdout as JSON."""
+    print(f"\nPrinting {len(results)} test result(s):")
+    for i, result in enumerate(results, 1):
+        print(f"\n--- Result {i}/{len(results)} ---")
+        print(json.dumps(result.to_dict(), indent=2, default=str))
+
+
+def _save_or_print_results(
+    results: list[TestResult],
+    *,
+    print_results: bool,
+    output_filename: str | None,
+    default_output_filename: str,
+) -> None:
+    """Print results to screen or write CSV files. No-op when there are no results."""
+    if not results:
+        return
+
+    if print_results:
+        _print_results_to_screen(results)
+        return
+
+    exporter = ResultExporter()
+    exporter.save_results_to_csv(results, output_filename or default_output_filename)
 
 
 async def run_single_test(
@@ -362,6 +390,12 @@ def _print_csv_summary(
     help="Filter by status column (comma-separated values) (can also be set via STATUS_FILTER env var)",
 )
 @click.option(
+    "--print-results",
+    is_flag=True,
+    default=False,
+    help="Print detailed per-test results to screen instead of writing CSV files",
+)
+@click.option(
     "--output-filename",
     default=None,
     envvar="OUTPUT_FILENAME",
@@ -396,6 +430,7 @@ def run_evals(
     test_file: str | None,
     test_group_filter: str | None,
     status_filter: str | None,
+    print_results: bool,
     output_filename: str | None,
     num_workers: int,
     random_seed: int,
@@ -424,6 +459,7 @@ def run_evals(
             test_file=test_file,
             test_group_filter=test_group_filter,
             status_filter=status_filter,
+            print_results=print_results,
             output_filename=output_filename,
             num_workers=num_workers,
             random_seed=random_seed,
@@ -453,6 +489,7 @@ def run_evals(
             test_file=None,
             test_group_filter=test_group_filter,
             status_filter=status_filter,
+            print_results=print_results,
             output_filename=None,
             num_workers=num_workers,
             random_seed=random_seed,
@@ -465,18 +502,17 @@ def run_evals(
                 result.eval_set = current_eval_set
             all_results.extend(results)
 
-    # Write combined CSV
-    if all_results:
-        exporter = ResultExporter()
-        final_output = output_filename or _build_default_output_filename(
+    _save_or_print_results(
+        all_results,
+        print_results=print_results,
+        output_filename=output_filename,
+        default_output_filename=_build_default_output_filename(
             eval_set=eval_set,
             sample_size=sample_size,
             num_workers=num_workers,
             offset=offset,
-        )
-        exporter.save_results_to_csv(all_results, final_output)
-    else:
-        print("\n❌ No results collected from any eval set")
+        ),
+    )
 
 
 def _run_custom_test_file(
@@ -486,6 +522,7 @@ def _run_custom_test_file(
     test_file: str,
     test_group_filter: str | None,
     status_filter: str | None,
+    print_results: bool,
     output_filename: str | None,
     num_workers: int,
     random_seed: int,
@@ -506,6 +543,7 @@ def _run_custom_test_file(
         test_file=test_file,
         test_group_filter=test_group_filter,
         status_filter=status_filter,
+        print_results=print_results,
         output_filename=None,
         num_workers=num_workers,
         random_seed=random_seed,
@@ -516,19 +554,19 @@ def _run_custom_test_file(
     for result in results:
         result.eval_set = "custom"
 
-    # Write CSV
-    if results:
-        exporter = ResultExporter()
-        final_output = output_filename or _build_default_output_filename(
+    _save_or_print_results(
+        results,
+        print_results=print_results,
+        output_filename=output_filename,
+        default_output_filename=_build_default_output_filename(
             eval_set="custom",
             sample_size=sample_size,
             num_workers=num_workers,
             offset=offset,
-        )
-        exporter.save_results_to_csv(results, final_output)
+        ),
+    )
+    if results and not print_results:
         print(f"\n✓ Results saved: {len(results)} tests")
-    else:
-        print("\n❌ No results collected")
 
 
 def _run_single_eval_set(
@@ -539,6 +577,7 @@ def _run_single_eval_set(
     test_file: str | None,
     test_group_filter: str | None,
     status_filter: str | None,
+    print_results: bool,
     output_filename: str | None,
     num_workers: int,
     random_seed: int,
@@ -571,6 +610,7 @@ EVALUATION CONFIGURATION
   Sample Size:       {sample_size}
   Test Group Filter: {test_group_filter or "None"}
   Status Filter:     {status_filter or "None"}
+  Print Results:     {print_results}
   Output Filename:   {output_filename or "Auto-generated"}
   Num Workers:       {num_workers}
   Random Seed:       {random_seed}
