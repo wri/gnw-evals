@@ -329,12 +329,7 @@ def _print_csv_summary(
     print(_metric_line("Expected Text Match", "expected_text_match_score"))
     print(_metric_line("Clarification Requested", "clarification_requested_score"))
 
-    suggested_datasets_scores = [
-        r.suggested_datasets_match_score
-        for r in results
-        if r.suggested_datasets_match_score is not None
-    ]
-    print(_metric_line("Suggested Datasets", suggested_datasets_scores))
+    print(_metric_line("Suggested Datasets", "suggested_datasets_match_score"))
 
     # Experimental section
     print()

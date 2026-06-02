@@ -87,7 +87,9 @@ class ResultExporter:
             encoding="utf-8",
         ) as f:
             writer = csv.DictWriter(
-                f, fieldnames=summary_fields, extrasaction="ignore"
+                f,
+                fieldnames=summary_fields,
+                extrasaction="ignore",
             )
             writer.writeheader()
             writer.writerows([result.to_dict() for result in results])

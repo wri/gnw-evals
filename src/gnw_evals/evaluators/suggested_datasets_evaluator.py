@@ -7,23 +7,18 @@ def evaluate_suggested_datasets(
     agent_state: dict[str, Any],
     expected_suggested_datasets: list[str] | None,
 ) -> dict[str, Any]:
-    """Check if suggested datasets are valid.
-
-    Evaluates the `suggested_datasets` field in agent state against an allowed
-    set of expected values. Passes when at least one suggestion matches and no
-    suggestions fall outside the expected set.
+    """Check if suggested datasets are a valid non-empty subset of expected.
 
     Args:
         agent_state: Final agent state after execution
-        expected_suggested_datasets: List of allowed dataset IDs (all possible
-            valid suggestions). The agent does not need to suggest all of them.
+        expected_suggested_datasets: Allowed dataset IDs. The agent must
+            suggest at least one, and may not suggest any outside this set.
 
     Returns:
         Dict with:
         - suggested_datasets_match_score (0/1/None): 1.0 if at least one
-          suggested dataset matches and none fall outside the expected set,
-          0.0 if any suggestion is invalid or no suggestions match,
-          None if expected_suggested_datasets is empty/not provided
+          suggested dataset matches and all are within the expected set,
+          0.0 otherwise, None if expected_suggested_datasets is not provided
         - actual_suggested_datasets (str | None): Semicolon-separated actual
           suggested datasets from agent state
 
@@ -57,14 +52,11 @@ def evaluate_suggested_datasets(
             "actual_suggested_datasets": actual_str,
         }
 
-    expected_normalized = {
-        s.strip().lower() for s in expected_suggested_datasets
-    }
+    expected_normalized = {s.strip().lower() for s in expected_suggested_datasets}
     actual_normalized = {s.strip().lower() for s in actual_list}
 
     at_least_one_match = bool(actual_normalized & expected_normalized)
     all_within_expected = actual_normalized.issubset(expected_normalized)
-
     score = 1.0 if (at_least_one_match and all_within_expected) else 0.0
 
     return {

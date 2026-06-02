@@ -21,7 +21,9 @@ class BaseTestRunner(ABC):
 
     @abstractmethod
     async def run_test(
-        self, query: str, expected_data: ExpectedData
+        self,
+        query: str,
+        expected_data: ExpectedData,
     ) -> TestResult:
         """Run a single E2E test.
 
