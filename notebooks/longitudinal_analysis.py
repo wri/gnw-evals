@@ -1,13 +1,11 @@
 # /// script
 # dependencies = [
 #     "altair==6.1.0",
-#     "great-tables==0.21.0",
 #     "marimo",
 #     "numpy==2.4.4",
 #     "pandas==3.0.3",
-#     "pyarrow==24.0.0",
 # ]
-# requires-python = ">=3.13"
+# requires-python = ">=3.12"
 # ///
 
 import marimo
@@ -38,7 +36,10 @@ def _():
     import marimo as mo
     import numpy as np
     import pandas as pd
-    from great_tables import GT, loc, style as gt_style
+    try:
+        from great_tables import GT, loc, style as gt_style
+    except ImportError:
+        GT = loc = gt_style = None
 
 
     return GT, alt, gt_style, loc, mo, np, os, pd, re
@@ -673,32 +674,46 @@ def _(
             lambda u: f'<a href="{u}" target="_blank">Langfuse trace {_trace_id}</a>'
         )
 
-    (
-        GT(_kv)
-        .tab_header(
-            title=f"Diagnostic: {_score_label}",
-            subtitle=f"Test {selected_test_id} — run {_run_label} — {_result}",
+    if GT is not None:
+        (
+            GT(_kv)
+            .tab_header(
+                title=f"Diagnostic: {_score_label}",
+                subtitle=f"Test {selected_test_id} — run {_run_label} — {_result}",
+            )
+            .cols_width(cases={"Field": "200px", "Value": "750px"})
+            .fmt_markdown(columns="Value")
+            .tab_options(column_labels_hidden=True)
+            .tab_style(
+                style=gt_style.text(whitespace="pre-wrap"),
+                locations=loc.body(columns="Value"),
+            )
+            .tab_style(
+                style=gt_style.text(size="0.8rem"),
+                locations=loc.body(columns="Field"),
+            )
+            .tab_style(
+                style=gt_style.fill(color="#f3f3f3"),
+                locations=loc.body(rows=lambda d: d["Field"].eq("query"), columns=["Field", "Value"]),
+            )
+            .tab_style(
+                style=gt_style.text(weight="bold", size="1.3rem"),
+                locations=loc.body(rows=lambda d: d["Field"].eq("result"), columns=["Value"]),
+            )
         )
-        .cols_width(cases={"Field": "200px", "Value": "750px"})
-        .fmt_markdown(columns="Value")
-        .tab_options(column_labels_hidden=True)
-        .tab_style(
-            style=gt_style.text(whitespace="pre-wrap"),
-            locations=loc.body(columns="Value"),
+    else:
+        _rows = "".join(
+            f"<tr style='background:{'#f3f3f3' if r['Field']=='query' else 'white'}'>"
+            f"<td style='font-size:0.8rem;color:#555;padding:6px 10px;width:200px;vertical-align:top'>{r['Field']}</td>"
+            f"<td style='padding:6px 10px;white-space:pre-wrap;{'font-size:1.3rem;font-weight:bold' if r['Field']=='result' else ''}'>{r['Value']}</td></tr>"
+            for _, r in _kv.iterrows()
         )
-        .tab_style(
-            style=gt_style.text(size="0.8rem"),
-            locations=loc.body(columns="Field"),
+        mo.Html(
+            f"<div style='font-family:sans-serif'>"
+            f"<h4 style='margin:0'>Diagnostic: {_score_label}</h4>"
+            f"<p style='color:#666;margin:4px 0 12px'>Test {selected_test_id} — run {_run_label} — {_result}</p>"
+            f"<table style='border-collapse:collapse;width:100%;border-top:2px solid #ccc'>{_rows}</table></div>"
         )
-        .tab_style(
-            style=gt_style.fill(color="#f3f3f3"),
-            locations=loc.body(rows=lambda d: d["Field"].eq("query"), columns=["Field", "Value"]),
-        )
-        .tab_style(
-            style=gt_style.text(weight="bold", size="1.3rem"),
-            locations=loc.body(rows=lambda d: d["Field"].eq("result"), columns=["Value"]),
-        )
-    )
 
     return
 
@@ -1047,32 +1062,46 @@ def _(
             lambda u: f'<a href="{u}" target="_blank">Langfuse trace {_trace_id}</a>'
         )
 
-    (
-        GT(_kv)
-        .tab_header(
-            title=f"Diagnostic: {_score_label}",
-            subtitle=f"Test {_tid} — run {_run_label} — {_result}",
+    if GT is not None:
+        (
+            GT(_kv)
+            .tab_header(
+                title=f"Diagnostic: {_score_label}",
+                subtitle=f"Test {_tid} — run {_run_label} — {_result}",
+            )
+            .cols_width(cases={"Field": "200px", "Value": "750px"})
+            .fmt_markdown(columns="Value")
+            .tab_options(column_labels_hidden=True)
+            .tab_style(
+                style=gt_style.text(whitespace="pre-wrap"),
+                locations=loc.body(columns="Value"),
+            )
+            .tab_style(
+                style=gt_style.text(size="0.8rem"),
+                locations=loc.body(columns="Field"),
+            )
+            .tab_style(
+                style=gt_style.fill(color="#f3f3f3"),
+                locations=loc.body(rows=lambda d: d["Field"].eq("query"), columns=["Field", "Value"]),
+            )
+            .tab_style(
+                style=gt_style.text(weight="bold", size="1.3rem"),
+                locations=loc.body(rows=lambda d: d["Field"].eq("result"), columns=["Value"]),
+            )
         )
-        .cols_width(cases={"Field": "200px", "Value": "750px"})
-        .fmt_markdown(columns="Value")
-        .tab_options(column_labels_hidden=True)
-        .tab_style(
-            style=gt_style.text(whitespace="pre-wrap"),
-            locations=loc.body(columns="Value"),
+    else:
+        _rows = "".join(
+            f"<tr style='background:{'#f3f3f3' if r['Field']=='query' else 'white'}'>"
+            f"<td style='font-size:0.8rem;color:#555;padding:6px 10px;width:200px;vertical-align:top'>{r['Field']}</td>"
+            f"<td style='padding:6px 10px;white-space:pre-wrap;{'font-size:1.3rem;font-weight:bold' if r['Field']=='result' else ''}'>{r['Value']}</td></tr>"
+            for _, r in _kv.iterrows()
         )
-        .tab_style(
-            style=gt_style.text(size="0.8rem"),
-            locations=loc.body(columns="Field"),
+        mo.Html(
+            f"<div style='font-family:sans-serif'>"
+            f"<h4 style='margin:0'>Diagnostic: {_score_label}</h4>"
+            f"<p style='color:#666;margin:4px 0 12px'>Test {_tid} — run {_run_label} — {_result}</p>"
+            f"<table style='border-collapse:collapse;width:100%;border-top:2px solid #ccc'>{_rows}</table></div>"
         )
-        .tab_style(
-            style=gt_style.fill(color="#f3f3f3"),
-            locations=loc.body(rows=lambda d: d["Field"].eq("query"), columns=["Field", "Value"]),
-        )
-        .tab_style(
-            style=gt_style.text(weight="bold", size="1.3rem"),
-            locations=loc.body(rows=lambda d: d["Field"].eq("result"), columns=["Value"]),
-        )
-    )
 
     return
 
