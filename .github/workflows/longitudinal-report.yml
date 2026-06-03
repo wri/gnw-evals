@@ -81,19 +81,26 @@ jobs:
             "pandas==3.0.3" \
             "pyarrow==24.0.0"
 
-      - name: Build site directory
+      - name: Copy eval CSVs into site/data/
         run: |
           mkdir -p site/data
-
-          # Copy each eval-csv-* folder into site/data/
           for folder in outputs/eval-csv-*/; do
             folder_name=$(basename "$folder")
             mkdir -p "site/data/$folder_name"
-            cp "$folder"*_summary.csv "site/data/$folder_name/" 2>/dev/null || true
+            cp "$folder"*_summary.csv  "site/data/$folder_name/" 2>/dev/null || true
             cp "$folder"*_detailed.csv "site/data/$folder_name/" 2>/dev/null || true
           done
 
-          # Generate manifest.json listing all available runs
+      - name: Export longitudinal report as WASM HTML
+        run: |
+          marimo export html-wasm notebooks/longitudinal_analysis.py \
+            --no-show-code \
+            -o site/index.html
+
+      - name: Generate runs.json
+        # Must run AFTER marimo export — marimo writes its own manifest.json to site/
+        # and would overwrite ours. runs.json avoids the name collision entirely.
+        run: |
           python3 - <<'EOF'
           import json, os, glob
 
@@ -113,19 +120,13 @@ jobs:
               "detailed": os.path.basename(detaileds[0]) if detaileds else None,
             })
 
-          with open("site/manifest.json", "w") as f:
+          with open("site/runs.json", "w") as f:
             json.dump(entries, f, indent=2)
 
-          print(f"Manifest: {len(entries)} runs")
+          print(f"runs.json: {len(entries)} run(s)")
           for e in entries:
             print(f"  {e['folder']}: {e['summary']}")
           EOF
-
-      - name: Export longitudinal report as WASM HTML
-        run: |
-          marimo export html-wasm notebooks/longitudinal_analysis.py \
-            --no-show-code \
-            -o site/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

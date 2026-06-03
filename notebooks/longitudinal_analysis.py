@@ -70,13 +70,15 @@ def _(eval_results_dir, is_wasm, os, pd, re):
 
     if is_wasm:
         import json as _json
+        import js as _js
         from pyodide.http import open_url as _open_url
 
-        _manifest = _json.loads(_open_url("manifest.json").read())
+        _base = _js.location.href.rsplit("/", 1)[0].rstrip("/") + "/"
+        _manifest = _json.loads(_open_url(_base + "runs.json").read())
         for _entry in _manifest:
             _folder_name = _entry["folder"]
             _csv_name = _entry["summary"]
-            _content = _open_url(f"data/{_folder_name}/{_csv_name}").read()
+            _content = _open_url(f"{_base}data/{_folder_name}/{_csv_name}").read()
             _m = re.search(r"(20\d{6}_\d{6})", _csv_name)
             _run_date = _m.group(1) if _m else _folder_name
             _env_m = re.match(r"eval-csv-(staging|prod)-", _folder_name)
@@ -134,15 +136,17 @@ def _(eval_results_dir, is_wasm, os, pd, re):
     _det_records = []
 
     if is_wasm:
+        import js as _js_det
         from pyodide.http import open_url as _open_url_det
 
-        _manifest_det = _json_det.loads(_open_url_det("manifest.json").read())
+        _base_det = _js_det.window.location.href.rsplit("/", 1)[0].rstrip("/") + "/"
+        _manifest_det = _json_det.loads(_open_url_det(_base_det + "runs.json").read())
         for _entry in _manifest_det:
             _folder_name = _entry["folder"]
             if not _entry.get("detailed"):
                 continue
             _csv_name = _entry["detailed"]
-            _content = _open_url_det(f"data/{_folder_name}/{_csv_name}").read()
+            _content = _open_url_det(f"{_base_det}data/{_folder_name}/{_csv_name}").read()
             _m = re.search(r"(20\d{6}_\d{6})", _csv_name)
             _run_date = _m.group(1) if _m else _folder_name
             _df = pd.read_csv(_io_det.StringIO(_content))
