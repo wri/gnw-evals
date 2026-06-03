@@ -47,48 +47,73 @@ def _():
 @app.cell
 def _():
     import os as _os
+    import sys as _sys
 
     # --- Configuration ---
-    _here = _os.path.dirname(_os.path.abspath(__file__))
-    eval_results_dir = _os.path.normpath(_os.path.join(_here, "..", "outputs")) + _os.sep
     N_RUNS = 5  # number of recent runs to consider for change detection and pass rate
+    _is_wasm = _sys.platform == "emscripten"
 
-    return N_RUNS, eval_results_dir
+    if not _is_wasm:
+        _here = _os.path.dirname(_os.path.abspath(__file__))
+        eval_results_dir = _os.path.normpath(_os.path.join(_here, "..", "outputs")) + _os.sep
+    else:
+        eval_results_dir = None
+
+    return N_RUNS, _is_wasm, eval_results_dir
 
 
 @app.cell(hide_code=True)
-def _(eval_results_dir, os, pd, re):
-    # Scan outputs/eval-csv-*/ folders; load only those with test_id
+def _(eval_results_dir, _is_wasm, os, pd, re):
+    import io as _io
+
+    # Scan eval-csv-*/ folders; load only those with test_id
     _run_records = []
 
-    for _folder_name in sorted(os.listdir(eval_results_dir)):
-        _folder_path = os.path.join(eval_results_dir, _folder_name)
-        if not (os.path.isdir(_folder_path) and _folder_name.startswith("eval-csv-")):
-            continue
+    if _is_wasm:
+        import json as _json
+        from pyodide.http import open_url as _open_url
 
-        _csvs = [f for f in os.listdir(_folder_path) if f.endswith("_summary.csv")]
-        if not _csvs:
-            continue
-        _csv_name = _csvs[0]
-        _csv_path = os.path.join(_folder_path, _csv_name)
+        _manifest = _json.loads(_open_url("manifest.json").read())
+        for _entry in _manifest:
+            _folder_name = _entry["folder"]
+            _csv_name = _entry["summary"]
+            _content = _open_url(f"data/{_folder_name}/{_csv_name}").read()
+            _m = re.search(r"(20\d{6}_\d{6})", _csv_name)
+            _run_date = _m.group(1) if _m else _folder_name
+            _env_m = re.match(r"eval-csv-(staging|prod)-", _folder_name)
+            _run_env = _env_m.group(1) if _env_m else "unknown"
+            _df = pd.read_csv(_io.StringIO(_content))
+            _df["run_date"] = _run_date
+            _df["run_folder"] = _folder_name
+            _df["run_env"] = _run_env
+            _run_records.append(_df)
+    else:
+        for _folder_name in sorted(os.listdir(eval_results_dir)):
+            _folder_path = os.path.join(eval_results_dir, _folder_name)
+            if not (os.path.isdir(_folder_path) and _folder_name.startswith("eval-csv-")):
+                continue
 
-        with open(_csv_path) as _fh:
-            _header = _fh.readline()
-        if "test_id" not in _header:
-            continue
+            _csvs = [f for f in os.listdir(_folder_path) if f.endswith("_summary.csv")]
+            if not _csvs:
+                continue
+            _csv_name = _csvs[0]
+            _csv_path = os.path.join(_folder_path, _csv_name)
 
-        _m = re.search(r"(20\d{6}_\d{6})", _csv_name)
-        _run_date = _m.group(1) if _m else _folder_name
+            with open(_csv_path) as _fh:
+                _header = _fh.readline()
+            if "test_id" not in _header:
+                continue
 
-        # Extract env from folder name: eval-csv-<env>-<id>
-        _env_m = re.match(r"eval-csv-(staging|prod)-", _folder_name)
-        _run_env = _env_m.group(1) if _env_m else "unknown"
+            _m = re.search(r"(20\d{6}_\d{6})", _csv_name)
+            _run_date = _m.group(1) if _m else _folder_name
+            _env_m = re.match(r"eval-csv-(staging|prod)-", _folder_name)
+            _run_env = _env_m.group(1) if _env_m else "unknown"
 
-        _df = pd.read_csv(_csv_path)
-        _df["run_date"] = _run_date
-        _df["run_folder"] = _folder_name
-        _df["run_env"] = _run_env
-        _run_records.append(_df)
+            _df = pd.read_csv(_csv_path)
+            _df["run_date"] = _run_date
+            _df["run_folder"] = _folder_name
+            _df["run_env"] = _run_env
+            _run_records.append(_df)
 
     if _run_records:
         df_all = pd.concat(_run_records, ignore_index=True)
@@ -102,34 +127,52 @@ def _(eval_results_dir, os, pd, re):
 
 
 @app.cell(hide_code=True)
-def _(eval_results_dir, os, pd, re):
+def _(eval_results_dir, _is_wasm, os, pd, re):
+    import io as _io_det
+    import json as _json_det
+
     # Load detailed CSVs from the same qualifying folders (same test_id filter)
     _det_records = []
 
-    for _folder_name in sorted(os.listdir(eval_results_dir)):
-        _folder_path = os.path.join(eval_results_dir, _folder_name)
-        if not (os.path.isdir(_folder_path) and _folder_name.startswith("eval-csv-")):
-            continue
+    if _is_wasm:
+        from pyodide.http import open_url as _open_url_det
 
-        _csvs = [f for f in os.listdir(_folder_path) if f.endswith("_detailed.csv")]
-        if not _csvs:
-            continue
-        _csv_path = os.path.join(_folder_path, _csvs[0])
+        _manifest_det = _json_det.loads(_open_url_det("manifest.json").read())
+        for _entry in _manifest_det:
+            _folder_name = _entry["folder"]
+            if not _entry.get("detailed"):
+                continue
+            _csv_name = _entry["detailed"]
+            _content = _open_url_det(f"data/{_folder_name}/{_csv_name}").read()
+            _m = re.search(r"(20\d{6}_\d{6})", _csv_name)
+            _run_date = _m.group(1) if _m else _folder_name
+            _df = pd.read_csv(_io_det.StringIO(_content))
+            _df["run_date"] = _run_date
+            _df["run_folder"] = _folder_name
+            _det_records.append(_df)
+    else:
+        for _folder_name in sorted(os.listdir(eval_results_dir)):
+            _folder_path = os.path.join(eval_results_dir, _folder_name)
+            if not (os.path.isdir(_folder_path) and _folder_name.startswith("eval-csv-")):
+                continue
 
-        # Only load if the paired summary had test_id (check detailed header too)
-        with open(_csv_path) as _fh:
-            _header = _fh.readline()
-        if "test_id" not in _header:
-            continue
+            _csvs = [f for f in os.listdir(_folder_path) if f.endswith("_detailed.csv")]
+            if not _csvs:
+                continue
+            _csv_path = os.path.join(_folder_path, _csvs[0])
 
-        _m = re.search(r"(20\d{6}_\d{6})", _csvs[0])
-        _run_date = _m.group(1) if _m else _folder_name
+            with open(_csv_path) as _fh:
+                _header = _fh.readline()
+            if "test_id" not in _header:
+                continue
 
-        _df = pd.read_csv(_csv_path)
-        _df["run_date"] = _run_date
-        _df["run_folder"] = _folder_name
-        _det_records.append(_df)
+            _m = re.search(r"(20\d{6}_\d{6})", _csvs[0])
+            _run_date = _m.group(1) if _m else _folder_name
 
+            _df = pd.read_csv(_csv_path)
+            _df["run_date"] = _run_date
+            _df["run_folder"] = _folder_name
+            _det_records.append(_df)
 
     if _det_records:
         df_all_detailed = pd.concat(_det_records, ignore_index=True)

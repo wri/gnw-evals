@@ -20,10 +20,15 @@ on:
 permissions:
   contents: read
   actions: read
+  pages: write
+  id-token: write
 
 jobs:
-  build-report:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -76,19 +81,60 @@ jobs:
             "pandas==3.0.3" \
             "pyarrow==24.0.0"
 
-      - name: Export longitudinal report as HTML
+      - name: Build site directory
         run: |
-          marimo export html notebooks/longitudinal_analysis.py \
+          mkdir -p site/data
+
+          # Copy each eval-csv-* folder into site/data/
+          for folder in outputs/eval-csv-*/; do
+            folder_name=$(basename "$folder")
+            mkdir -p "site/data/$folder_name"
+            cp "$folder"*_summary.csv "site/data/$folder_name/" 2>/dev/null || true
+            cp "$folder"*_detailed.csv "site/data/$folder_name/" 2>/dev/null || true
+          done
+
+          # Generate manifest.json listing all available runs
+          python3 - <<'EOF'
+          import json, os, glob
+
+          entries = []
+          data_dir = "site/data"
+          for folder in sorted(os.listdir(data_dir)):
+            folder_path = os.path.join(data_dir, folder)
+            if not (os.path.isdir(folder_path) and folder.startswith("eval-csv-")):
+              continue
+            summaries = sorted(glob.glob(f"{folder_path}/*_summary.csv"))
+            detaileds = sorted(glob.glob(f"{folder_path}/*_detailed.csv"))
+            if not summaries:
+              continue
+            entries.append({
+              "folder": folder,
+              "summary": os.path.basename(summaries[0]),
+              "detailed": os.path.basename(detaileds[0]) if detaileds else None,
+            })
+
+          with open("site/manifest.json", "w") as f:
+            json.dump(entries, f, indent=2)
+
+          print(f"Manifest: {len(entries)} runs")
+          for e in entries:
+            print(f"  {e['folder']}: {e['summary']}")
+          EOF
+
+      - name: Export longitudinal report as WASM HTML
+        run: |
+          marimo export html-wasm notebooks/longitudinal_analysis.py \
             --no-include-code \
-            -o outputs/longitudinal_report.html
+            -o site/index.html
 
-      - name: Set report timestamp
-        id: report_ts
-        run: echo "value=$(date -u +%Y%m%d_%H%M%S)" >> "$GITHUB_OUTPUT"
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
-      - name: Upload longitudinal report artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: longitudinal-report-${{ inputs.target_env }}-${{ steps.report_ts.outputs.value }}
-          path: outputs/longitudinal_report.html
-          if-no-files-found: error
+          path: site/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
