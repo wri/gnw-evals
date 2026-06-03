@@ -124,7 +124,7 @@ jobs:
       - name: Export longitudinal report as WASM HTML
         run: |
           marimo export html-wasm notebooks/longitudinal_analysis.py \
-            --no-include-code \
+            --no-show-code \
             -o site/index.html
 
       - name: Setup Pages
