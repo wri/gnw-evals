@@ -50,25 +50,25 @@ def _():
 
     # --- Configuration ---
     N_RUNS = 5  # number of recent runs to consider for change detection and pass rate
-    _is_wasm = _sys.platform == "emscripten"
+    is_wasm = _sys.platform == "emscripten"
 
-    if not _is_wasm:
+    if not is_wasm:
         _here = _os.path.dirname(_os.path.abspath(__file__))
         eval_results_dir = _os.path.normpath(_os.path.join(_here, "..", "outputs")) + _os.sep
     else:
         eval_results_dir = None
 
-    return N_RUNS, _is_wasm, eval_results_dir
+    return N_RUNS, is_wasm, eval_results_dir
 
 
 @app.cell(hide_code=True)
-def _(eval_results_dir, _is_wasm, os, pd, re):
+def _(eval_results_dir, is_wasm, os, pd, re):
     import io as _io
 
     # Scan eval-csv-*/ folders; load only those with test_id
     _run_records = []
 
-    if _is_wasm:
+    if is_wasm:
         import json as _json
         from pyodide.http import open_url as _open_url
 
@@ -126,14 +126,14 @@ def _(eval_results_dir, _is_wasm, os, pd, re):
 
 
 @app.cell(hide_code=True)
-def _(eval_results_dir, _is_wasm, os, pd, re):
+def _(eval_results_dir, is_wasm, os, pd, re):
     import io as _io_det
     import json as _json_det
 
     # Load detailed CSVs from the same qualifying folders (same test_id filter)
     _det_records = []
 
-    if _is_wasm:
+    if is_wasm:
         from pyodide.http import open_url as _open_url_det
 
         _manifest_det = _json_det.loads(_open_url_det("manifest.json").read())
