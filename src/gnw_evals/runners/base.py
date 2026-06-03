@@ -11,6 +11,7 @@ from gnw_evals.evaluators import (
     evaluate_dataset_selection,
     evaluate_date_selection,
     evaluate_final_answer,
+    evaluate_suggested_datasets,
 )
 from gnw_evals.utils.eval_types import ExpectedData, TestResult
 
@@ -19,7 +20,11 @@ class BaseTestRunner(ABC):
     """Abstract base class for test runners."""
 
     @abstractmethod
-    async def run_test(self, query: str, expected_data: ExpectedData) -> TestResult:
+    async def run_test(
+        self,
+        query: str,
+        expected_data: ExpectedData,
+    ) -> TestResult:
         """Run a single E2E test.
 
         Args:
@@ -94,6 +99,9 @@ class BaseTestRunner(ABC):
             # Clarification evaluation fields
             actual_clarification_requested=None,
             clarification_requested_score=None,
+            # Suggested datasets evaluation fields
+            suggested_datasets_match_score=None,
+            actual_suggested_datasets=None,
             # Expected data
             **kwargs,
             # Error
@@ -148,6 +156,10 @@ class BaseTestRunner(ABC):
             expected_data.expected_text,
             query,
         )
+        suggested_datasets_eval = evaluate_suggested_datasets(
+            agent_state,
+            expected_data.expected_suggested_datasets,
+        )
 
         return {
             **clarification_eval,
@@ -156,6 +168,7 @@ class BaseTestRunner(ABC):
             **date_eval,
             **data_eval,
             **answer_eval,
+            **suggested_datasets_eval,
         }
 
     def _calculate_overall_score(
@@ -196,6 +209,10 @@ class BaseTestRunner(ABC):
             scores.append(evaluations.get("data_pull_exists_score"))
         if expected_data.expected_start_date and expected_data.expected_end_date:
             scores.append(evaluations.get("date_match_score"))
+
+        # Suggested datasets check
+        if expected_data.expected_suggested_datasets:
+            scores.append(evaluations.get("suggested_datasets_match_score"))
 
         # Answer checks
         if expected_data.expected_answer:

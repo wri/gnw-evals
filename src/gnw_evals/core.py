@@ -138,6 +138,7 @@ _SCORE_FIELDS = [
     "agent_answer_score",
     "expected_text_match_score",
     "clarification_requested_score",
+    "suggested_datasets_match_score",
 ]
 
 
@@ -328,6 +329,8 @@ def _print_csv_summary(
     print(_metric_line("Charts Answer", "charts_answer_score"))
     print(_metric_line("Expected Text Match", "expected_text_match_score"))
     print(_metric_line("Clarification Requested", "clarification_requested_score"))
+
+    print(_metric_line("Suggested Datasets", "suggested_datasets_match_score"))
 
     # Experimental section
     print()

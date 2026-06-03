@@ -72,6 +72,8 @@ class ResultExporter:
             "expected_text_match_score_reason",
             "clarification_requested_score",
             "clarification_requested_score_std",
+            "suggested_datasets_match_score",
+            "suggested_datasets_match_score_std",
             "execution_time",
             "duration_seconds",
             "error",
@@ -85,7 +87,11 @@ class ResultExporter:
             newline="",
             encoding="utf-8",
         ) as f:
-            writer = csv.DictWriter(f, fieldnames=summary_fields, extrasaction="ignore")
+            writer = csv.DictWriter(
+                f,
+                fieldnames=summary_fields,
+                extrasaction="ignore",
+            )
             writer.writeheader()
             writer.writerows([result.to_dict() for result in results])
 
@@ -160,6 +166,11 @@ class ResultExporter:
             "actual_clarification_requested",
             "clarification_requested_score",
             "clarification_requested_score_std",
+            # Suggested datasets: Expected vs Actual
+            "expected_suggested_datasets",
+            "actual_suggested_datasets",
+            "suggested_datasets_match_score",
+            "suggested_datasets_match_score_std",
             # Metadata
             "test_group",
             "error",
