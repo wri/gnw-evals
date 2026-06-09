@@ -63,6 +63,10 @@ class TestResult(BaseModel):
     actual_clarification_requested: bool | None = None
     clarification_requested_score: float | None = None
 
+    # Suggested datasets evaluation fields
+    suggested_datasets_match_score: float | None = None
+    actual_suggested_datasets: str | None = None
+
     # Expected data fields
     expected_aoi_ids: list[str] | None = None
     expected_aoi_source: str = ""
@@ -75,11 +79,29 @@ class TestResult(BaseModel):
     expected_answer: str = ""
     expected_text: str = ""
     expected_clarification: bool | None = None
+    expected_suggested_datasets: list[str] = []
     test_group: str = "unknown"
     status: str = "ready"
 
     # Error handling
     error: str | None = None
+
+    # Trial metadata
+    num_trials: int = 1
+
+    # Std deviation per score (only populated when num_trials > 1)
+    overall_score_std: float | None = None
+    aoi_id_match_score_std: float | None = None
+    dataset_id_match_score_std: float | None = None
+    dataset_parameter_match_score_std: float | None = None
+    context_layer_match_score_std: float | None = None
+    data_pull_exists_score_std: float | None = None
+    date_match_score_std: float | None = None
+    charts_answer_score_std: float | None = None
+    agent_answer_score_std: float | None = None
+    expected_text_match_score_std: float | None = None
+    clarification_requested_score_std: float | None = None
+    suggested_datasets_match_score_std: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for CSV export."""
@@ -102,10 +124,21 @@ class ExpectedData(BaseModel):
     expected_answer: str = ""
     expected_text: str = ""
     expected_clarification: bool | None = None
+    expected_suggested_datasets: list[str] = []
     test_id: str = ""
     test_group: str = "unknown"
     status: str = "ready"
     thread_id: str | None = None
+
+    @field_validator("expected_suggested_datasets", mode="before")
+    @classmethod
+    def split_suggested_datasets(cls, v: str | list[str]) -> list[str]:
+        """Split semicolon-separated string input into a list of strings."""
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            return [item.strip() for item in v.split(";") if item.strip()]
+        return []
 
     @field_validator("expected_aoi_ids", mode="before")
     @classmethod

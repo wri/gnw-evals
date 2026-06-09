@@ -157,6 +157,8 @@ uv run gnw_evals --api-token your_token --status-filter ready,rerun
 # Print per-test results to screen instead of writing CSV files
 uv run gnw_evals --api-token your_token --print-results
 
+# Run one specific test by test_id
+uv run gnw_evals --api-token your_token --test-id GOLD-001
 ```
 
 The framework supports multiple specialized eval sets, not just the GOLDEN SET
