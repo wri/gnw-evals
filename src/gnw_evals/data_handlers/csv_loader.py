@@ -16,6 +16,7 @@ class CSVLoader:
         sample_size: int = 0,
         test_group_filter: str | None = None,
         status_filter: list[str] | None = None,
+        test_id_filter: str | None = None,
         random_seed: int = 42,
         offset: int = 0,
     ) -> list[ExpectedData]:
@@ -26,6 +27,7 @@ class CSVLoader:
             sample_size: Number of test cases to load (0 means all)
             test_group_filter: Filter by test_group column (optional)
             status_filter: List of status values to skip (case-insensitive, optional)
+            test_id_filter: Filter by exact test_id value (case-insensitive, optional)
             random_seed: Random seed for sampling (optional)
             offset: Offset for sampling (optional)
 
@@ -112,6 +114,16 @@ class CSVLoader:
                 print(
                     f"Filtered {original_count - filtered_count} tests based on test_group filter '{test_group_filter}'",
                 )
+
+        # Filter by test_id if specified
+        if test_id_filter:
+            original_count = len(df)
+            normalized_test_id_filter = test_id_filter.strip().lower()
+            df = df[df["test_id"].str.lower() == normalized_test_id_filter]
+            filtered_count = len(df)
+            print(
+                f"Filtered {original_count - filtered_count} tests based on test_id '{test_id_filter}'",
+            )
 
         # Sample if requested (-1 means run all rows, 0+ means run that many)
         if sample_size > 0 and sample_size < len(df):

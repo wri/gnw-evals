@@ -192,6 +192,7 @@ async def run_csv_tests(config) -> list[TestResult]:
         config.sample_size,
         config.test_group_filter,
         config.status_filter,
+        config.test_id_filter,
         config.random_seed,
         config.offset,
     )
@@ -387,6 +388,12 @@ def _print_csv_summary(
     help="Filter by status column (comma-separated values) (can also be set via STATUS_FILTER env var)",
 )
 @click.option(
+    "--test-id",
+    default=None,
+    envvar="TEST_ID",
+    help="Run only the test with this exact test_id (case-insensitive) (can also be set via TEST_ID env var)",
+)
+@click.option(
     "--output-filename",
     default=None,
     envvar="OUTPUT_FILENAME",
@@ -428,6 +435,7 @@ def run_evals(
     test_file: str | None,
     test_group_filter: str | None,
     status_filter: str | None,
+    test_id: str | None,
     output_filename: str | None,
     num_workers: int,
     random_seed: int,
@@ -457,6 +465,7 @@ def run_evals(
             test_file=test_file,
             test_group_filter=test_group_filter,
             status_filter=status_filter,
+            test_id=test_id,
             output_filename=output_filename,
             num_workers=num_workers,
             random_seed=random_seed,
@@ -487,6 +496,7 @@ def run_evals(
             test_file=None,
             test_group_filter=test_group_filter,
             status_filter=status_filter,
+            test_id=test_id,
             output_filename=None,
             num_workers=num_workers,
             random_seed=random_seed,
@@ -521,6 +531,7 @@ def _run_custom_test_file(
     test_file: str,
     test_group_filter: str | None,
     status_filter: str | None,
+    test_id: str | None,
     output_filename: str | None,
     num_workers: int,
     random_seed: int,
@@ -542,6 +553,7 @@ def _run_custom_test_file(
         test_file=test_file,
         test_group_filter=test_group_filter,
         status_filter=status_filter,
+        test_id=test_id,
         output_filename=None,
         num_workers=num_workers,
         random_seed=random_seed,
@@ -576,6 +588,7 @@ def _run_single_eval_set(
     test_file: str | None,
     test_group_filter: str | None,
     status_filter: str | None,
+    test_id: str | None,
     output_filename: str | None,
     num_workers: int,
     random_seed: int,
@@ -609,6 +622,7 @@ EVALUATION CONFIGURATION
   Sample Size:       {sample_size}
   Test Group Filter: {test_group_filter or "None"}
   Status Filter:     {status_filter or "None"}
+  Test ID Filter:    {test_id or "None"}
   Output Filename:   {output_filename or "Auto-generated"}
   Num Workers:       {num_workers}
   Num Trials:        {num_trials}
@@ -638,6 +652,7 @@ EVALUATION CONFIGURATION
             self.test_file = resolved_test_file
             self.test_group_filter = test_group_filter
             self.status_filter = status_filter_list
+            self.test_id_filter = test_id
             self.output_filename = output_filename
             self.num_workers = num_workers
             self.random_seed = random_seed
