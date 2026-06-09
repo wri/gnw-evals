@@ -2,6 +2,7 @@
 
 import json
 from datetime import datetime
+from urllib.parse import urlparse, urlunparse
 from uuid import uuid4
 
 import httpx
@@ -19,6 +20,26 @@ class APITestRunner(BaseTestRunner):
         self.api_base_url = api_base_url
         self.api_token = api_token
 
+    @staticmethod
+    def _build_app_thread_url(api_base_url: str, thread_id: str) -> str:
+        """Build GNW app thread URL from API base URL and session/thread ID."""
+        parsed = urlparse(api_base_url)
+        if not parsed.scheme or not parsed.netloc:
+            return f"{api_base_url.rstrip('/')}/app/threads/{thread_id}"
+
+        host = parsed.hostname or ""
+        if host in {"localhost", "127.0.0.1", "0.0.0.0"}:
+            return f"http://localhost:3000/app/threads/{thread_id}"
+
+        app_host = host.removeprefix("api.") if host.startswith("api.") else host
+        netloc = app_host
+        if parsed.port:
+            netloc = f"{app_host}:{parsed.port}"
+
+        return urlunparse(
+            (parsed.scheme, netloc, f"/app/threads/{thread_id}", "", "", ""),
+        )
+
     async def run_test(self, query: str, expected_data: ExpectedData) -> TestResult:
         """Run a single agent test using API endpoint.
 
@@ -32,6 +53,7 @@ class APITestRunner(BaseTestRunner):
         """
         thread_id = str(uuid4())
         trace_url = None
+        app_thread_url = self._build_app_thread_url(self.api_base_url, thread_id)
 
         try:
             # Collect all streaming responses to ensure conversation completes
@@ -100,6 +122,7 @@ class APITestRunner(BaseTestRunner):
 
             return TestResult(
                 thread_id=thread_id,
+                app_thread_url=app_thread_url,
                 trace_id=trace_id,
                 trace_url=trace_url,
                 query=query,
@@ -113,6 +136,7 @@ class APITestRunner(BaseTestRunner):
             return self._create_empty_evaluation_result(
                 thread_id,
                 trace_url or "",
+                app_thread_url,
                 query,
                 expected_data,
                 str(e),
