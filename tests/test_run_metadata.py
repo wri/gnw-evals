@@ -4,11 +4,11 @@ from datetime import UTC, datetime
 
 import pytest
 
+from gnw_evals.utils.models import get_eval_judge_llm_label
 from gnw_evals.utils.run_metadata import (
     build_run_summary_context,
     compute_latency_stats,
     format_run_timestamp,
-    get_eval_judge_llm_label,
     infer_environment,
     print_run_summary_header,
     resolve_gnw_versions,
@@ -83,8 +83,16 @@ def test_build_run_summary_context_formats_agent_llm() -> None:
     assert context.latency.avg == 150.0
 
 
-def test_get_eval_judge_llm_label_contains_anthropic() -> None:
+def test_get_eval_judge_llm_label_defaults_to_gemini(monkeypatch) -> None:
+    monkeypatch.delenv("EVAL_JUDGE_LLM", raising=False)
+    assert "Google" in get_eval_judge_llm_label()
+    assert "gemini-3.1-pro-preview" in get_eval_judge_llm_label()
+
+
+def test_get_eval_judge_llm_label_anthropic_option(monkeypatch) -> None:
+    monkeypatch.setenv("EVAL_JUDGE_LLM", "anthropic")
     assert "Anthropic" in get_eval_judge_llm_label()
+    assert "claude-haiku" in get_eval_judge_llm_label()
 
 
 def test_format_run_timestamp_uses_utc() -> None:

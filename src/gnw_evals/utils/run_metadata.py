@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 import httpx
 
-from gnw_evals.utils.models import HAIKU
+from gnw_evals.utils.models import get_eval_judge_llm_label
 
 
 @dataclass(frozen=True)
@@ -51,12 +51,6 @@ def infer_environment(api_base_url: str) -> str:
     if "globalnaturewatch.org" in host:
         return "prod"
     return "custom"
-
-
-def get_eval_judge_llm_label() -> str:
-    """Return the LLM family and model used by eval judges in this repo."""
-    model = getattr(HAIKU, "model_name", None) or getattr(HAIKU, "model", "unknown")
-    return f"Anthropic / {model}"
 
 
 def _format_gnw_agent_llm(metadata: dict[str, Any] | None) -> str:

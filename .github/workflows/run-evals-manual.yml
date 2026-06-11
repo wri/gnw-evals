@@ -52,6 +52,7 @@ jobs:
       SAMPLE_SIZE: ${{ inputs.sample_size }}
       NUM_WORKERS: ${{ inputs.num_workers }}
       OFFSET: ${{ inputs.offset }}
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -94,7 +95,7 @@ jobs:
       - name: Validate required secrets
         run: |
           missing=0
-          for key in API_TOKEN ANTHROPIC_API_KEY SPREADSHEET_ID; do
+          for key in API_TOKEN GOOGLE_API_KEY SPREADSHEET_ID; do
             if [ -z "${!key}" ]; then
               echo "Missing required secret: $key"
               missing=1

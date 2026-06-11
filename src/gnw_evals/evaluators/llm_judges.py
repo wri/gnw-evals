@@ -1,7 +1,7 @@
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel
 
-from gnw_evals.utils.models import HAIKU
+from gnw_evals.utils.models import get_judge_llm
 
 
 def llm_judge_clarification(agent_state: dict, query: str) -> dict:
@@ -78,7 +78,7 @@ def llm_judge_clarification(agent_state: dict, query: str) -> dict:
         ],
     )
 
-    judge_chain = CLARIFICATION_JUDGE_PROMPT | HAIKU.with_structured_output(
+    judge_chain = CLARIFICATION_JUDGE_PROMPT | get_judge_llm().with_structured_output(
         ClarificationJudgment,
     )
 
@@ -183,7 +183,7 @@ def llm_judge(
         ],
     )
 
-    judge_chain = JUDGE_PROMPT | HAIKU.with_structured_output(Score)
+    judge_chain = JUDGE_PROMPT | get_judge_llm().with_structured_output(Score)
 
     llm_judgement = judge_chain.invoke(
         {
@@ -248,7 +248,7 @@ def llm_judge_chart(
         ],
     )
 
-    judge_chain = JUDGE_PROMPT | HAIKU.with_structured_output(ChartScore)
+    judge_chain = JUDGE_PROMPT | get_judge_llm().with_structured_output(ChartScore)
 
     llm_judgement = judge_chain.invoke(
         {
@@ -316,7 +316,7 @@ def llm_judge_expected_text(
         ],
     )
 
-    judge_chain = JUDGE_PROMPT | HAIKU.with_structured_output(TextMatchScore)
+    judge_chain = JUDGE_PROMPT | get_judge_llm().with_structured_output(TextMatchScore)
     judgement = judge_chain.invoke(
         {
             "expected_text": expected_text,

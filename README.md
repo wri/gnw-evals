@@ -124,7 +124,8 @@ uv run gnw_evals --api-token your_token --sample-size 10
 Suggested basis usage
 * Add the following in the .env file:
     * API_TOKEN
-    * ANTHROPIC_API_KEY
+    * GOOGLE_API_KEY
+    * (optional) ANTHROPIC_API_KEY when `EVAL_JUDGE_LLM=anthropic`
     * SPREADSHEET_ID
     * NUM_WORKERS=5
 
