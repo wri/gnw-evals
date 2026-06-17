@@ -240,6 +240,7 @@ async def run_csv_tests(config) -> list[TestResult]:
     runner = APITestRunner(
         api_base_url=config.api_base_url,
         api_token=config.api_token,
+        ff=getattr(config, "ff", None),
     )
     print(f"Using API endpoint: {config.api_base_url}")
 
@@ -465,6 +466,12 @@ def _print_csv_summary(
     envvar="NUM_TRIALS",
     help="Number of trials per test for robustness measurement (can also be set via NUM_TRIALS env var)",
 )
+@click.option(
+    "--ff",
+    default=None,
+    envvar="FF",
+    help="Feature flag selecting the agent tool profile, sent as the 'ff' field in the chat payload. Must be a lowercase slug (letters, digits, hyphens; max 64 chars). Requires an admin/machine token (can also be set via FF env var)",
+)
 def run_evals(
     api_base_url: str,
     api_token: str | None,
@@ -480,6 +487,7 @@ def run_evals(
     random_seed: int,
     offset: int,
     num_trials: int,
+    ff: str | None,
 ):
     """Run main E2E test function for CSV based evaluation."""
     # Validate API token
@@ -511,6 +519,7 @@ def run_evals(
             random_seed=random_seed,
             offset=offset,
             num_trials=num_trials,
+            ff=ff,
         )
         return
 
@@ -543,6 +552,7 @@ def run_evals(
             random_seed=random_seed,
             offset=offset,
             num_trials=num_trials,
+            ff=ff,
         )
 
         # Tag results with eval_set and accumulate
@@ -578,6 +588,7 @@ def _run_custom_test_file(
     random_seed: int,
     offset: int,
     num_trials: int = 1,
+    ff: str | None = None,
 ) -> None:
     """Run evals with a custom test file (not from standard eval sets).
 
@@ -601,6 +612,7 @@ def _run_custom_test_file(
         random_seed=random_seed,
         offset=offset,
         num_trials=num_trials,
+        ff=ff,
     )
 
     # Tag results with eval_set = "custom"
@@ -637,6 +649,7 @@ def _run_single_eval_set(
     random_seed: int,
     offset: int,
     num_trials: int = 1,
+    ff: str | None = None,
 ) -> list[TestResult]:
     """Run evals for a single eval set. Internal helper function.
 
@@ -672,6 +685,7 @@ EVALUATION CONFIGURATION
   Num Trials:        {num_trials}
   Random Seed:       {random_seed}
   Offset:            {offset}
+  Feature Flag:      {ff or "None"}
 ========================
 """,
     )
@@ -702,6 +716,7 @@ EVALUATION CONFIGURATION
             self.random_seed = random_seed
             self.offset = offset
             self.num_trials = num_trials
+            self.ff = ff
 
     config = Config()
     try:

@@ -41,6 +41,11 @@ on:
         required: false
         default: "0"
         type: string
+      ff:
+        description: "Feature flag to pass through to the API (sent as the 'ff' field in the chat payload)"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -52,6 +57,8 @@ jobs:
       SAMPLE_SIZE: ${{ inputs.sample_size }}
       NUM_WORKERS: ${{ inputs.num_workers }}
       OFFSET: ${{ inputs.offset }}
+      FF: ${{ inputs.ff }}
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -111,12 +118,17 @@ jobs:
 
       - name: Run evals
         run: |
+          ff_args=()
+          if [ -n "$FF" ]; then
+            ff_args+=(--ff "$FF")
+          fi
           uv run gnw_evals \
             --api-base-url "$API_BASE_URL" \
             --sample-size "$SAMPLE_SIZE" \
             --num-workers "$NUM_WORKERS" \
             --offset "$OFFSET" \
-            --eval-set "${{ inputs.eval_set }}"
+            --eval-set "${{ inputs.eval_set }}" \
+            "${ff_args[@]}"
 
       - name: Set artifact timestamp
         id: artifact_ts

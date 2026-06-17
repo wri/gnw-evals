@@ -15,10 +15,16 @@ from gnw_evals.utils.eval_types import ExpectedData, TestResult
 class APITestRunner(BaseTestRunner):
     """Test runner for API endpoint execution."""
 
-    def __init__(self, api_base_url: str, api_token: str | None = None):
+    def __init__(
+        self,
+        api_base_url: str,
+        api_token: str | None = None,
+        ff: str | None = None,
+    ):
         """Initialize with API configuration."""
         self.api_base_url = api_base_url
         self.api_token = api_token
+        self.ff = ff
 
     @staticmethod
     def _build_app_thread_url(api_base_url: str, thread_id: str) -> str:
@@ -68,6 +74,8 @@ class APITestRunner(BaseTestRunner):
                 "metadata": {"langfuse_tags": ["simple_e2e_test"]},
                 "user_id": "test_user",
             }
+            if self.ff:
+                payload["ff"] = self.ff
 
             headers = {}
             if self.api_token:

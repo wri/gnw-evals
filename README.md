@@ -159,6 +159,11 @@ uv run gnw_evals --api-token your_token --print-results
 
 # Run one specific test by test_id
 uv run gnw_evals --api-token your_token --test-id GOLD-001
+
+# Pass a feature flag through to the API (sent as the "ff" field in the chat payload).
+# Value must be a lowercase slug (letters, digits, hyphens; max 64 chars) and
+# selects the agent tool profile for the request. Requires an admin/machine token.
+uv run gnw_evals --api-token your_token --ff my-flag
 ```
 
 The framework supports multiple specialized eval sets, not just the GOLDEN SET
