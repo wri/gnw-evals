@@ -1669,6 +1669,36 @@ def test_status_filter_skips_matching_rows(tmp_path):
     assert "q5" in queries, "empty status should be kept"
 
 
+def test_csv_loader_missing_suggested_datasets_defaults_to_empty(tmp_path):
+    """Missing expected_suggested_datasets column should not be evaluated."""
+    import pandas as pd
+
+    from gnw_evals.data_handlers.csv_loader import CSVLoader
+    from gnw_evals.evaluators import evaluate_suggested_datasets
+
+    csv_file = tmp_path / "dashboard.csv"
+    pd.DataFrame(
+        {
+            "test_id": ["dash-001"],
+            "query": ["Create a dashboard for Brazil"],
+            "expected_aoi_ids": ["BRA"],
+            "expected_aoi_source": ["gadm"],
+            "expected_dashboard_created": ["true"],
+        },
+    ).to_csv(csv_file, index=False)
+
+    results = CSVLoader.load_test_data(str(csv_file))
+
+    assert len(results) == 1
+    assert results[0].expected_suggested_datasets == []
+
+    eval_result = evaluate_suggested_datasets(
+        agent_state={"suggested_datasets": []},
+        expected_suggested_datasets=results[0].expected_suggested_datasets,
+    )
+    assert eval_result["suggested_datasets_match_score"] is None
+
+
 def test_status_filter_none_keeps_all_rows(tmp_path):
     """Test that no rows are filtered when status_filter is None.
 

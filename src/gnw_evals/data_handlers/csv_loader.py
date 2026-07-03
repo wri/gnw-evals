@@ -60,12 +60,18 @@ class CSVLoader:
             else:
                 missing_fields.append(field)
                 # Add missing field with default value
-                # TODO: fields with list defaults (e.g. expected_aoi_ids=[]) will
-                # cause a pandas error here. Fix by falling back to "" for list defaults
-                # and letting the field validator handle the conversion.
                 default_value = ExpectedData.model_fields[field].default
-                # Convert default to appropriate string for CSV
-                if default_value is None or default_value == "":
+                # Convert default to appropriate string for CSV.
+                # List defaults must be "" — str([]) becomes "[]", which validators
+                # would mis-parse as a non-empty expected value.
+                if (
+                    default_value is None
+                    or default_value == ""
+                    or isinstance(
+                        default_value,
+                        list,
+                    )
+                ):
                     df[field] = ""
                 elif isinstance(default_value, bool):
                     df[field] = str(default_value)

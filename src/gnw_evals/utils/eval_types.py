@@ -197,6 +197,8 @@ class ExpectedData(BaseModel):
         if isinstance(v, list):
             return v
         if isinstance(v, str):
+            if v.strip() in ("", "[]"):
+                return []
             return [item.strip() for item in v.split(";") if item.strip()]
         return []
 
