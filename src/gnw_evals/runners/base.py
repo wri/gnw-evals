@@ -7,6 +7,9 @@ from typing import Any
 from gnw_evals.evaluators import (
     evaluate_aoi_selection,
     evaluate_clarification,
+    evaluate_dashboard_aoi,
+    evaluate_dashboard_created,
+    evaluate_dashboard_widgets,
     evaluate_data_pull,
     evaluate_dataset_selection,
     evaluate_date_selection,
@@ -104,6 +107,17 @@ class BaseTestRunner(ABC):
             # Suggested datasets evaluation fields
             suggested_datasets_match_score=None,
             actual_suggested_datasets=None,
+            # Dashboard evaluation fields
+            dashboard_created_score=None,
+            actual_dashboard_created=None,
+            actual_dashboard_id=None,
+            dashboard_aoi_match_score=None,
+            actual_dashboard_aoi_count=None,
+            actual_dashboard_aoi_id=None,
+            actual_dashboard_aoi_source=None,
+            dashboard_widgets_match_score=None,
+            actual_dashboard_widget_types=None,
+            dashboard_widgets_valid_score=None,
             # Expected data
             **kwargs,
             # Error
@@ -115,6 +129,7 @@ class BaseTestRunner(ABC):
         agent_state: dict[str, Any],
         expected_data: ExpectedData,
         query: str = "",
+        dashboard: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Run all evaluation functions on agent state.
 
@@ -162,6 +177,19 @@ class BaseTestRunner(ABC):
             agent_state,
             expected_data.expected_suggested_datasets,
         )
+        dashboard_created_eval = evaluate_dashboard_created(
+            agent_state,
+            expected_data.expected_dashboard_created,
+        )
+        dashboard_aoi_eval = evaluate_dashboard_aoi(
+            dashboard,
+            expected_data.expected_aoi_ids,
+            expected_data.expected_aoi_source,
+        )
+        dashboard_widgets_eval = evaluate_dashboard_widgets(
+            dashboard,
+            expected_data.expected_dashboard_widgets,
+        )
 
         return {
             **clarification_eval,
@@ -171,6 +199,9 @@ class BaseTestRunner(ABC):
             **data_eval,
             **answer_eval,
             **suggested_datasets_eval,
+            **dashboard_created_eval,
+            **dashboard_aoi_eval,
+            **dashboard_widgets_eval,
         }
 
     def _calculate_overall_score(
@@ -215,6 +246,18 @@ class BaseTestRunner(ABC):
         # Suggested datasets check
         if expected_data.expected_suggested_datasets:
             scores.append(evaluations.get("suggested_datasets_match_score"))
+
+        # Dashboard checks
+        # NOTE: uses `is not None` (not truthy) so expected_dashboard_created=False
+        # guardrail rows are still included - a truthy check would silently drop them.
+        if expected_data.expected_dashboard_created is not None:
+            scores.append(evaluations.get("dashboard_created_score"))
+        if expected_data.expected_dashboard_created and expected_data.expected_aoi_ids:
+            scores.append(evaluations.get("dashboard_aoi_match_score"))
+        if expected_data.expected_dashboard_widgets:
+            scores.append(evaluations.get("dashboard_widgets_match_score"))
+        if expected_data.expected_dashboard_created:
+            scores.append(evaluations.get("dashboard_widgets_valid_score"))
 
         # Answer checks
         if expected_data.expected_answer:

@@ -171,6 +171,10 @@ _SCORE_FIELDS = [
     "expected_text_match_score",
     "clarification_requested_score",
     "suggested_datasets_match_score",
+    "dashboard_created_score",
+    "dashboard_aoi_match_score",
+    "dashboard_widgets_match_score",
+    "dashboard_widgets_valid_score",
 ]
 
 
@@ -365,6 +369,12 @@ def _print_csv_summary(
     print(_metric_line("Clarification Requested", "clarification_requested_score"))
 
     print(_metric_line("Suggested Datasets", "suggested_datasets_match_score"))
+
+    print()
+    print(_metric_line("Dashboard Created", "dashboard_created_score"))
+    print(_metric_line("Dashboard AOI Match", "dashboard_aoi_match_score"))
+    print(_metric_line("Dashboard Widgets Match", "dashboard_widgets_match_score"))
+    print(_metric_line("Dashboard Widgets Valid", "dashboard_widgets_valid_score"))
 
     # Experimental section
     print()

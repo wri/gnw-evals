@@ -5,6 +5,33 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, field_validator
 
 
+def _parse_tri_state_bool(v: str | bool | None) -> bool | None:
+    """Convert string input to boolean or None.
+
+    - Empty string "" -> None (no expectation)
+    - "false", "False", "0", "no" -> False
+    - "true", "True", "1", "yes" -> True
+    - Boolean values pass through unchanged
+    """
+    if v is None:
+        return None
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, str):
+        # Empty string means no expectation
+        if not v or v.strip() == "":
+            return None
+        # Explicit false values
+        if v.lower() in ("false", "0", "no"):
+            return False
+        # Explicit true values
+        if v.lower() in ("true", "1", "yes"):
+            return True
+        # Default to None for any other value
+        return None
+    return bool(v) if v else None
+
+
 class TestResult(BaseModel):
     """Result of a single E2E test execution."""
 
@@ -67,6 +94,18 @@ class TestResult(BaseModel):
     suggested_datasets_match_score: float | None = None
     actual_suggested_datasets: str | None = None
 
+    # Dashboard evaluation fields
+    dashboard_created_score: float | None = None
+    actual_dashboard_created: bool | None = None
+    actual_dashboard_id: str | None = None
+    dashboard_aoi_match_score: float | None = None
+    actual_dashboard_aoi_count: int | None = None
+    actual_dashboard_aoi_id: str | None = None
+    actual_dashboard_aoi_source: str | None = None
+    dashboard_widgets_match_score: float | None = None
+    actual_dashboard_widget_types: str | None = None
+    dashboard_widgets_valid_score: float | None = None
+
     # Expected data fields
     expected_aoi_ids: list[str] | None = None
     expected_aoi_source: str = ""
@@ -80,6 +119,8 @@ class TestResult(BaseModel):
     expected_text: str = ""
     expected_clarification: bool | None = None
     expected_suggested_datasets: list[str] = []
+    expected_dashboard_created: bool | None = None
+    expected_dashboard_widgets: list[str] | None = None
     test_group: str = "unknown"
     status: str = "ready"
 
@@ -102,6 +143,10 @@ class TestResult(BaseModel):
     expected_text_match_score_std: float | None = None
     clarification_requested_score_std: float | None = None
     suggested_datasets_match_score_std: float | None = None
+    dashboard_created_score_std: float | None = None
+    dashboard_aoi_match_score_std: float | None = None
+    dashboard_widgets_match_score_std: float | None = None
+    dashboard_widgets_valid_score_std: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for CSV export."""
@@ -125,10 +170,25 @@ class ExpectedData(BaseModel):
     expected_text: str = ""
     expected_clarification: bool | None = None
     expected_suggested_datasets: list[str] = []
+    expected_dashboard_created: bool | None = None
+    expected_dashboard_widgets: list[str] | None = None
     test_id: str = ""
     test_group: str = "unknown"
     status: str = "ready"
     thread_id: str | None = None
+
+    @field_validator("expected_dashboard_widgets", mode="before")
+    @classmethod
+    def split_dashboard_widgets(cls, v: str | list[str] | None) -> list[str] | None:
+        """Split semicolon-separated widget types into a list of strings."""
+        if v is None:
+            return None
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            items = [item.strip() for item in v.split(";") if item.strip()]
+            return items or None
+        return None
 
     @field_validator("expected_suggested_datasets", mode="before")
     @classmethod
@@ -154,30 +214,14 @@ class ExpectedData(BaseModel):
     @field_validator("expected_clarification", mode="before")
     @classmethod
     def parse_clarification(cls, v: str | bool | None) -> bool | None:
-        """Convert string input to boolean or None.
+        """Convert string input to boolean or None (tri-state: True/False/no-expectation)."""
+        return _parse_tri_state_bool(v)
 
-        - Empty string "" -> None (no expectation)
-        - "false", "False", "0", "no" -> False
-        - "true", "True", "1", "yes" -> True
-        - Boolean values pass through unchanged
-        """
-        if v is None:
-            return None
-        if isinstance(v, bool):
-            return v
-        if isinstance(v, str):
-            # Empty string means no expectation
-            if not v or v.strip() == "":
-                return None
-            # Explicit false values
-            if v.lower() in ("false", "0", "no"):
-                return False
-            # Explicit true values
-            if v.lower() in ("true", "1", "yes"):
-                return True
-            # Default to None for any other value
-            return None
-        return bool(v) if v else None
+    @field_validator("expected_dashboard_created", mode="before")
+    @classmethod
+    def parse_dashboard_created(cls, v: str | bool | None) -> bool | None:
+        """Convert string input to boolean or None (tri-state: True/False/no-expectation)."""
+        return _parse_tri_state_bool(v)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""

@@ -1883,3 +1883,437 @@ def test_build_app_thread_url_uses_localhost_3000_for_local_api():
     assert (
         url == "http://localhost:3000/app/threads/2ebdb2fc-ed24-4b7e-b402-c043d468e940"
     )
+
+
+# ============================================================================
+# UNIT TESTS FOR DASHBOARD EVALUATORS
+# ============================================================================
+
+
+def test_dashboard_created_evaluator_true_expected_true_actual():
+    """Dashboard created as expected should score 1.0."""
+    from gnw_evals.evaluators import evaluate_dashboard_created
+
+    result = evaluate_dashboard_created(
+        agent_state={"dashboard_id": "dash-1"},
+        expected_dashboard_created=True,
+    )
+
+    assert result["dashboard_created_score"] == 1.0
+    assert result["actual_dashboard_created"] is True
+    assert result["actual_dashboard_id"] == "dash-1"
+
+
+def test_dashboard_created_evaluator_expected_but_missing():
+    """Dashboard expected but not created should score 0.0."""
+    from gnw_evals.evaluators import evaluate_dashboard_created
+
+    result = evaluate_dashboard_created(
+        agent_state={},
+        expected_dashboard_created=True,
+    )
+
+    assert result["dashboard_created_score"] == 0.0
+    assert result["actual_dashboard_created"] is False
+    assert result["actual_dashboard_id"] is None
+
+
+def test_dashboard_created_evaluator_guardrail_violation():
+    """Guardrail: dashboard created when explicitly not expected should score 0.0."""
+    from gnw_evals.evaluators import evaluate_dashboard_created
+
+    result = evaluate_dashboard_created(
+        agent_state={"dashboard_id": "dash-1"},
+        expected_dashboard_created=False,
+    )
+
+    assert result["dashboard_created_score"] == 0.0
+
+
+def test_dashboard_created_evaluator_no_expectation_no_dashboard():
+    """No expectation and no dashboard created should not be evaluated (None)."""
+    from gnw_evals.evaluators import evaluate_dashboard_created
+
+    result = evaluate_dashboard_created(
+        agent_state={},
+        expected_dashboard_created=None,
+    )
+
+    assert result["dashboard_created_score"] is None
+
+
+def test_dashboard_created_evaluator_unsolicited():
+    """Unsolicited dashboard creation (no expectation) should score 0.0."""
+    from gnw_evals.evaluators import evaluate_dashboard_created
+
+    result = evaluate_dashboard_created(
+        agent_state={"dashboard_id": "dash-1"},
+        expected_dashboard_created=None,
+    )
+
+    assert result["dashboard_created_score"] == 0.0
+
+
+def test_dashboard_aoi_evaluator_single_match():
+    """A single matching AOI should score 1.0."""
+    from gnw_evals.evaluators import evaluate_dashboard_aoi
+
+    dashboard = {"aois": [{"source": "gadm", "src_id": "BRA", "name": "Brazil"}]}
+
+    result = evaluate_dashboard_aoi(
+        dashboard=dashboard,
+        expected_aoi_ids=["BRA"],
+        expected_aoi_source="gadm",
+    )
+
+    assert result["dashboard_aoi_match_score"] == 1.0
+    assert result["actual_dashboard_aoi_count"] == 1
+
+
+def test_dashboard_aoi_evaluator_multiple_aois_fails():
+    """More than one AOI violates the single-key-AOI requirement."""
+    from gnw_evals.evaluators import evaluate_dashboard_aoi
+
+    dashboard = {
+        "aois": [
+            {"source": "gadm", "src_id": "BRA", "name": "Brazil"},
+            {"source": "gadm", "src_id": "USA", "name": "United States"},
+        ],
+    }
+
+    result = evaluate_dashboard_aoi(
+        dashboard=dashboard,
+        expected_aoi_ids=["BRA"],
+        expected_aoi_source="gadm",
+    )
+
+    assert result["dashboard_aoi_match_score"] == 0.0
+    assert result["actual_dashboard_aoi_count"] == 2
+
+
+def test_dashboard_aoi_evaluator_wrong_aoi_fails():
+    """A single AOI that doesn't match the expected id should score 0.0."""
+    from gnw_evals.evaluators import evaluate_dashboard_aoi
+
+    dashboard = {"aois": [{"source": "gadm", "src_id": "USA", "name": "United States"}]}
+
+    result = evaluate_dashboard_aoi(
+        dashboard=dashboard,
+        expected_aoi_ids=["BRA"],
+        expected_aoi_source="gadm",
+    )
+
+    assert result["dashboard_aoi_match_score"] == 0.0
+
+
+def test_dashboard_aoi_evaluator_no_dashboard_returns_none():
+    """No dashboard (not created or fetch failed) should not be evaluated."""
+    from gnw_evals.evaluators import evaluate_dashboard_aoi
+
+    result = evaluate_dashboard_aoi(
+        dashboard=None,
+        expected_aoi_ids=["BRA"],
+        expected_aoi_source="gadm",
+    )
+
+    assert result["dashboard_aoi_match_score"] is None
+    assert result["actual_dashboard_aoi_count"] is None
+
+
+def test_dashboard_aoi_evaluator_no_expectation_returns_none():
+    """No expected_aoi_ids means the check is not applicable."""
+    from gnw_evals.evaluators import evaluate_dashboard_aoi
+
+    dashboard = {"aois": [{"source": "gadm", "src_id": "BRA", "name": "Brazil"}]}
+
+    result = evaluate_dashboard_aoi(
+        dashboard=dashboard,
+        expected_aoi_ids=None,
+        expected_aoi_source="",
+    )
+
+    assert result["dashboard_aoi_match_score"] is None
+    assert result["actual_dashboard_aoi_count"] == 1
+
+
+def test_dashboard_widgets_evaluator_multiset_match_ignores_order():
+    """Widget composition is compared as a multiset, not a sequence."""
+    from gnw_evals.evaluators import evaluate_dashboard_widgets
+
+    dashboard = {
+        "widgets": [
+            {"widget_type": "map"},
+            {"widget_type": "insight"},
+            {"widget_type": "insight"},
+        ],
+    }
+
+    result = evaluate_dashboard_widgets(
+        dashboard=dashboard,
+        expected_dashboard_widgets=["insight", "insight", "map"],
+    )
+
+    assert result["dashboard_widgets_match_score"] == 1.0
+
+
+def test_dashboard_widgets_evaluator_count_mismatch():
+    """Fewer widgets than expected should score 0.0."""
+    from gnw_evals.evaluators import evaluate_dashboard_widgets
+
+    dashboard = {"widgets": [{"widget_type": "insight"}]}
+
+    result = evaluate_dashboard_widgets(
+        dashboard=dashboard,
+        expected_dashboard_widgets=["insight", "insight"],
+    )
+
+    assert result["dashboard_widgets_match_score"] == 0.0
+
+
+def test_dashboard_widgets_evaluator_valid_content_all_valid():
+    """Widgets that all resolve should score dashboard_widgets_valid_score 1.0."""
+    from gnw_evals.evaluators import evaluate_dashboard_widgets
+
+    dashboard = {
+        "widgets": [
+            {"widget_type": "insight", "insight": {"text": "some insight"}},
+            {
+                "widget_type": "map",
+                "config": {"dataset": {"tile_url": "http://tiles/x"}},
+            },
+        ],
+    }
+
+    result = evaluate_dashboard_widgets(
+        dashboard=dashboard,
+        expected_dashboard_widgets=None,
+    )
+
+    assert result["dashboard_widgets_valid_score"] == 1.0
+
+
+def test_dashboard_widgets_evaluator_valid_content_null_insight_fails():
+    """An insight widget whose insight failed to resolve should fail the sanity check."""
+    from gnw_evals.evaluators import evaluate_dashboard_widgets
+
+    dashboard = {"widgets": [{"widget_type": "insight", "insight": None}]}
+
+    result = evaluate_dashboard_widgets(
+        dashboard=dashboard,
+        expected_dashboard_widgets=None,
+    )
+
+    assert result["dashboard_widgets_valid_score"] == 0.0
+
+
+def test_dashboard_widgets_evaluator_valid_content_missing_tile_url_fails():
+    """A map widget with no tile_url in its snapshot should fail the sanity check."""
+    from gnw_evals.evaluators import evaluate_dashboard_widgets
+
+    dashboard = {"widgets": [{"widget_type": "map", "config": {"dataset": {}}}]}
+
+    result = evaluate_dashboard_widgets(
+        dashboard=dashboard,
+        expected_dashboard_widgets=None,
+    )
+
+    assert result["dashboard_widgets_valid_score"] == 0.0
+
+
+def test_dashboard_widgets_evaluator_no_widgets_score_none():
+    """No widgets at all means the content-sanity check is not applicable."""
+    from gnw_evals.evaluators import evaluate_dashboard_widgets
+
+    dashboard = {"widgets": []}
+
+    result = evaluate_dashboard_widgets(
+        dashboard=dashboard,
+        expected_dashboard_widgets=["insight"],
+    )
+
+    assert result["dashboard_widgets_valid_score"] is None
+    assert result["dashboard_widgets_match_score"] == 0.0
+
+
+def test_dashboard_widgets_evaluator_no_dashboard_returns_none():
+    """No dashboard fetched should leave all dashboard-widget fields unevaluated."""
+    from gnw_evals.evaluators import evaluate_dashboard_widgets
+
+    result = evaluate_dashboard_widgets(
+        dashboard=None,
+        expected_dashboard_widgets=["insight"],
+    )
+
+    assert result["dashboard_widgets_match_score"] is None
+    assert result["dashboard_widgets_valid_score"] is None
+    assert result["actual_dashboard_widget_types"] is None
+
+
+# ============================================================================
+# API RUNNER TESTS FOR DASHBOARD FETCH
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_run_csv_tests_with_dashboard(mock_config):
+    """Runner should fetch dashboard details and score all dashboard checks."""
+    mock_config.sample_size = 1
+
+    test_case = ExpectedData(
+        query="Create a dashboard for Brazil",
+        expected_aoi_ids=["BRA"],
+        expected_aoi_source="gadm",
+        expected_dashboard_created=True,
+        expected_dashboard_widgets=["insight", "map"],
+        test_group="",
+        status="",
+    )
+
+    agent_state_with_dashboard = {
+        "aoi_selection": {
+            "name": "Brazil",
+            "aois": [
+                {
+                    "src_id": "BRA",
+                    "name": "Brazil",
+                    "subtype": "country",
+                    "source": "gadm",
+                },
+            ],
+        },
+        "dashboard_id": "dash-abc",
+        "messages": [],
+    }
+
+    dashboard_payload = {
+        "id": "dash-abc",
+        "aois": [{"source": "gadm", "src_id": "BRA", "name": "Brazil"}],
+        "widgets": [
+            {"widget_type": "insight", "insight_id": "i1", "insight": {"text": "..."}},
+            {
+                "widget_type": "map",
+                "config": {"dataset": {"tile_url": "http://tiles/x"}},
+            },
+        ],
+    }
+
+    with patch("gnw_evals.core.CSVLoader") as mock_loader_class:
+        mock_loader = MagicMock()
+        mock_loader.load_test_data.return_value = [test_case]
+        mock_loader_class.return_value = mock_loader
+
+        mock_state_response = MagicMock()
+        mock_state_response.raise_for_status = MagicMock()
+        mock_state_response.json.return_value = {
+            "state": json.dumps(agent_state_with_dashboard),
+        }
+
+        mock_dashboard_response = MagicMock()
+        mock_dashboard_response.raise_for_status = MagicMock()
+        mock_dashboard_response.json.return_value = dashboard_payload
+
+        async def fake_get(url, headers=None, **kwargs):
+            if url.endswith("/state"):
+                return mock_state_response
+            if "/dashboards/" in url:
+                return mock_dashboard_response
+            raise AssertionError(f"unexpected GET {url}")
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.stream = MagicMock(
+            return_value=MockStreamContextManager(response_lines=[]),
+        )
+        mock_client.get = AsyncMock(side_effect=fake_get)
+
+        with patch("gnw_evals.runners.api.httpx.AsyncClient", return_value=mock_client):
+            with patch(
+                "gnw_evals.core.fetch_gnw_api_metadata",
+                new=AsyncMock(return_value=None),
+            ):
+                with patch("gnw_evals.core.ResultExporter"):
+                    with patch(
+                        "gnw_evals.evaluators.answer_evaluator.llm_judge",
+                        return_value=1.0,
+                    ):
+                        with patch(
+                            "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification",
+                            return_value={"is_clarification": False, "explanation": ""},
+                        ):
+                            results = await run_csv_tests(mock_config)
+
+    assert len(results) == 1
+    result = results[0]
+    assert result.dashboard_created_score == 1.0
+    assert result.actual_dashboard_id == "dash-abc"
+    assert result.dashboard_aoi_match_score == 1.0
+    assert result.dashboard_widgets_match_score == 1.0
+    assert result.dashboard_widgets_valid_score == 1.0
+
+
+@pytest.mark.asyncio
+async def test_run_csv_tests_dashboard_fetch_failure_is_soft(mock_config):
+    """A failed dashboard-detail fetch should degrade gracefully, not error the row."""
+    mock_config.sample_size = 1
+
+    test_case = ExpectedData(
+        query="Create a dashboard for Brazil",
+        expected_aoi_ids=["BRA"],
+        expected_aoi_source="gadm",
+        expected_dashboard_created=True,
+        test_group="",
+        status="",
+    )
+
+    agent_state_with_dashboard = {"dashboard_id": "dash-abc", "messages": []}
+
+    with patch("gnw_evals.core.CSVLoader") as mock_loader_class:
+        mock_loader = MagicMock()
+        mock_loader.load_test_data.return_value = [test_case]
+        mock_loader_class.return_value = mock_loader
+
+        mock_state_response = MagicMock()
+        mock_state_response.raise_for_status = MagicMock()
+        mock_state_response.json.return_value = {
+            "state": json.dumps(agent_state_with_dashboard),
+        }
+
+        async def fake_get(url, headers=None, **kwargs):
+            if url.endswith("/state"):
+                return mock_state_response
+            raise Exception("dashboard service unavailable")
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.stream = MagicMock(
+            return_value=MockStreamContextManager(response_lines=[]),
+        )
+        mock_client.get = AsyncMock(side_effect=fake_get)
+
+        with patch("gnw_evals.runners.api.httpx.AsyncClient", return_value=mock_client):
+            with patch(
+                "gnw_evals.core.fetch_gnw_api_metadata",
+                new=AsyncMock(return_value=None),
+            ):
+                with patch("gnw_evals.core.ResultExporter"):
+                    with patch(
+                        "gnw_evals.evaluators.answer_evaluator.llm_judge",
+                        return_value=1.0,
+                    ):
+                        with patch(
+                            "gnw_evals.evaluators.clarification_evaluator.llm_judge_clarification",
+                            return_value={"is_clarification": False, "explanation": ""},
+                        ):
+                            results = await run_csv_tests(mock_config)
+
+    assert len(results) == 1
+    result = results[0]
+    # Proves the soft-fail path: still the success path (not the exception
+    # handler in _create_empty_evaluation_result, which would leave this None).
+    assert result.dashboard_created_score == 1.0
+    assert result.actual_dashboard_id == "dash-abc"
+    assert result.dashboard_aoi_match_score is None
+    assert result.dashboard_widgets_match_score is None
+    assert result.dashboard_widgets_valid_score is None
