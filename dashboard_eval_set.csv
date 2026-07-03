@@ -5,4 +5,4 @@ dash-003,,Create a dashboard for Brazil and add a map layer of the DIST-ALERT da
 dash-004,,Create a dashboard for Brazil and add a satellite imagery map to it,BRA,gadm,true,map,dashboard_map_imagery
 dash-005,,Create a dashboard for Brazil with an insight on deforestation trends and a satellite imagery map,BRA,gadm,true,insight;map,dashboard_mixed
 dash-006,,Create a dashboard for Brazil with two insights on disturbance alerts and a DIST-ALERT dataset map,BRA,gadm,true,insight;insight;map,dashboard_mixed_multi
-dash-007,,How much tree cover loss occurred in Brazil in 2023?,BRA,gadm,false,,dashboard_guardrail
+dash-007,,Pick tree cover loss as a layer,BRA,gadm,false,,dashboard_guardrail
