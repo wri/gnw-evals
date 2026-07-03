@@ -71,6 +71,7 @@ class TestResult(BaseModel):
     row_count: int = 0
     min_rows: int = 1
     data_pull_success: bool = False
+    data_pull_error: str = ""
     date_success: bool | None = None
     actual_start_date: str | None = None
     actual_end_date: str | None = None
@@ -224,6 +225,21 @@ class ExpectedData(BaseModel):
     def parse_dashboard_created(cls, v: str | bool | None) -> bool | None:
         """Convert string input to boolean or None (tri-state: True/False/no-expectation)."""
         return _parse_tri_state_bool(v)
+
+    def expects_data_pull(self) -> bool:
+        """Return whether the agent should pull analytics data for this test.
+
+        Gold-set rows require a data pull when ``expected_answer`` is set
+        (chart/insight answers depend on pulled statistics). Dashboard rows
+        require a data pull when ``expected_dashboard_widgets`` includes
+        ``insight``; map-only dashboard rows do not.
+        """
+        if self.expected_clarification is True:
+            return False
+        if self.expected_answer:
+            return True
+        widgets = self.expected_dashboard_widgets or []
+        return "insight" in widgets
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""

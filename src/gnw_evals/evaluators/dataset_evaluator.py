@@ -72,7 +72,6 @@ def evaluate_dataset_selection(
             "actual_dataset_name": None,
             "actual_dataset_parameters": None,
             "actual_context_layer": None,
-            "error": "Missing dataset data",
         }
 
     dataset = agent_state.get("dataset")
@@ -86,7 +85,6 @@ def evaluate_dataset_selection(
             "actual_dataset_name": None,
             "actual_dataset_parameters": None,
             "actual_context_layer": None,
-            "error": "Missing dataset data",
         }
 
     actual_dataset_id = str(dataset.get("dataset_id", ""))
@@ -135,5 +133,4 @@ def evaluate_dataset_selection(
         "actual_dataset_name": actual_dataset_name,
         "actual_dataset_parameters": actual_dataset_parameters,
         "actual_context_layer": actual_context_layer,
-        "error": "",
     }

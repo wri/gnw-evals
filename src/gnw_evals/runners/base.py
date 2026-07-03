@@ -163,8 +163,7 @@ class BaseTestRunner(ABC):
         )
         data_eval = evaluate_data_pull(
             agent_state,
-            expected_clarification=expected_data.expected_clarification,
-            expected_answer=expected_data.expected_answer,
+            expects_data_pull=expected_data.expects_data_pull(),
             query=query,
         )
         answer_eval = evaluate_final_answer(
@@ -220,7 +219,7 @@ class BaseTestRunner(ABC):
         scores = []
 
         # Clarification check
-        if expected_data.expected_clarification:
+        if expected_data.expected_clarification is not None:
             scores.append(evaluations.get("clarification_requested_score"))
 
         # AOI checks
@@ -235,10 +234,8 @@ class BaseTestRunner(ABC):
         if expected_data.expected_context_layer:
             scores.append(evaluations.get("context_layer_match_score"))
 
-        # Data pull checks
-        if (
-            expected_data.expected_dataset_id
-        ):  # Data pull only relevant if dataset expected
+        # Data pull checks — only when the test expects an insight/answer
+        if expected_data.expects_data_pull():
             scores.append(evaluations.get("data_pull_exists_score"))
         if expected_data.expected_start_date and expected_data.expected_end_date:
             scores.append(evaluations.get("date_match_score"))

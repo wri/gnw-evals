@@ -153,6 +153,7 @@ class ResultExporter:
             "date_match_score_std",
             "row_count",
             "data_pull_success",
+            "data_pull_error",
             "date_success",
             # Answer: Expected vs Actual
             "expected_answer",
