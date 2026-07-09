@@ -138,8 +138,8 @@ def evaluate_date_selection(
 
 def evaluate_data_pull(
     agent_state: dict[str, Any],
-    expected_clarification: bool | None = None,
-    expected_answer: str = "",
+    *,
+    expects_data_pull: bool,
     min_rows: int = 1,
     query: str = "",
 ) -> dict[str, Any]:
@@ -150,8 +150,8 @@ def evaluate_data_pull(
 
     Args:
         agent_state: Final agent state after execution
-        expected_clarification: Expected clarification behavior (True/False/None)
-        expected_answer: Expected answer text. Data pull is only evaluated when provided.
+        expects_data_pull: Whether this test requires analytics data (gold-set
+            ``expected_answer`` or dashboard ``insight`` widgets)
         min_rows: Minimum number of rows expected (legacy inline data only)
         query: Original user query (kept for compatibility but not used)
 
@@ -161,9 +161,17 @@ def evaluate_data_pull(
           0.0 if pull missing or failed, None if not applicable
         - row_count (int): 1 when source_url is present, else legacy row count
         - data_pull_success (bool): Whether data pull met success criteria
-        - error (str): Error message if applicable
+        - data_pull_error (str): Diagnostic message when evaluated and failed
 
     """
+    if not expects_data_pull:
+        return {
+            "data_pull_exists_score": None,
+            "row_count": 0,
+            "data_pull_success": False,
+            "data_pull_error": "",
+        }
+
     stat_entry = _latest_statistics(agent_state)
     if stat_entry:
         data_pull_success, row_count, error = _data_pull_outcome(
@@ -175,15 +183,11 @@ def evaluate_data_pull(
         row_count = 0
         error = "no data retrieved"
 
-    # If we expect clarification or no answer check, data pull evaluation is not applicable.
-    if expected_clarification is True or not expected_answer:
-        data_pull_exists_score = None
-    else:
-        data_pull_exists_score = 1.0 if data_pull_success else 0.0
+    data_pull_exists_score = 1.0 if data_pull_success else 0.0
 
     return {
         "data_pull_exists_score": data_pull_exists_score,
         "row_count": row_count,
         "data_pull_success": data_pull_success,
-        "error": error,
+        "data_pull_error": error,
     }

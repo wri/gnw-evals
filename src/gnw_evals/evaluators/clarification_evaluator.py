@@ -34,10 +34,18 @@ def evaluate_clarification(
         expected=True,  actual=False → 0.0 (wrong - expected but not given)
         expected=False, actual=True  → 0.0 (wrong - not expected but given)
         expected=False, actual=False → 1.0 (correct)
-        expected=None,  actual=True  → 0.0 (unsolicited clarification)
+        expected=None,  actual=True  → None (not evaluated)
         expected=None,  actual=False → None (not evaluated)
 
     """
+    # No expectation — skip evaluation entirely (e.g. dashboard eval rows).
+    if expected_clarification is None:
+        return {
+            "actual_clarification_requested": None,
+            "clarification_requested_score": None,
+            "clarification_explanation": None,
+        }
+
     # If no query, can't detect clarification
     if not query:
         actual_clarification = False
@@ -48,23 +56,11 @@ def evaluate_clarification(
         actual_clarification = clarification["is_clarification"]
         explanation = clarification["explanation"]
 
-    # Calculate score based on expectation
-    if expected_clarification is None:
-        # No expectation case
-        if actual_clarification:
-            # Unsolicited clarification
-            score = 0.0
-        else:
-            # No clarification and none expected - not evaluated
-            score = None
+    # Calculate score based on expectation (True or False)
+    if actual_clarification == expected_clarification:
+        score = 1.0
     else:
-        # Expectation exists (True or False)
-        if actual_clarification == expected_clarification:
-            # Matches expectation
-            score = 1.0
-        else:
-            # Doesn't match expectation
-            score = 0.0
+        score = 0.0
 
     return {
         "actual_clarification_requested": actual_clarification,

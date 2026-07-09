@@ -79,6 +79,8 @@ For the corresponding score to be computed, expected values must be provided. Th
 - `expected_answer` - Expected answer text for LLM-as-a-judge comparison. Can be empty if not applicable.
 - `expected_text` - Expected information, phrasing, or behavior that should appear in the final agent response. This is a semantic inclusion check, not an exact match. Use it for text such as "30 x 30 resolution" or instructions such as "clarifies to user that dataset isn't available". Can be empty if not applicable.
 - `expected_clarification` - Boolean flag indicating whether agent should request clarification instead of completing the task (default: `False`)
+- `expected_dashboard_created` - Boolean flag indicating whether the agent should create a dashboard this turn. Leave empty for no expectation. Set to `false` on a plain analysis query as a guardrail against unprompted dashboard creation. The dashboard's AOI is checked against the existing `expected_aoi_ids`/`expected_aoi_source` columns (a dashboard must reference exactly one AOI, matching the one already under test in the row) - no separate column needed.
+- `expected_dashboard_widgets` - Expected widget types on the dashboard, semicolon-separated (e.g. `"insight;map"` or `"insight;insight;map"`). Compared as a multiset (order doesn't matter, counts do). Can be empty if not applicable.
 - `expected_`
 
 

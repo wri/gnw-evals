@@ -2,6 +2,7 @@
 
 import json
 from datetime import datetime
+from typing import Any
 from urllib.parse import urlparse, urlunparse
 from uuid import uuid4
 
@@ -115,8 +116,39 @@ class APITestRunner(BaseTestRunner):
                 agent_state = response_data.get("state", {})
                 agent_state = loads(agent_state)
 
+                # Fetch dashboard details when a dashboard was created this turn.
+                # agent_state only carries the dashboard_id; AOI/widget details
+                # live on the dashboard resource itself. A failed fetch degrades
+                # to dashboard=None (soft failure) rather than erroring the row -
+                # the primary chat result already succeeded.
+                dashboard: dict[str, Any] | None = None
+                dashboard_id = (
+                    agent_state.get("dashboard_id")
+                    if isinstance(agent_state, dict)
+                    else None
+                )
+                if dashboard_id:
+                    try:
+                        dashboard_response = await client.get(
+                            f"{self.api_base_url}/api/dashboards/{dashboard_id}",
+                            headers=headers,
+                        )
+                        dashboard_response.raise_for_status()
+                        dashboard = dashboard_response.json()
+                    except Exception as dashboard_error:
+                        print(
+                            f"Warning: failed to fetch dashboard {dashboard_id}: "
+                            f"{dashboard_error}",
+                        )
+                        dashboard = None
+
             # Run evaluations
-            evaluations = self._run_evaluations(agent_state, expected_data, query)
+            evaluations = self._run_evaluations(
+                agent_state,
+                expected_data,
+                query,
+                dashboard,
+            )
             overall_score = self._calculate_overall_score(evaluations, expected_data)
 
             kwargs = expected_data.to_dict()
