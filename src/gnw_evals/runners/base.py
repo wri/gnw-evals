@@ -14,6 +14,7 @@ from gnw_evals.evaluators import (
     evaluate_dataset_selection,
     evaluate_date_selection,
     evaluate_final_answer,
+    evaluate_ground_truth,
     evaluate_suggested_datasets,
 )
 from gnw_evals.utils.eval_types import ExpectedData, TestResult
@@ -189,6 +190,11 @@ class BaseTestRunner(ABC):
             dashboard,
             expected_data.expected_dashboard_widgets,
         )
+        ground_truth_eval = evaluate_ground_truth(
+            agent_state,
+            expected_data,
+            query,
+        )
 
         return {
             **clarification_eval,
@@ -201,6 +207,7 @@ class BaseTestRunner(ABC):
             **dashboard_created_eval,
             **dashboard_aoi_eval,
             **dashboard_widgets_eval,
+            **ground_truth_eval,
         }
 
     def _calculate_overall_score(
@@ -262,6 +269,11 @@ class BaseTestRunner(ABC):
             scores.append(evaluations.get("agent_answer_score"))
         if expected_data.expected_text:
             scores.append(evaluations.get("expected_text_match_score"))
+
+        # Ground-truth checks (intent cases with runtime-fetched ground truth)
+        if expected_data.intent and expected_data.ground_truth:
+            scores.append(evaluations.get("data_fidelity_score"))
+            scores.append(evaluations.get("number_usage_score"))
 
         # Filter out None values (checks that weren't applicable)
         valid_scores = [s for s in scores if s is not None]
