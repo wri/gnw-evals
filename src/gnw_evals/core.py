@@ -347,8 +347,12 @@ def _print_ground_truth_summary(
 
     print()
     print("Ground truth (numeric quality)")
-    print(f"{'  Data Fidelity:':<25} {_rate(ground_truth_results, 'data_fidelity_score')}")
-    print(f"{'  Number Usage:':<25} {_rate(ground_truth_results, 'number_usage_score')}")
+    print(
+        f"{'  Data Fidelity:':<25} {_rate(ground_truth_results, 'data_fidelity_score')}",
+    )
+    print(
+        f"{'  Number Usage:':<25} {_rate(ground_truth_results, 'number_usage_score')}",
+    )
     for intent in sorted({r.intent for r in ground_truth_results}):
         subset = [r for r in ground_truth_results if r.intent == intent]
         print(

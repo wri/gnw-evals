@@ -254,6 +254,11 @@ class TestHtmlReport:
                 execution_time="now",
                 intent="quantification",
                 eval_subtype="single_year",
+                expected_aoi_ids=["BRA", "IDN"],
+                expected_start_date="2020-01-01",
+                expected_end_date="2023-12-31",
+                expected_canopy_cover="75",
+                expected_forest_filter="primary_forest",
                 data_fidelity_score=1.0,
                 number_usage_score=0.0,
                 number_usage_failure_comment="Answer said 5 Mha; ground truth "
@@ -266,6 +271,13 @@ class TestHtmlReport:
         assert "Answer said 5 Mha" in content
         assert "quantification" in content
         assert "Number usage" in content
+        # Expected params for spot-checking: table columns + failure cards
+        assert "BRA; IDN" in content
+        assert "2020-2023" in content
+        assert "75" in content
+        assert "primary_forest" in content
+        assert "expected params" in content
+        assert "canopy 75" in content
         # Clean up the generated file from outputs/.
         import os
 

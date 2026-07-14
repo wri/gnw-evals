@@ -208,6 +208,9 @@ class ResultExporter:
             # Ground truth: expected vs pulled vs answered
             "intent",
             "eval_subtype",
+            "expected_canopy_cover",
+            "expected_forest_filter",
+            "expected_intersections",
             "judge_instruction",
             "ground_truth_json",
             "data_fidelity_score",

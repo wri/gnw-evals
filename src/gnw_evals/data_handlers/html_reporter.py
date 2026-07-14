@@ -227,6 +227,22 @@ def _failure_cards_html(results: list[TestResult]) -> str:
     cards = []
     for result in failing:
         detail_rows = []
+        params = " &middot; ".join(
+            part
+            for part in (
+                _esc("; ".join(result.expected_aoi_ids or [])),
+                _esc(_expected_years(result)),
+                (
+                    f"canopy {_esc(str(getattr(result, 'expected_canopy_cover', '')))}"
+                    if getattr(result, "expected_canopy_cover", "")
+                    else ""
+                ),
+                _esc(_expected_filter(result)),
+            )
+            if part
+        )
+        if params:
+            detail_rows.append(("expected params", params))
         if result.error:
             detail_rows.append(("run error", result.error))
         for field, score in _check_scores(result):
@@ -248,8 +264,10 @@ def _failure_cards_html(results: list[TestResult]) -> str:
         if links:
             detail_rows.append(("links", " &middot; ".join(links)))
 
+        prerendered = {"links", "expected params"}
         dl = "".join(
-            f"<dt>{_esc(label)}</dt><dd>{value if label == 'links' else _esc(value)}</dd>"
+            f"<dt>{_esc(label)}</dt>"
+            f"<dd>{value if label in prerendered else _esc(value)}</dd>"
             for label, value in detail_rows
         )
         intent_label = (
@@ -263,6 +281,34 @@ def _failure_cards_html(results: list[TestResult]) -> str:
             f"<dl>{dl}</dl></div>",
         )
     return f"<h2>Failures ({len(failing)})</h2>{''.join(cards)}"
+
+
+def _expected_years(result: TestResult) -> str:
+    start = (result.expected_start_date or "").strip()[:4]
+    end = (result.expected_end_date or "").strip()[:4]
+    if not (start or end):
+        return ""
+    return start if start == end else f"{start}-{end}"
+
+
+def _expected_filter(result: TestResult) -> str:
+    """Combine forest filter and intersection into one spot-check column."""
+    parts = [
+        str(getattr(result, field, "") or "")
+        for field in ("expected_forest_filter", "expected_intersections")
+    ]
+    return " + ".join(p for p in parts if p)
+
+
+def _expected_param_cells(result: TestResult) -> str:
+    aoi_ids = result.expected_aoi_ids or []
+    canopy = str(getattr(result, "expected_canopy_cover", "") or "")
+    return (
+        f"<td class='num'>{_esc('; '.join(aoi_ids))}</td>"
+        f"<td class='num'>{_esc(_expected_years(result))}</td>"
+        f"<td class='num'>{_esc(canopy)}</td>"
+        f"<td>{_esc(_expected_filter(result))}</td>"
+    )
 
 
 def _cases_table_html(results: list[TestResult]) -> str:
@@ -281,6 +327,7 @@ def _cases_table_html(results: list[TestResult]) -> str:
             )
             ground_truth_cells = (
                 f"<td>{_esc(result.intent)}</td><td>{_esc(result.eval_subtype)}</td>"
+                f"{_expected_param_cells(result)}"
                 f"<td>{_score_badge(result.data_fidelity_score, reason=result.data_fidelity_missing)}</td>"
                 f"<td>{_score_badge(result.number_usage_score, reason=result.number_usage_reasoning)}</td>"
                 f"<td>{_esc(unquantified)}</td>"
@@ -294,8 +341,10 @@ def _cases_table_html(results: list[TestResult]) -> str:
             f"<td>{' &middot; '.join(links)}</td></tr>",
         )
     ground_truth_headers = (
-        "<th>Intent</th><th>Subtype</th><th>Fidelity</th>"
-        "<th>Usage</th><th>Unquantified</th>"
+        "<th>Intent</th><th>Subtype</th>"
+        "<th class='num'>AOI</th><th class='num'>Years</th>"
+        "<th class='num'>Canopy</th><th>Filter</th>"
+        "<th>Fidelity</th><th>Usage</th><th>Unquantified</th>"
         if has_ground_truth
         else ""
     )
