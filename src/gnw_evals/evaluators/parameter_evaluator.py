@@ -245,5 +245,7 @@ Return score 1 if the insight focuses on ALL of the expected {label}, 0 if any a
         judgement = HAIKU.with_structured_output(FocusJudgement).invoke(messages)
         return float(judgement.score)
     except Exception:
-        logger.exception("_llm_judge_focus failed for label=%r expected=%r", label, expected_values)
+        logger.exception(
+            "_llm_judge_focus failed for label=%r expected=%r", label, expected_values,
+        )
         return None

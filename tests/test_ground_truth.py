@@ -213,18 +213,27 @@ class TestFireDataFidelity:
 
 
 class TestSelectedParameters:
-    def test_reads_canopy_and_filter(self):
-        state = {"canopy_density": 30, "forest_filter": "primary_forest"}
+    def test_reads_context_layer_and_override_canopy(self):
+        state = {
+            "dataset": {
+                "context_layer": "primary_forest",
+                "parameters": [{"name": "canopy_cover", "values": [75]}],
+            },
+        }
         assert _selected_parameters(state) == {
-            "actual_canopy_cover": "30",
+            "actual_canopy_cover": "75",
             "actual_forest_filter": "primary_forest",
         }
 
-    def test_missing_values_are_none(self):
-        assert _selected_parameters({}) == {
-            "actual_canopy_cover": None,
-            "actual_forest_filter": None,
-        }
+    def test_absent_canopy_reported_as_default(self):
+        result = _selected_parameters({"dataset": {}})
+        assert result["actual_canopy_cover"] == "30 (default)"
+        assert result["actual_forest_filter"] is None
+
+    def test_no_dataset_is_default_canopy_no_filter(self):
+        result = _selected_parameters({})
+        assert result["actual_canopy_cover"] == "30 (default)"
+        assert result["actual_forest_filter"] is None
 
 
 class TestDeriveFacts:

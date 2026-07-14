@@ -354,12 +354,17 @@ def _selected_filter(result: TestResult) -> str:
     )
 
 
+def _norm_param(value: str) -> str:
+    """Normalise a param value for equality: lowercase, drop a '(default)' note."""
+    return (value or "").split("(")[0].strip().lower()
+
+
 def _pair_cell(expected: str, selected: str, *, numeric: bool = False) -> str:
     """One parameter cell: expected on top, agent-selected below."""
     css = "param num" if numeric else "param"
     if not expected and not selected:
         return f'<td class="{css}">&mdash;</td>'
-    same = (expected or "").strip().lower() == (selected or "").strip().lower()
+    same = _norm_param(expected) == _norm_param(selected)
     return (
         f'<td class="{css}"><div>{_esc(expected) or "&mdash;"}</div>'
         f'<div class="sel {"same" if same else "diff"}">'

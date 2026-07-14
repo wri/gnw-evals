@@ -46,12 +46,33 @@ _EMPTY_RESULT: dict[str, Any] = {
 }
 
 
+_DEFAULT_CANOPY_COVER = "30"
+
+
 def _selected_parameters(agent_state: dict[str, Any]) -> dict[str, Any]:
-    """Report the canopy/filter the agent actually selected, for spot-checks."""
-    canopy = agent_state.get("canopy_density")
+    """Report the canopy/filter the agent actually selected, for spot-checks.
+
+    The applied forest layer lives on ``dataset.context_layer`` (the top-level
+    ``forest_filter`` state field is usually unset). The canopy threshold is
+    only surfaced in ``dataset.parameters`` when the agent overrides the 30%
+    default, so an absent value is reported as the default rather than blank.
+    """
+    dataset = agent_state.get("dataset") or {}
+    context_layer = dataset.get("context_layer") or agent_state.get("forest_filter")
+
+    canopy: str | None = None
+    for param in dataset.get("parameters") or []:
+        if isinstance(param, dict) and param.get("name") == "canopy_cover":
+            values = param.get("values") or []
+            if values:
+                canopy = str(values[0])
+            break
+    if canopy is None:
+        canopy = f"{_DEFAULT_CANOPY_COVER} (default)"
+
     return {
-        "actual_canopy_cover": str(canopy) if canopy is not None else None,
-        "actual_forest_filter": agent_state.get("forest_filter") or None,
+        "actual_canopy_cover": canopy,
+        "actual_forest_filter": context_layer or None,
     }
 
 
