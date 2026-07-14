@@ -7,7 +7,9 @@ import click
 import dotenv
 
 from gnw_evals.data_handlers import CSVLoader, ResultExporter
+from gnw_evals.data_handlers.html_reporter import write_html_report
 from gnw_evals.runners import APITestRunner
+from gnw_evals.utils.analytics_client import enrich_with_ground_truth
 from gnw_evals.utils.eval_types import ExpectedData, TestResult
 from gnw_evals.utils.result_display import print_results_to_screen
 from gnw_evals.utils.run_metadata import (
@@ -23,6 +25,8 @@ dotenv.load_dotenv()
 _OVERALL_SCORE_FIELD = "overall_score"
 _REASON_BY_SCORE = {
     "agent_answer_score": "agent_answer_score_reason",
+    "data_fidelity_score": "data_fidelity_missing",
+    "number_usage_score": "number_usage_failure_comment",
 }
 
 
@@ -119,17 +123,27 @@ def _save_or_print_results(
     print_results: bool,
     output_filename: str | None,
     default_output_filename: str,
+    run_meta: dict | None = None,
 ) -> None:
-    """Print results to screen or write CSV files. No-op when there are no results."""
+    """Print results to screen or write CSV files. No-op when there are no results.
+
+    The HTML report is written in both modes: it is the shareable artefact of
+    a run, independent of how the terminal output was requested.
+    """
     if not results:
         return
 
+    base_filename = output_filename or default_output_filename
     if print_results:
         print_results_to_screen(results)
-        return
+    else:
+        exporter = ResultExporter()
+        summary_filename = exporter.save_results_to_csv(results, base_filename)
+        # Reuse the CSV's timestamped base so the report sits beside it.
+        base_filename = summary_filename.removesuffix("_summary.csv")
 
-    exporter = ResultExporter()
-    exporter.save_results_to_csv(results, output_filename or default_output_filename)
+    report_path = write_html_report(results, base_filename, run_meta)
+    print(f"HTML report saved to: {report_path}")
 
 
 async def run_single_test(
@@ -175,6 +189,8 @@ _SCORE_FIELDS = [
     "dashboard_aoi_match_score",
     "dashboard_widgets_match_score",
     "dashboard_widgets_valid_score",
+    "data_fidelity_score",
+    "number_usage_score",
 ]
 
 
@@ -232,6 +248,7 @@ async def run_csv_tests(config) -> list[TestResult]:
         config.random_seed,
         config.offset,
     )
+    await enrich_with_ground_truth(test_cases, config.api_base_url)
     effective_num_workers = min(config.num_workers, 5, len(test_cases))
     num_trials = getattr(config, "num_trials", 1)
     print(
@@ -308,6 +325,38 @@ async def run_csv_tests(config) -> list[TestResult]:
     return results
 
 
+def _print_ground_truth_summary(
+    results: list[TestResult],
+    multi_trial: bool,
+    num_trials: int,
+) -> None:
+    """Print ground-truth scores overall and broken down by intent."""
+    ground_truth_results = [r for r in results if r.intent]
+    if not ground_truth_results:
+        return
+
+    def _rate(subset: list[TestResult], field: str) -> str:
+        scores = [v for r in subset if (v := getattr(r, field)) is not None]
+        if not scores:
+            return "n/a"
+        if multi_trial:
+            mean = sum(scores) / len(scores)
+            return f"{mean:.2f} (n={len(scores)}, {num_trials} trials)"
+        n_passed = sum(1 for s in scores if s == 1.0)
+        return f"{n_passed} / {len(scores)} ({n_passed / len(scores):.2f})"
+
+    print()
+    print("Ground truth (numeric quality)")
+    print(f"{'  Data Fidelity:':<25} {_rate(ground_truth_results, 'data_fidelity_score')}")
+    print(f"{'  Number Usage:':<25} {_rate(ground_truth_results, 'number_usage_score')}")
+    for intent in sorted({r.intent for r in ground_truth_results}):
+        subset = [r for r in ground_truth_results if r.intent == intent]
+        print(
+            f"    {intent:<15} fidelity {_rate(subset, 'data_fidelity_score')}"
+            f" | usage {_rate(subset, 'number_usage_score')}",
+        )
+
+
 def _print_csv_summary(
     results: list[TestResult],
     summary_context: RunSummaryContext | None = None,
@@ -375,6 +424,8 @@ def _print_csv_summary(
     print(_metric_line("Dashboard AOI Match", "dashboard_aoi_match_score"))
     print(_metric_line("Dashboard Widgets Match", "dashboard_widgets_match_score"))
     print(_metric_line("Dashboard Widgets Valid", "dashboard_widgets_valid_score"))
+
+    _print_ground_truth_summary(results, multi_trial, num_trials)
 
     # Experimental section
     print()
@@ -581,6 +632,11 @@ def run_evals(
             num_workers=num_workers,
             offset=offset,
         ),
+        run_meta={
+            "api_base_url": api_base_url,
+            "ff": ff,
+            "num_trials": num_trials,
+        },
     )
 
 
@@ -639,6 +695,11 @@ def _run_custom_test_file(
             num_workers=num_workers,
             offset=offset,
         ),
+        run_meta={
+            "api_base_url": api_base_url,
+            "ff": ff,
+            "num_trials": num_trials,
+        },
     )
     if results and not print_results:
         print(f"\n✓ Results saved: {len(results)} tests")

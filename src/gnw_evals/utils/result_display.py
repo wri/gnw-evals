@@ -36,6 +36,8 @@ _REASON_BY_SCORE: dict[str, str] = {
     "charts_answer_score": "chart_answer_score_reason",
     "agent_answer_score": "agent_answer_score_reason",
     "expected_text_match_score": "expected_text_match_score_reason",
+    "data_fidelity_score": "data_fidelity_missing",
+    "number_usage_score": "number_usage_failure_comment",
 }
 
 
