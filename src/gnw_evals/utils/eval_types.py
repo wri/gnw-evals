@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+GROUND_TRUTH_INTENTS = ("quantification", "comparison", "trend")
+
 
 def _parse_tri_state_bool(v: str | bool | None) -> bool | None:
     """Convert string input to boolean or None.
@@ -95,6 +97,18 @@ class TestResult(BaseModel):
     suggested_datasets_match_score: float | None = None
     actual_suggested_datasets: str | None = None
 
+    # Ground-truth evaluation fields (intent-based numeric checks)
+    intent: str = ""
+    eval_subtype: str = ""
+    judge_instruction: str = ""
+    data_fidelity_score: float | None = None
+    data_fidelity_missing: str | None = None
+    number_usage_score: float | None = None
+    number_usage_reasoning: str | None = None
+    number_usage_failure_comment: str | None = None
+    unquantified: bool | None = None
+    ground_truth_json: str | None = None
+
     # Dashboard evaluation fields
     dashboard_created_score: float | None = None
     actual_dashboard_created: bool | None = None
@@ -144,6 +158,8 @@ class TestResult(BaseModel):
     expected_text_match_score_std: float | None = None
     clarification_requested_score_std: float | None = None
     suggested_datasets_match_score_std: float | None = None
+    data_fidelity_score_std: float | None = None
+    number_usage_score_std: float | None = None
     dashboard_created_score_std: float | None = None
     dashboard_aoi_match_score_std: float | None = None
     dashboard_widgets_match_score_std: float | None = None
@@ -177,6 +193,35 @@ class ExpectedData(BaseModel):
     test_group: str = "unknown"
     status: str = "ready"
     thread_id: str | None = None
+
+    # Ground-truth eval fields. A non-empty ``intent`` marks the case for the
+    # two-stage ground-truth checks; ``ground_truth`` is populated at runtime
+    # by the analytics client, never from the CSV.
+    intent: str = ""
+    eval_subtype: str = ""
+    judge_instruction: str = ""
+    expected_canopy_cover: str = ""
+    expected_forest_filter: str = ""
+    expected_intersections: str = ""
+    ground_truth: dict[str, Any] | None = None
+
+    @field_validator("intent")
+    @classmethod
+    def validate_intent(cls, v: str) -> str:
+        """Fail loudly on unknown intents rather than silently skipping them."""
+        if v and v not in GROUND_TRUTH_INTENTS:
+            raise ValueError(
+                f"unknown intent {v!r}; expected one of {GROUND_TRUTH_INTENTS}",
+            )
+        return v
+
+    @field_validator("ground_truth", mode="before")
+    @classmethod
+    def parse_ground_truth(cls, v: Any) -> dict[str, Any] | None:
+        """CSV loading backfills missing columns with ''; treat as unset."""
+        if isinstance(v, dict):
+            return v
+        return None
 
     @field_validator("expected_dashboard_widgets", mode="before")
     @classmethod
@@ -236,7 +281,7 @@ class ExpectedData(BaseModel):
         """
         if self.expected_clarification is True:
             return False
-        if self.expected_answer:
+        if self.expected_answer or self.intent:
             return True
         widgets = self.expected_dashboard_widgets or []
         return "insight" in widgets
