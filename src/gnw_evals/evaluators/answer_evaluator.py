@@ -6,6 +6,7 @@ from gnw_evals.evaluators.llm_judges import (
     llm_judge_chart,
     llm_judge_expected_text,
 )
+from gnw_evals.evaluators.utils import extract_agent_answer
 
 
 def _serialize_chart_json(chart: dict[str, Any]) -> str:
@@ -59,25 +60,7 @@ def evaluate_final_answer(
     actual_charts_json = _serialize_chart_json(charts_data[0]) if charts_data else ""
 
     # Extract agent message
-    messages = agent_state.get("messages", [])
-    actual_agent_answer = ""
-    if messages:
-        content = messages[-1].content
-
-        if isinstance(content, str):
-            # Claude format: direct string
-            actual_agent_answer = content
-        elif isinstance(content, list) and content:
-            # Gemini format: list of content items
-            last_item = content[-1]
-            if isinstance(last_item, dict) and "text" in last_item:
-                actual_agent_answer = last_item["text"]
-            else:
-                # Fallback for unexpected list items
-                actual_agent_answer = str(last_item)
-        else:
-            # Fallback for any other format
-            actual_agent_answer = str(content) if content else ""
+    actual_agent_answer = extract_agent_answer(agent_state)
 
     # Score chart JSON, not prose insight text.
     charts_answer_score = None

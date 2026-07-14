@@ -1,6 +1,28 @@
 """Utility functions for evaluators."""
 
 from datetime import datetime
+from typing import Any
+
+
+def extract_agent_answer(agent_state: dict[str, Any]) -> str:
+    """Extract the final assistant message text from agent state."""
+    messages = agent_state.get("messages", [])
+    if not messages:
+        return ""
+    content = messages[-1].content
+
+    if isinstance(content, str):
+        # Claude format: direct string
+        return content
+    if isinstance(content, list) and content:
+        # Gemini format: list of content items
+        last_item = content[-1]
+        if isinstance(last_item, dict) and "text" in last_item:
+            return last_item["text"]
+        # Fallback for unexpected list items
+        return str(last_item)
+    # Fallback for any other format
+    return str(content) if content else ""
 
 
 def normalize_gadm_id(gadm_id: str) -> str:
