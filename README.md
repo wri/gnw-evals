@@ -47,6 +47,8 @@ The E2E testing framework evaluates the complete agent workflow by testing four 
 
 **For detailed scoring methodology and calculation details, see [SCORING_METHODOLOGY.md](SCORING_METHODOLOGY.md).**
 
+**For the ground-truth numeric-quality eval mode (intent-based data-fidelity + number-usage scoring against the analytics API), see [GROUND_TRUTH_METHODOLOGY.md](GROUND_TRUTH_METHODOLOGY.md).**
+
 ## Test Dataset Structure
 
 ### Multiple Values in Test Cases
