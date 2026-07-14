@@ -41,7 +41,19 @@ _EMPTY_RESULT: dict[str, Any] = {
     "number_usage_failure_comment": None,
     "unquantified": None,
     "ground_truth_json": None,
+    "actual_canopy_cover": None,
+    "actual_forest_filter": None,
 }
+
+
+def _selected_parameters(agent_state: dict[str, Any]) -> dict[str, Any]:
+    """Report the canopy/filter the agent actually selected, for spot-checks."""
+    canopy = agent_state.get("canopy_density")
+    return {
+        "actual_canopy_cover": str(canopy) if canopy is not None else None,
+        "actual_forest_filter": agent_state.get("forest_filter") or None,
+    }
+
 
 _INTENT_RUBRICS = {
     "quantification": (
@@ -200,15 +212,33 @@ def _evaluate_data_fidelity(
         }
 
     missing = [
-        f"{_row_label(row)}: expected {row['area_ha']:.2f} ha, no match"
+        f"{_row_label(row)}: expected {label} {value:,.2f}, no match"
         for row in ground_truth["rows"]
-        if isinstance(row.get("area_ha"), int | float)
-        and not _value_matches(float(row["area_ha"]), agent_values)
+        for label, value in _required_row_metrics(row)
+        if not _value_matches(value, agent_values)
     ]
     return {
         "data_fidelity_score": 0.0 if missing else 1.0,
         "data_fidelity_missing": "; ".join(missing) or None,
     }
+
+
+def _required_row_metrics(row: dict[str, Any]) -> list[tuple[str, float]]:
+    """Return the values a row must match: fire split when present, else total.
+
+    Fires-dataset answers plot the two split columns rather than area_ha (per
+    the catalog's code instructions), so requiring area_ha there would fail
+    compliant answers.
+    """
+    fires = row.get("tree_cover_loss_from_fires_area_ha")
+    if isinstance(fires, int | float):
+        metrics = [("fires area_ha", float(fires))]
+        non_fires = row.get("tree_cover_loss_non_fires_area_ha")
+        if isinstance(non_fires, int | float):
+            metrics.append(("non-fires area_ha", float(non_fires)))
+        return metrics
+    area = row.get("area_ha")
+    return [("area_ha", float(area))] if isinstance(area, int | float) else []
 
 
 def _format_ground_truth_table(rows: list[dict[str, Any]]) -> str:
@@ -219,12 +249,15 @@ def _format_ground_truth_table(rows: list[dict[str, Any]]) -> str:
             parts.append(f"year={row['tree_cover_loss_year']}")
         if "tree_cover_loss_driver" in row:
             parts.append(f"driver={row['tree_cover_loss_driver']}")
-        area = row.get("area_ha")
-        if isinstance(area, int | float):
-            parts.append(f"area_ha={area:,.2f}")
-        carbon = row.get("carbon_emissions_MgCO2e")
-        if isinstance(carbon, int | float) and not math.isnan(carbon):
-            parts.append(f"carbon_emissions_MgCO2e={carbon:,.2f}")
+        for key, label in (
+            ("area_ha", "area_ha"),
+            ("tree_cover_loss_from_fires_area_ha", "fires_area_ha"),
+            ("tree_cover_loss_non_fires_area_ha", "non_fires_area_ha"),
+            ("carbon_emissions_MgCO2e", "carbon_emissions_MgCO2e"),
+        ):
+            value = row.get(key)
+            if isinstance(value, int | float) and not math.isnan(value):
+                parts.append(f"{label}={value:,.2f}")
         lines.append("  ".join(parts))
     return "\n".join(lines)
 
@@ -271,10 +304,60 @@ def _derive_facts(rows: list[dict[str, Any]]) -> str:
         if drivers:
             dominant = max(drivers, key=lambda r: float(r["area_ha"]))
             share = float(dominant["area_ha"]) / total * 100 if total else 0
+            known = [r for r in drivers if r["tree_cover_loss_driver"] != "Unknown"]
+            known_total = sum(float(r["area_ha"]) for r in known)
+            share_known = (
+                float(dominant["area_ha"]) / known_total * 100 if known_total else 0
+            )
             facts.append(
                 f"{aoi_id}: dominant driver = "
                 f"{dominant['tree_cover_loss_driver']} "
-                f"({float(dominant['area_ha']):,.2f} ha, {share:.1f}% of total)",
+                f"({float(dominant['area_ha']):,.2f} ha, {share:.1f}% of "
+                f"total, {share_known:.1f}% excluding the Unknown class)",
+            )
+            by_driver = {
+                r["tree_cover_loss_driver"]: float(r["area_ha"]) for r in drivers
+            }
+            groupings = {
+                "deforestation proxy (permanent agriculture + hard commodities "
+                "+ settlements and infrastructure)": [
+                    "Permanent agriculture",
+                    "Hard commodities",
+                    "Settlements and infrastructure",
+                ],
+                "temporary disturbance (shifting cultivation + logging + "
+                "wildfire + other natural disturbances)": [
+                    "Shifting cultivation",
+                    "Logging",
+                    "Wildfire",
+                    "Other natural disturbances",
+                ],
+                "all agriculture (permanent agriculture + shifting cultivation)": [
+                    "Permanent agriculture",
+                    "Shifting cultivation",
+                ],
+            }
+            for label, classes in groupings.items():
+                subtotal = sum(by_driver.get(c, 0.0) for c in classes)
+                facts.append(f"{aoi_id}: {label} = {subtotal:,.2f} ha")
+
+        fire_rows = [
+            r
+            for r in numeric
+            if isinstance(
+                r.get("tree_cover_loss_from_fires_area_ha"),
+                int | float,
+            )
+        ]
+        if fire_rows:
+            fires_total = sum(
+                float(r["tree_cover_loss_from_fires_area_ha"]) for r in fire_rows
+            )
+            share = fires_total / total * 100 if total else 0
+            facts.append(
+                f"{aoi_id}: fire-driven loss total = {fires_total:,.2f} ha "
+                f"({share:.1f}% of total loss); non-fire loss total = "
+                f"{total - fires_total:,.2f} ha",
             )
 
     if len(totals) == 2:
@@ -353,6 +436,7 @@ def evaluate_ground_truth(
         ensure_ascii=False,
         default=str,
     )
+    result.update(_selected_parameters(agent_state))
     result.update(_evaluate_data_fidelity(agent_state, ground_truth))
     result.update(
         _evaluate_number_usage(

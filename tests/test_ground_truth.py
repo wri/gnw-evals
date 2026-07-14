@@ -11,6 +11,8 @@ from gnw_evals.evaluators.ground_truth_evaluator import (
     _derive_facts,
     _evaluate_data_fidelity,
     _evaluate_number_usage,
+    _required_row_metrics,
+    _selected_parameters,
     evaluate_ground_truth,
 )
 from gnw_evals.utils.analytics_client import (
@@ -173,6 +175,58 @@ class TestDataFidelity:
         assert result["data_fidelity_score"] == 1.0
 
 
+class TestRequiredRowMetrics:
+    def test_plain_row_requires_total_area(self):
+        metrics = _required_row_metrics({"area_ha": 100.0})
+        assert metrics == [("area_ha", 100.0)]
+
+    def test_fire_row_requires_split_not_total(self):
+        row = {
+            "area_ha": 100.0,
+            "tree_cover_loss_from_fires_area_ha": 30.0,
+            "tree_cover_loss_non_fires_area_ha": 70.0,
+        }
+        metrics = _required_row_metrics(row)
+        assert ("fires area_ha", 30.0) in metrics
+        assert ("non-fires area_ha", 70.0) in metrics
+        assert all(label != "area_ha" for label, _ in metrics)
+
+
+class TestFireDataFidelity:
+    def test_split_values_pass(self):
+        ground_truth = {
+            "rows": [
+                {
+                    "aoi_id": "IDN",
+                    "tree_cover_loss_year": 2020,
+                    "area_ha": 961584.80,
+                    "tree_cover_loss_from_fires_area_ha": 79955.99,
+                    "tree_cover_loss_non_fires_area_ha": 881628.80,
+                },
+            ],
+        }
+        agent_state = {
+            "charts_data": [{"data": [{"fires": 79955.99, "other": 881628.80}]}],
+        }
+        result = _evaluate_data_fidelity(agent_state, ground_truth)
+        assert result["data_fidelity_score"] == 1.0
+
+
+class TestSelectedParameters:
+    def test_reads_canopy_and_filter(self):
+        state = {"canopy_density": 30, "forest_filter": "primary_forest"}
+        assert _selected_parameters(state) == {
+            "actual_canopy_cover": "30",
+            "actual_forest_filter": "primary_forest",
+        }
+
+    def test_missing_values_are_none(self):
+        assert _selected_parameters({}) == {
+            "actual_canopy_cover": None,
+            "actual_forest_filter": None,
+        }
+
+
 class TestDeriveFacts:
     def test_yearly_facts_include_peak_and_change(self):
         facts = _derive_facts(GROUND_TRUTH["rows"])
@@ -186,7 +240,7 @@ class TestDeriveFacts:
         ]
         assert "comparison: BRA > IDN by 60.00 ha" in _derive_facts(rows)
 
-    def test_driver_dominance_fact(self):
+    def test_driver_dominance_and_groupings(self):
         rows = [
             {"aoi_id": "BRA", "tree_cover_loss_driver": "Wildfire", "area_ha": 10.0},
             {
@@ -194,10 +248,34 @@ class TestDeriveFacts:
                 "tree_cover_loss_driver": "Permanent agriculture",
                 "area_ha": 90.0,
             },
+            {
+                "aoi_id": "BRA",
+                "tree_cover_loss_driver": "Shifting cultivation",
+                "area_ha": 20.0,
+            },
+            {"aoi_id": "BRA", "tree_cover_loss_driver": "Unknown", "area_ha": 30.0},
         ]
         facts = _derive_facts(rows)
         assert "dominant driver = Permanent agriculture" in facts
-        assert "90.0% of total" in facts
+        # 90 / 150 total = 60%; 90 / 120 known = 75%
+        assert "60.0% of total" in facts
+        assert "75.0% excluding the Unknown class" in facts
+        # groupings: deforestation proxy = 90 (perm ag only here)
+        assert "all agriculture" in facts
+        assert "110.00 ha" in facts  # permanent ag 90 + shifting 20
+
+    def test_fire_totals_fact(self):
+        rows = [
+            {
+                "aoi_id": "IDN",
+                "tree_cover_loss_year": 2020,
+                "area_ha": 100.0,
+                "tree_cover_loss_from_fires_area_ha": 30.0,
+                "tree_cover_loss_non_fires_area_ha": 70.0,
+            },
+        ]
+        facts = _derive_facts(rows)
+        assert "fire-driven loss total = 30.00 ha" in facts
 
 
 class TestEvaluateGroundTruth:

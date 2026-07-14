@@ -7,11 +7,13 @@ every run. No external assets: inline CSS, light and dark via
 prefers-color-scheme, stdlib only.
 """
 
+import ast
 import html
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from gnw_evals.evaluators.utils import normalize_gadm_id
 from gnw_evals.utils.eval_types import TestResult
 
 _OVERALL_SCORE_FIELD = "overall_score"
@@ -65,6 +67,10 @@ td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
   padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600;
   border: 1px solid var(--border); white-space: nowrap; }
 .badge .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+td.param .sel { font-size: 12px; }
+td.param .sel.same { color: var(--muted); }
+td.param .sel.diff { color: var(--critical); font-weight: 600; }
+p.legend { color: var(--muted); font-size: 12px; margin: 4px 0 8px; }
 .badge.pass .dot { background: var(--good); }
 .badge.fail .dot { background: var(--critical); }
 .badge.na { color: var(--muted); }
@@ -227,7 +233,7 @@ def _failure_cards_html(results: list[TestResult]) -> str:
     cards = []
     for result in failing:
         detail_rows = []
-        params = " &middot; ".join(
+        expected_params = " &middot; ".join(
             part
             for part in (
                 _esc("; ".join(result.expected_aoi_ids or [])),
@@ -241,8 +247,29 @@ def _failure_cards_html(results: list[TestResult]) -> str:
             )
             if part
         )
-        if params:
-            detail_rows.append(("expected params", params))
+        if expected_params:
+            detail_rows.append(("expected params", expected_params))
+        selected_params = " &middot; ".join(
+            part
+            for part in (
+                _esc(
+                    "; ".join(
+                        normalize_gadm_id(i).upper()
+                        for i in _parse_id_list(result.actual_id)
+                    ),
+                ),
+                _esc(_year_range(result.actual_start_date, result.actual_end_date)),
+                (
+                    f"canopy {_esc(str(result.actual_canopy_cover))}"
+                    if getattr(result, "actual_canopy_cover", None)
+                    else ""
+                ),
+                _esc(_selected_filter(result)),
+            )
+            if part
+        )
+        if selected_params:
+            detail_rows.append(("selected params", selected_params))
         if result.error:
             detail_rows.append(("run error", result.error))
         for field, score in _check_scores(result):
@@ -264,7 +291,7 @@ def _failure_cards_html(results: list[TestResult]) -> str:
         if links:
             detail_rows.append(("links", " &middot; ".join(links)))
 
-        prerendered = {"links", "expected params"}
+        prerendered = {"links", "expected params", "selected params"}
         dl = "".join(
             f"<dt>{_esc(label)}</dt>"
             f"<dd>{value if label in prerendered else _esc(value)}</dd>"
@@ -283,12 +310,16 @@ def _failure_cards_html(results: list[TestResult]) -> str:
     return f"<h2>Failures ({len(failing)})</h2>{''.join(cards)}"
 
 
-def _expected_years(result: TestResult) -> str:
-    start = (result.expected_start_date or "").strip()[:4]
-    end = (result.expected_end_date or "").strip()[:4]
+def _year_range(start: str | None, end: str | None) -> str:
+    start = (start or "").strip()[:4]
+    end = (end or "").strip()[:4]
     if not (start or end):
         return ""
     return start if start == end else f"{start}-{end}"
+
+
+def _expected_years(result: TestResult) -> str:
+    return _year_range(result.expected_start_date, result.expected_end_date)
 
 
 def _expected_filter(result: TestResult) -> str:
@@ -300,14 +331,58 @@ def _expected_filter(result: TestResult) -> str:
     return " + ".join(p for p in parts if p)
 
 
-def _expected_param_cells(result: TestResult) -> str:
-    aoi_ids = result.expected_aoi_ids or []
-    canopy = str(getattr(result, "expected_canopy_cover", "") or "")
+def _parse_id_list(value: Any) -> list[str]:
+    """actual_id may arrive as a list or its string repr; normalise to a list."""
+    if isinstance(value, list):
+        return [str(v) for v in value]
+    text = str(value or "").strip()
+    if text.startswith("["):
+        try:
+            parsed = ast.literal_eval(text)
+            if isinstance(parsed, list):
+                return [str(v) for v in parsed]
+        except (ValueError, SyntaxError):
+            pass
+    return [text] if text else []
+
+
+def _selected_filter(result: TestResult) -> str:
+    return str(
+        getattr(result, "actual_forest_filter", None)
+        or result.actual_context_layer
+        or "",
+    )
+
+
+def _pair_cell(expected: str, selected: str, *, numeric: bool = False) -> str:
+    """One parameter cell: expected on top, agent-selected below."""
+    css = "param num" if numeric else "param"
+    if not expected and not selected:
+        return f'<td class="{css}">&mdash;</td>'
+    same = (expected or "").strip().lower() == (selected or "").strip().lower()
     return (
-        f"<td class='num'>{_esc('; '.join(aoi_ids))}</td>"
-        f"<td class='num'>{_esc(_expected_years(result))}</td>"
-        f"<td class='num'>{_esc(canopy)}</td>"
-        f"<td>{_esc(_expected_filter(result))}</td>"
+        f'<td class="{css}"><div>{_esc(expected) or "&mdash;"}</div>'
+        f'<div class="sel {"same" if same else "diff"}">'
+        f"{_esc(selected) or '&mdash;'}</div></td>"
+    )
+
+
+def _param_cells(result: TestResult) -> str:
+    expected_aoi = "; ".join(result.expected_aoi_ids or [])
+    selected_aoi = "; ".join(
+        normalize_gadm_id(i).upper() for i in _parse_id_list(result.actual_id)
+    )
+    canopy_expected = str(getattr(result, "expected_canopy_cover", "") or "")
+    canopy_selected = str(getattr(result, "actual_canopy_cover", None) or "")
+    return (
+        _pair_cell(expected_aoi, selected_aoi, numeric=True)
+        + _pair_cell(
+            _expected_years(result),
+            _year_range(result.actual_start_date, result.actual_end_date),
+            numeric=True,
+        )
+        + _pair_cell(canopy_expected, canopy_selected, numeric=True)
+        + _pair_cell(_expected_filter(result), _selected_filter(result))
     )
 
 
@@ -327,7 +402,7 @@ def _cases_table_html(results: list[TestResult]) -> str:
             )
             ground_truth_cells = (
                 f"<td>{_esc(result.intent)}</td><td>{_esc(result.eval_subtype)}</td>"
-                f"{_expected_param_cells(result)}"
+                f"{_param_cells(result)}"
                 f"<td>{_score_badge(result.data_fidelity_score, reason=result.data_fidelity_missing)}</td>"
                 f"<td>{_score_badge(result.number_usage_score, reason=result.number_usage_reasoning)}</td>"
                 f"<td>{_esc(unquantified)}</td>"
@@ -348,8 +423,16 @@ def _cases_table_html(results: list[TestResult]) -> str:
         if has_ground_truth
         else ""
     )
+    legend = (
+        '<p class="legend">AOI, Years, Canopy and Filter cells show the '
+        "expected value on top and the agent-selected value below "
+        "(highlighted when they differ).</p>"
+        if has_ground_truth
+        else ""
+    )
     return (
         "<h2>All cases</h2>"
+        f"{legend}"
         '<div class="tablewrap"><table><thead><tr>'
         f"<th>id</th><th>Query</th>{ground_truth_headers}"
         "<th class='num'>Overall</th><th class='num'>Time</th><th>Links</th>"

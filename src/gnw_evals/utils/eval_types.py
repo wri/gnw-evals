@@ -101,6 +101,8 @@ class TestResult(BaseModel):
     intent: str = ""
     eval_subtype: str = ""
     judge_instruction: str = ""
+    actual_canopy_cover: str | None = None
+    actual_forest_filter: str | None = None
     data_fidelity_score: float | None = None
     data_fidelity_missing: str | None = None
     number_usage_score: float | None = None
