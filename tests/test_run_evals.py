@@ -378,14 +378,20 @@ async def test_run_csv_tests_caps_workers_to_five_and_sample_size(mock_config):
                     "gnw_evals.core.fetch_gnw_api_metadata",
                     new=AsyncMock(return_value=None),
                 ):
-                    with patch("gnw_evals.core.asyncio.Semaphore") as mock_semaphore:
+                    with patch(
+                        "gnw_evals.core.enrich_with_ground_truth",
+                        new=AsyncMock(return_value=None),
+                    ):
                         with patch(
-                            "gnw_evals.core.run_single_test",
-                            new=AsyncMock(return_value=MagicMock()),
-                        ):
-                            await run_csv_tests(mock_config)
+                            "gnw_evals.core.asyncio.Semaphore",
+                        ) as mock_semaphore:
+                            with patch(
+                                "gnw_evals.core.run_single_test",
+                                new=AsyncMock(return_value=MagicMock()),
+                            ):
+                                await run_csv_tests(mock_config)
 
-                            mock_semaphore.assert_called_once_with(2)
+                                mock_semaphore.assert_called_once_with(2)
 
 
 @pytest.mark.asyncio
@@ -1863,21 +1869,28 @@ def test_default_output_filename_builder_for_all_eval_sets():
 
 
 def test_run_evals_print_results_skips_file_export():
-    """When --print-results is set, output should be printed, not saved."""
+    """When --print-results is set, output is printed and only the HTML report
+    is written, not the CSV files.
+    """
     runner = CliRunner()
     fake_result = MagicMock()
 
     with patch("gnw_evals.core._run_single_eval_set", return_value=[fake_result]):
         with patch("gnw_evals.core.print_results_to_screen") as mock_print:
             with patch("gnw_evals.core.ResultExporter") as mock_exporter_class:
-                result = runner.invoke(
-                    run_evals,
-                    ["--api-token", "test-token", "--print-results"],
-                )
+                with patch(
+                    "gnw_evals.core.write_html_report",
+                    return_value="outputs/report.html",
+                ) as mock_html:
+                    result = runner.invoke(
+                        run_evals,
+                        ["--api-token", "test-token", "--print-results"],
+                    )
 
     assert result.exit_code == 0
     mock_print.assert_called_once()
     mock_exporter_class.assert_not_called()
+    mock_html.assert_called_once()
 
 
 def test_run_evals_with_no_results_writes_nothing():
