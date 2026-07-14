@@ -8,6 +8,7 @@ from .dashboard_evaluator import (
 )
 from .data_pull_evaluator import evaluate_data_pull, evaluate_date_selection
 from .dataset_evaluator import evaluate_dataset_selection
+from .ground_truth_evaluator import evaluate_ground_truth
 from .suggested_datasets_evaluator import evaluate_suggested_datasets
 
 __all__ = [
@@ -20,5 +21,6 @@ __all__ = [
     "evaluate_dataset_selection",
     "evaluate_date_selection",
     "evaluate_final_answer",
+    "evaluate_ground_truth",
     "evaluate_suggested_datasets",
 ]
