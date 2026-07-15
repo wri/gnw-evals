@@ -74,6 +74,13 @@ def _(eval_results_dir, file_select):
 
 @app.cell
 def _(results_simple):
+    results_simple['test_id']
+    return
+
+
+@app.cell
+def _(results_simple):
+    # These are the score columns
     score_map = {
         "agent_answer_score": "Agent Answer",
         "charts_answer_score": "Charts Answer",
@@ -85,7 +92,6 @@ def _(results_simple):
         "data_pull_exists_score": "Data Pull Exists",
         "dataset_parameter_match_score": "Dataset Parameters Match", 
         "clarification_requested_score": "Clarification Requested",
-
     }
 
     # Keep explicit ordering (and only columns that actually exist in df)
@@ -164,6 +170,7 @@ def _(evalset_mask, long, score_cols, score_map):
             ),
             tooltip=[
                 alt.Tooltip("idx:Q", title="Test idx"),
+                alt.Tooltip("test_id:Q", title="Test ID"),
                 alt.Tooltip("score_label:N", title="Score"),
                 alt.Tooltip("state:N", title="Result"),
                 # alt.Tooltip("value:Q", title="Raw value"),
@@ -227,7 +234,7 @@ def _(results_simple):
     return (filter_mask,)
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(eval_set_ui, filter_mask, results_simple, score_cols, score_map):
     # Preprocessing for heatmap
 
@@ -286,7 +293,7 @@ def _(heatmap):
 
     # Define single-cell click selection (captures idx + score)
     cell = alt.selection_point(
-        fields=["idx", "score"],  # or ["idx","score_label"] if you prefer
+        fields=["idx", "test_id", "score"],  # or ["idx","score_label"] if you prefer
         on="click",
         clear="dblclick",  # optional: double-click clears
     )
@@ -309,10 +316,17 @@ def _(heatmap):
     return (clickable_heatmap,)
 
 
+@app.cell
+def _(selected):
+    selected
+    return
+
+
 @app.cell(hide_code=True)
 def _(clickable_heatmap):
     selected = clickable_heatmap.value  # a DataFrame of selected points
     selected_idx = None if selected.empty else selected.iloc[0]["idx"]
+    #selected_test_id = None if selected.empty else selected.iloc[0]["test_id"]
     selected_score = None if selected.empty else selected.iloc[0]["score"]
     return selected, selected_idx, selected_score
 
@@ -525,6 +539,7 @@ def _():
             "test_id",
             "agent_answer_score_reason",
             "expected_answer",
+            "expected_text",
             "expected_agent_answer",
             "actual_agent_answer",
             "agent_answer_score",
