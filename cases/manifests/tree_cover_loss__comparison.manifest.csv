@@ -1,0 +1,18 @@
+manifest_id,intent,eval_subtype,aoi_ids,start_year,end_year,canopy_cover,forest_filter,intersections,date_expression,expected_language,phrasing,n_cases,judge_note,notes
+m-tcl-comp-01,comparison,two_country,BRA;IDN,2023,2023,30,,,absolute_year,en,direct,2,"The user asked across all forest types, so no forest-type filter should be applied.",
+m-tcl-comp-02,comparison,two_country,IDN;COD,2020,2023,30,,,absolute_range,en,direct,1,"The user asked including plantations, so no forest-type filter should be applied.",
+m-tcl-comp-03,comparison,two_country,CRI;GBR,2022,2022,30,,,absolute_year,en,direct,1,"Both values are small; the comparative direction must still be correct.",near-zero pair
+m-tcl-comp-04,comparison,two_country,BRA;COD,2023,2023,30,primary_forest,,absolute_year,en,direct,2,,
+m-tcl-comp-05,comparison,two_period,BRA,2011,2020,30,,,absolute_range,en,direct,2,"Compare the two halves of the window (2011-2015 vs 2016-2020).",
+m-tcl-comp-06,comparison,two_period,IDN,2015,2020,30,,,absolute_range,en,direct,1,"The user explicitly opted out of the primary-forest default; no forest-type filter should be applied.",
+m-tcl-comp-07,comparison,two_period,COD,2012,2023,30,,,absolute_range,en,direct,1,"Compare the two halves of the window (2012-2017 vs 2018-2023).",
+m-tcl-comp-08,comparison,two_country,GBR;CRI,2018,2023,30,,,absolute_range,en,direct,2,"Both values are small; the comparative direction must still be correct.",near-zero pair
+m-tcl-comp-09,comparison,two_country,IDN;COD,2022,2022,30,primary_forest,,absolute_year,en,conversational,2,,
+m-tcl-comp-10,comparison,two_country,BRA;IDN,2022,2022,75,,,absolute_year,en,direct,2,"The 75% canopy threshold must be applied to both countries.",
+m-tcl-comp-11,comparison,two_country,GBR;CRI,2023,2023,30,,,absolute_year,en,imprecise,2,"Both values are small; the comparative direction must still be correct.",near-zero pair
+m-tcl-comp-12,comparison,two_country,BRA;COD,2023,2023,30,,,absolute_year,en,direct,2,"The question asks which country emitted more GHG from tree cover loss; compare the carbon_emissions_MgCO2e column.",emissions comparison
+m-tcl-comp-13,comparison,two_period,BRA,2001,2020,30,,,absolute_range,en,direct,2,"Compare 2001-2010 vs 2011-2020. The window crosses the 2011 methodology break: a caution caveat about comparing across the break is expected and must not be penalised; the comparative direction must still follow the data.",break_crossing
+m-tcl-comp-14,comparison,two_period,IDN,2016,2023,30,primary_forest,,absolute_range,en,conversational,2,"Compare the two halves of the window (2016-2019 vs 2020-2023) for primary forest loss.",
+m-tcl-comp-15,comparison,two_period,CRI,2012,2023,30,,,absolute_range,en,direct,2,"Compare the two halves of the window (2012-2017 vs 2018-2023).",
+m-tcl-comp-16,comparison,two_period,GBR,2014,2023,30,,,absolute_range,en,imprecise,2,"Compare the two halves of the window (2014-2018 vs 2019-2023); values are small and the direction must follow the data.",near-zero AOI
+m-tcl-comp-17,comparison,two_country,BRA;COD,2019,2023,30,,,absolute_range,en,conversational,2,"The user asked across all forest types, so no forest-type filter should be applied.",
