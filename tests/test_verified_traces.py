@@ -59,6 +59,7 @@ class TestBrazilTCL2020to2023VerifiedTrace:
         result = evaluate_dataset_selection(
             BRAZIL_TCL_2020_2023,
             expected_dataset_id="4",
+            expected_dataset_parameters="",
             expected_context_layer="",
         )
         assert result["dataset_id_match_score"] == 1.0, (
@@ -67,13 +68,13 @@ class TestBrazilTCL2020to2023VerifiedTrace:
         )
 
     def test_data_pull_scores_1(self):
-        """charts_data[0]['data'] has 8 rows → 1.0. Confirms data_pull fix uses charts_data."""
-        result = evaluate_data_pull(BRAZIL_TCL_2020_2023)
+        """statistics carries a source_url entry → 1.0. Matches eval run."""
+        result = evaluate_data_pull(BRAZIL_TCL_2020_2023, expects_data_pull=True)
         assert result["data_pull_exists_score"] == 1.0, (
             f"Expected 1.0, got {result['data_pull_exists_score']}. "
             f"row_count={result['row_count']}"
         )
-        assert result["row_count"] == 8
+        assert result["data_pull_success"] is True
 
     def test_date_match_scores_1(self):
         """start=2020-01-01, end=2023-12-31 both match expected → 1.0."""

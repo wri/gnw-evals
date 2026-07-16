@@ -46,32 +46,32 @@ class TestDataPullRealState:
     """Tests for evaluate_data_pull using real agent state structure."""
 
     def test_nigeria_has_data(self):
-        """Nigeria state with 8 rows in charts_data[0]['data'] scores 1.0."""
-        result = evaluate_data_pull(NIGERIA_AGRICULTURAL_LAND)
+        """Nigeria state with a source_url statistics entry scores 1.0."""
+        result = evaluate_data_pull(NIGERIA_AGRICULTURAL_LAND, expects_data_pull=True)
         assert result["data_pull_exists_score"] == 1.0
-        assert result["row_count"] == 8
+        assert result["data_pull_success"] is True
 
     def test_brazil_has_data(self):
-        """Brazil state with 8 rows scores 1.0."""
-        result = evaluate_data_pull(BRAZIL_TCL_DRIVERS)
+        """Brazil state with a source_url statistics entry scores 1.0."""
+        result = evaluate_data_pull(BRAZIL_TCL_DRIVERS, expects_data_pull=True)
         assert result["data_pull_exists_score"] == 1.0
-        assert result["row_count"] == 8
+        assert result["data_pull_success"] is True
 
     def test_indonesia_spanish_has_data(self):
-        """Indonesia LANG state with 12 rows scores 1.0."""
-        result = evaluate_data_pull(INDONESIA_SPANISH_TCL)
+        """Indonesia LANG state with a source_url statistics entry scores 1.0."""
+        result = evaluate_data_pull(INDONESIA_SPANISH_TCL, expects_data_pull=True)
         assert result["data_pull_exists_score"] == 1.0
-        assert result["row_count"] == 12
+        assert result["data_pull_success"] is True
 
     def test_empty_state_scores_zero(self):
         """Empty charts_data scores 0.0."""
-        result = evaluate_data_pull(EMPTY_STATE)
+        result = evaluate_data_pull(EMPTY_STATE, expects_data_pull=True)
         assert result["data_pull_exists_score"] == 0.0
         assert result["row_count"] == 0
 
-    def test_clarification_expected_returns_none(self):
-        """When clarification is expected, data pull score is not applicable."""
-        result = evaluate_data_pull(NIGERIA_AGRICULTURAL_LAND, expected_clarification=True)
+    def test_no_data_pull_expected_returns_none(self):
+        """When the case does not require analytics data, the score is not applicable."""
+        result = evaluate_data_pull(NIGERIA_AGRICULTURAL_LAND, expects_data_pull=False)
         assert result["data_pull_exists_score"] is None
 
 

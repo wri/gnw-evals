@@ -29,6 +29,12 @@ NIGERIA_AGRICULTURAL_LAND = {
     "end_date": "2024-12-31",
     "canopy_density": None,
     "forest_filter": None,
+    "statistics": [
+        {
+            "id": "8f2c1d4e-1a2b-4c3d-9e8f-nigeria-lc24",
+            "source_url": "https://analytics.globalnaturewatch.org/v0/land_change/land_cover/analytics/8f2c1d4e",
+        }
+    ],
     "charts_data": [
         {
             "id": "main_chart",
@@ -78,6 +84,12 @@ BRAZIL_TCL_DRIVERS = {
     "end_date": "2024-12-31",
     "canopy_density": None,
     "forest_filter": None,
+    "statistics": [
+        {
+            "id": "3b7e9a1c-5d4f-4e2a-8b6c-brazil-drv01",
+            "source_url": "https://analytics.globalnaturewatch.org/v0/land_change/tree_cover_loss_by_driver/analytics/3b7e9a1c",
+        }
+    ],
     "charts_data": [
         {
             "id": "main_chart",
@@ -129,6 +141,12 @@ INDONESIA_SPANISH_TCL = {
     "end_date": "2024-12-31",
     "canopy_density": None,
     "forest_filter": None,
+    "statistics": [
+        {
+            "id": "6c1f8d2e-9a3b-4f5c-7d8e-idn-dist2024",
+            "source_url": "https://analytics.globalnaturewatch.org/v0/land_change/dist_alerts/analytics/6c1f8d2e",
+        }
+    ],
     "charts_data": [
         {
             "id": "main_chart",
@@ -327,6 +345,12 @@ BRAZIL_TCL_2020_2023 = {
     "end_date": "2023-12-31",
     "canopy_density": None,  # agent does NOT set this for default 30% — only sets when explicitly overridden
     "forest_filter": None,
+    "statistics": [
+        {
+            "id": "ad54c8ac-a6fd-4104-aad8-83a3f7a33fa4",
+            "source_url": "https://analytics.globalnaturewatch.org/v0/land_change/tree_cover_loss/analytics/ad54c8ac",
+        }
+    ],
     "charts_data": [
         {
             "id": "main_chart",
