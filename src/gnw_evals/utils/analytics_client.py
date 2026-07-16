@@ -76,8 +76,15 @@ def build_tcl_payload(case: ExpectedData) -> dict[str, Any]:
 
 
 def _columnar_to_rows(result: dict[str, Any]) -> list[dict[str, Any]]:
-    """Convert the API's dict-of-arrays result into a list of row dicts."""
-    columns = {k: v for k, v in result.items() if k != "__dtypes__"}
+    """Convert the API's dict-of-arrays result into a list of row dicts.
+
+    Freshly computed resources can briefly report status "saved" with
+    None-valued columns; only list-valued columns are rows (the caller
+    re-polls while the rows are empty).
+    """
+    columns = {
+        k: v for k, v in result.items() if k != "__dtypes__" and isinstance(v, list)
+    }
     if not columns:
         return []
     length = max(len(v) for v in columns.values())
@@ -109,25 +116,28 @@ async def fetch_tcl_ground_truth(
         poll.raise_for_status()
         data = poll.json()["data"]
         status = data.get("status")
-        if status in ("saved", "success"):
-            break
         if status == "failed":
             raise RuntimeError(
                 f"analytics request failed: {data.get('message')!r} ({link})",
             )
+        if status in ("saved", "success"):
+            rows = _columnar_to_rows(data.get("result") or {})
+            # A just-computed resource can report saved with a still-empty
+            # result; keep polling until rows materialise or time runs out.
+            if rows:
+                return {
+                    "rows": rows,
+                    "metadata": data.get("metadata"),
+                    "x_environment": x_environment,
+                    "link": link,
+                }
         if asyncio.get_event_loop().time() > deadline:
             raise TimeoutError(
-                f"analytics result not ready after {_POLL_TIMEOUT_SECONDS:.0f}s: {link}",
+                f"analytics result not ready (or empty) after "
+                f"{_POLL_TIMEOUT_SECONDS:.0f}s: {link}",
             )
         retry_after = float(poll.headers.get("Retry-After", 1) or 1)
         await asyncio.sleep(retry_after)
-
-    return {
-        "rows": _columnar_to_rows(data.get("result") or {}),
-        "metadata": data.get("metadata"),
-        "x_environment": x_environment,
-        "link": link,
-    }
 
 
 async def enrich_with_ground_truth(

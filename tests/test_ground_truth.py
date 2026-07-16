@@ -123,6 +123,15 @@ class TestColumnarToRows:
     def test_empty_result(self):
         assert _columnar_to_rows({}) == []
 
+    def test_none_columns_treated_as_empty(self):
+        """Fresh resources can report saved with None columns; not rows yet."""
+        assert _columnar_to_rows({"aoi_id": None, "area_ha": None}) == []
+
+    def test_none_columns_dropped_alongside_lists(self):
+        result = {"aoi_id": ["BRA"], "area_ha": [1.0], "extra": None}
+        rows = _columnar_to_rows(result)
+        assert rows == [{"aoi_id": "BRA", "area_ha": 1.0}]
+
 
 class TestDataFidelity:
     def test_matching_chart_values_pass(self):
