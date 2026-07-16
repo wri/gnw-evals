@@ -9,11 +9,6 @@ Usage:
 
 from unittest.mock import MagicMock, patch
 
-from gnw_evals.evaluators.chart_type_evaluator import evaluate_chart_type
-from gnw_evals.evaluators.data_pull_evaluator import evaluate_data_pull, evaluate_date_selection
-from gnw_evals.evaluators.insight_quality_evaluator import evaluate_insight_quality
-from gnw_evals.evaluators.language_evaluator import evaluate_language
-from gnw_evals.evaluators.parameter_evaluator import evaluate_parameters
 from fixtures.agent_states import (
     BRAZIL_TCL_DRIVERS,
     EMPTY_STATE,
@@ -23,6 +18,15 @@ from fixtures.agent_states import (
     KALIMANTAN_DRIVER_INTERSECT,
     NIGERIA_AGRICULTURAL_LAND,
 )
+
+from gnw_evals.evaluators.chart_type_evaluator import evaluate_chart_type
+from gnw_evals.evaluators.data_pull_evaluator import (
+    evaluate_data_pull,
+    evaluate_date_selection,
+)
+from gnw_evals.evaluators.insight_quality_evaluator import evaluate_insight_quality
+from gnw_evals.evaluators.language_evaluator import evaluate_language
+from gnw_evals.evaluators.parameter_evaluator import evaluate_parameters
 
 
 def _mock_haiku(module_path: str, score: int, explanation: str = ""):
@@ -168,13 +172,19 @@ class TestCanopyCoverRealState:
 
     def test_canopy_50_matches(self):
         """State with canopy_density='50' matches expected '50'."""
-        result = evaluate_parameters(INDONESIA_TCL_CANOPY_50, expected_canopy_cover="50")
+        result = evaluate_parameters(
+            INDONESIA_TCL_CANOPY_50,
+            expected_canopy_cover="50",
+        )
         assert result["canopy_cover_match_score"] == 1.0
         assert result["actual_canopy_cover"] == "50"
 
     def test_canopy_30_vs_50_mismatch(self):
         """State with canopy_density='30' when expected '50' → 0.0."""
-        result = evaluate_parameters(INDONESIA_PRIMARY_FOREST, expected_canopy_cover="50")
+        result = evaluate_parameters(
+            INDONESIA_PRIMARY_FOREST,
+            expected_canopy_cover="50",
+        )
         assert result["canopy_cover_match_score"] == 0.0
 
     def test_no_expected_returns_none(self):
@@ -184,7 +194,10 @@ class TestCanopyCoverRealState:
 
     def test_null_canopy_in_state_scores_zero(self):
         """State with canopy_density=None when cover expected → 0.0."""
-        result = evaluate_parameters(NIGERIA_AGRICULTURAL_LAND, expected_canopy_cover="30")
+        result = evaluate_parameters(
+            NIGERIA_AGRICULTURAL_LAND,
+            expected_canopy_cover="30",
+        )
         assert result["canopy_cover_match_score"] == 0.0
 
 
@@ -199,7 +212,8 @@ class TestForestFilterRealState:
     def test_primary_forest_matches(self):
         """State with forest_filter='primary_forest' matches."""
         result = evaluate_parameters(
-            INDONESIA_PRIMARY_FOREST, expected_forest_filter="primary_forest",
+            INDONESIA_PRIMARY_FOREST,
+            expected_forest_filter="primary_forest",
         )
         assert result["forest_filter_match_score"] == 1.0
         assert result["actual_forest_filter"] == "primary_forest"
@@ -207,13 +221,17 @@ class TestForestFilterRealState:
     def test_no_filter_when_primary_expected_scores_zero(self):
         """State with forest_filter=None when primary_forest expected → 0.0."""
         result = evaluate_parameters(
-            BRAZIL_TCL_DRIVERS, expected_forest_filter="primary_forest",
+            BRAZIL_TCL_DRIVERS,
+            expected_forest_filter="primary_forest",
         )
         assert result["forest_filter_match_score"] == 0.0
 
     def test_no_expected_returns_none(self):
         """No expected forest filter → None."""
-        result = evaluate_parameters(INDONESIA_PRIMARY_FOREST, expected_forest_filter="")
+        result = evaluate_parameters(
+            INDONESIA_PRIMARY_FOREST,
+            expected_forest_filter="",
+        )
         assert result["forest_filter_match_score"] is None
 
 
@@ -228,7 +246,8 @@ class TestIntersectionsRealState:
     def test_driver_intersection_matches(self):
         """State with context_layer='driver' matches expected 'driver'."""
         result = evaluate_parameters(
-            KALIMANTAN_DRIVER_INTERSECT, expected_intersections="driver",
+            KALIMANTAN_DRIVER_INTERSECT,
+            expected_intersections="driver",
         )
         assert result["intersections_match_score"] == 1.0
         assert result["actual_intersections"] == "driver"
@@ -236,21 +255,24 @@ class TestIntersectionsRealState:
     def test_land_cover_vs_driver_mismatch(self):
         """State with context_layer='land_cover' when driver expected → 0.0."""
         result = evaluate_parameters(
-            INDONESIA_SPANISH_TCL, expected_intersections="driver",
+            INDONESIA_SPANISH_TCL,
+            expected_intersections="driver",
         )
         assert result["intersections_match_score"] == 0.0
 
     def test_null_context_layer_scores_zero(self):
         """State with context_layer=None when intersection expected → 0.0."""
         result = evaluate_parameters(
-            NIGERIA_AGRICULTURAL_LAND, expected_intersections="driver",
+            NIGERIA_AGRICULTURAL_LAND,
+            expected_intersections="driver",
         )
         assert result["intersections_match_score"] == 0.0
 
     def test_no_expected_returns_none(self):
         """No expected intersections → None."""
         result = evaluate_parameters(
-            KALIMANTAN_DRIVER_INTERSECT, expected_intersections="",
+            KALIMANTAN_DRIVER_INTERSECT,
+            expected_intersections="",
         )
         assert result["intersections_match_score"] is None
 
@@ -326,7 +348,7 @@ class TestInsightQualityRealState:
                         "agriculture at 52%."
                     ),
                     "data": [{"year": y, "area_ha": 450000} for y in range(2015, 2024)],
-                }
+                },
             ],
             "messages": [],
         }

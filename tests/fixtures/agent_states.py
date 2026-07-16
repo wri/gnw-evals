@@ -16,7 +16,13 @@ VERIFIED fixtures (fetched directly from API and confirmed against eval run outp
 
 NIGERIA_AGRICULTURAL_LAND = {
     "user_persona": "Researcher",
-    "aoi": {"source": "gadm", "src_id": "NGA", "name": "Nigeria", "subtype": "country", "gadm_id": "NGA"},
+    "aoi": {
+        "source": "gadm",
+        "src_id": "NGA",
+        "name": "Nigeria",
+        "subtype": "country",
+        "gadm_id": "NGA",
+    },
     "subregion": None,
     "aoi_name": "Nigeria",
     "subtype": "country",
@@ -33,7 +39,7 @@ NIGERIA_AGRICULTURAL_LAND = {
         {
             "id": "8f2c1d4e-1a2b-4c3d-9e8f-nigeria-lc24",
             "source_url": "https://analytics.globalnaturewatch.org/v0/land_change/land_cover/analytics/8f2c1d4e",
-        }
+        },
     ],
     "charts_data": [
         {
@@ -58,7 +64,7 @@ NIGERIA_AGRICULTURAL_LAND = {
             ],
             "xAxis": "name",
             "yAxis": "value",
-        }
+        },
     ],
     "messages": [],
 }
@@ -71,7 +77,13 @@ NIGERIA_AGRICULTURAL_LAND = {
 
 BRAZIL_TCL_DRIVERS = {
     "user_persona": "Researcher",
-    "aoi": {"source": "gadm", "src_id": "BRA", "name": "Brazil", "subtype": "country", "gadm_id": "BRA"},
+    "aoi": {
+        "source": "gadm",
+        "src_id": "BRA",
+        "name": "Brazil",
+        "subtype": "country",
+        "gadm_id": "BRA",
+    },
     "subregion": None,
     "aoi_name": "Brazil",
     "subtype": "country",
@@ -88,13 +100,13 @@ BRAZIL_TCL_DRIVERS = {
         {
             "id": "3b7e9a1c-5d4f-4e2a-8b6c-brazil-drv01",
             "source_url": "https://analytics.globalnaturewatch.org/v0/land_change/tree_cover_loss_by_driver/analytics/3b7e9a1c",
-        }
+        },
     ],
     "charts_data": [
         {
             "id": "main_chart",
             "type": "bar",
-            "title": "Tree Cover Loss by Driver in Brazil (2001–2024)",
+            "title": "Tree Cover Loss by Driver in Brazil (2001-2024)",
             "insight": (
                 "Since 2001, Brazil has experienced a loss of over 73 million hectares of tree "
                 "cover. The primary driver of this loss is permanent agriculture, accounting for "
@@ -115,7 +127,7 @@ BRAZIL_TCL_DRIVERS = {
             ],
             "xAxis": "name",
             "yAxis": "value",
-        }
+        },
     ],
     "messages": [],
 }
@@ -128,7 +140,13 @@ BRAZIL_TCL_DRIVERS = {
 
 INDONESIA_SPANISH_TCL = {
     "user_persona": "Researcher",
-    "aoi": {"source": "gadm", "src_id": "IDN", "name": "Indonesia", "subtype": "country", "gadm_id": "IDN"},
+    "aoi": {
+        "source": "gadm",
+        "src_id": "IDN",
+        "name": "Indonesia",
+        "subtype": "country",
+        "gadm_id": "IDN",
+    },
     "subregion": None,
     "aoi_name": "Indonesia",
     "subtype": "country",
@@ -145,7 +163,7 @@ INDONESIA_SPANISH_TCL = {
         {
             "id": "6c1f8d2e-9a3b-4f5c-7d8e-idn-dist2024",
             "source_url": "https://analytics.globalnaturewatch.org/v0/land_change/dist_alerts/analytics/6c1f8d2e",
-        }
+        },
     ],
     "charts_data": [
         {
@@ -175,7 +193,7 @@ INDONESIA_SPANISH_TCL = {
             ],
             "xAxis": "month",
             "yAxis": "area_ha",
-        }
+        },
     ],
     "messages": [],
 }
@@ -187,7 +205,13 @@ INDONESIA_SPANISH_TCL = {
 
 INDONESIA_TCL_CANOPY_50 = {
     "user_persona": "Researcher",
-    "aoi": {"source": "gadm", "src_id": "IDN", "name": "Indonesia", "subtype": "country", "gadm_id": "IDN"},
+    "aoi": {
+        "source": "gadm",
+        "src_id": "IDN",
+        "name": "Indonesia",
+        "subtype": "country",
+        "gadm_id": "IDN",
+    },
     "subregion": None,
     "aoi_name": "Indonesia",
     "subtype": "country",
@@ -204,7 +228,7 @@ INDONESIA_TCL_CANOPY_50 = {
         {
             "id": "main_chart",
             "type": "bar",
-            "title": "Tree Cover Loss in Indonesia (2015–2023, 50% canopy density)",
+            "title": "Tree Cover Loss in Indonesia (2015-2023, 50% canopy density)",
             "insight": (
                 "Using a 50% canopy density threshold, Indonesia lost approximately "
                 "3.2 million hectares of tree cover between 2015 and 2023."
@@ -215,7 +239,7 @@ INDONESIA_TCL_CANOPY_50 = {
             ],
             "xAxis": "year",
             "yAxis": "area_ha",
-        }
+        },
     ],
     "messages": [],
 }
@@ -227,7 +251,13 @@ INDONESIA_TCL_CANOPY_50 = {
 
 INDONESIA_PRIMARY_FOREST = {
     "user_persona": "Researcher",
-    "aoi": {"source": "gadm", "src_id": "IDN", "name": "Indonesia", "subtype": "country", "gadm_id": "IDN"},
+    "aoi": {
+        "source": "gadm",
+        "src_id": "IDN",
+        "name": "Indonesia",
+        "subtype": "country",
+        "gadm_id": "IDN",
+    },
     "subregion": None,
     "aoi_name": "Indonesia",
     "subtype": "country",
@@ -244,7 +274,7 @@ INDONESIA_PRIMARY_FOREST = {
         {
             "id": "main_chart",
             "type": "bar",
-            "title": "Primary Forest Loss in Indonesia (2015–2023)",
+            "title": "Primary Forest Loss in Indonesia (2015-2023)",
             "insight": (
                 "Filtered to humid tropical primary forest, Indonesia lost approximately "
                 "1.1 million hectares of primary forest between 2015 and 2023."
@@ -255,7 +285,7 @@ INDONESIA_PRIMARY_FOREST = {
             ],
             "xAxis": "year",
             "yAxis": "area_ha",
-        }
+        },
     ],
     "messages": [],
 }
@@ -267,7 +297,13 @@ INDONESIA_PRIMARY_FOREST = {
 
 KALIMANTAN_DRIVER_INTERSECT = {
     "user_persona": "Researcher",
-    "aoi": {"source": "gadm", "src_id": "IDN.6_1", "name": "Kalimantan", "subtype": "region", "gadm_id": "IDN.6_1"},
+    "aoi": {
+        "source": "gadm",
+        "src_id": "IDN.6_1",
+        "name": "Kalimantan",
+        "subtype": "region",
+        "gadm_id": "IDN.6_1",
+    },
     "subregion": None,
     "aoi_name": "Kalimantan",
     "subtype": "region",
@@ -296,7 +332,7 @@ KALIMANTAN_DRIVER_INTERSECT = {
             ],
             "xAxis": "driver",
             "yAxis": "alerts",
-        }
+        },
     ],
     "messages": [],
 }
@@ -332,7 +368,13 @@ EMPTY_STATE = {
 
 BRAZIL_TCL_2020_2023 = {
     "user_persona": "Researcher",
-    "aoi": {"source": "gadm", "src_id": "BRA", "name": "Brazil", "subtype": "country", "gadm_id": "BRA"},
+    "aoi": {
+        "source": "gadm",
+        "src_id": "BRA",
+        "name": "Brazil",
+        "subtype": "country",
+        "gadm_id": "BRA",
+    },
     "subregion": None,
     "aoi_name": "Brazil",
     "subtype": "country",
@@ -349,13 +391,13 @@ BRAZIL_TCL_2020_2023 = {
         {
             "id": "ad54c8ac-a6fd-4104-aad8-83a3f7a33fa4",
             "source_url": "https://analytics.globalnaturewatch.org/v0/land_change/tree_cover_loss/analytics/ad54c8ac",
-        }
+        },
     ],
     "charts_data": [
         {
             "id": "main_chart",
             "type": "bar",
-            "title": "Tree Cover Loss in Brazil (2020–2023)",
+            "title": "Tree Cover Loss in Brazil (2020-2023)",
             "insight": (
                 "From 2001 to 2024, Brazil experienced a total tree cover loss of approximately "
                 "12.40 million hectares. The primary driver of this loss was permanent agriculture, "
@@ -373,7 +415,7 @@ BRAZIL_TCL_2020_2023 = {
             ],
             "xAxis": "year",
             "yAxis": "area_ha",
-        }
+        },
     ],
     "messages": [],
 }

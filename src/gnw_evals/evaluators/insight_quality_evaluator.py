@@ -89,6 +89,7 @@ def evaluate_insight_quality(
         return result
 
     # Take the first 5 rows of data as a preview for the judge
+    data_preview: list[Any] | dict[Any, list[Any]]
     if isinstance(raw_data, list):
         data_preview = raw_data[:5]
     elif isinstance(raw_data, dict):

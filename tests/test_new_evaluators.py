@@ -155,7 +155,8 @@ class TestForestFilter:
         """intact_forest_landscape filter applied correctly returns 1.0."""
         state = _state_with_params(forest_filter="intact_forest_landscape")
         result = evaluate_parameters(
-            state, expected_forest_filter="intact_forest_landscape",
+            state,
+            expected_forest_filter="intact_forest_landscape",
         )
         assert result["forest_filter_match_score"] == 1.0
 
@@ -169,7 +170,8 @@ class TestForestFilter:
         """Wrong forest filter applied returns 0.0."""
         state = _state_with_params(forest_filter="primary_forest")
         result = evaluate_parameters(
-            state, expected_forest_filter="intact_forest_landscape",
+            state,
+            expected_forest_filter="intact_forest_landscape",
         )
         assert result["forest_filter_match_score"] == 0.0
 
@@ -226,7 +228,9 @@ class TestCropTypes:
             return_value=1.0,
         ):
             result = evaluate_parameters(
-                state, expected_crop_types="Soybean", insight_text=state["charts_data"][0]["insight"],
+                state,
+                expected_crop_types="Soybean",
+                insight_text=state["charts_data"][0]["insight"],
             )
         assert result["crop_type_match_score"] == 1.0
 
@@ -255,7 +259,9 @@ class TestGasTypes:
             return_value=1.0,
         ):
             result = evaluate_parameters(
-                state, expected_gas_types="CO2", insight_text=state["charts_data"][0]["insight"],
+                state,
+                expected_gas_types="CO2",
+                insight_text=state["charts_data"][0]["insight"],
             )
         assert result["gas_type_match_score"] == 1.0
 
@@ -278,7 +284,11 @@ class TestInsightQualityEvaluator:
         """Build a minimal state with a single chart."""
         return {
             "charts_data": [
-                {"type": chart_type, "insight": insight, "data": [{"year": 2023, "area_ha": 1000}]},
+                {
+                    "type": chart_type,
+                    "insight": insight,
+                    "data": [{"year": 2023, "area_ha": 1000}],
+                },
             ],
             "messages": [],
         }
@@ -286,7 +296,11 @@ class TestInsightQualityEvaluator:
     def test_no_instruction_returns_none(self):
         """Empty judge_instruction returns None (not applicable)."""
         state = self._make_state("Brazil lost 1000 ha of tree cover in 2023.")
-        result = evaluate_insight_quality(state, query="How much?", judge_instruction="")
+        result = evaluate_insight_quality(
+            state,
+            query="How much?",
+            judge_instruction="",
+        )
         assert result["insight_quality_score"] is None
         assert result["insight_quality_explanation"] is None
 
@@ -294,7 +308,9 @@ class TestInsightQualityEvaluator:
         """No charts data returns None even with a judge instruction."""
         state = {"charts_data": [], "messages": []}
         result = evaluate_insight_quality(
-            state, query="How much?", judge_instruction="Check units.",
+            state,
+            query="How much?",
+            judge_instruction="Check units.",
         )
         assert result["insight_quality_score"] is None
 
@@ -328,7 +344,8 @@ class TestInsightQualityEvaluator:
         """Judge catches use of 'deforestation' when 'tree cover loss' is required."""
         state = self._make_state("Brazil suffered massive deforestation in 2023.")
         with self._patch_haiku(
-            score=0, explanation="Used 'deforestation' instead of 'tree cover loss'.",
+            score=0,
+            explanation="Used 'deforestation' instead of 'tree cover loss'.",
         ):
             result = evaluate_insight_quality(
                 state,
@@ -340,7 +357,10 @@ class TestInsightQualityEvaluator:
     def test_caveat_check_fails(self):
         """Judge catches missing caveat about plantation cycles in gain insight."""
         state = self._make_state("Indonesia gained 500 kha of tree cover.")
-        with self._patch_haiku(score=0, explanation="Missing caveat about plantation cycles."):
+        with self._patch_haiku(
+            score=0,
+            explanation="Missing caveat about plantation cycles.",
+        ):
             result = evaluate_insight_quality(
                 state,
                 query="How much tree cover has Indonesia gained?",
@@ -410,7 +430,9 @@ class TestLanguageEvaluator:
 
     def test_chinese_match(self):
         """Mandarin Chinese response when 'zh' expected returns 1.0."""
-        state = self._state_with_response("印度尼西亚在2023年损失了1200千公顷的树木覆盖。")
+        state = self._state_with_response(
+            "印度尼西亚在2023年损失了1200千公顷的树木覆盖。",
+        )
         with self._patch_lang_haiku(1):
             result = evaluate_language(state, "zh")
         assert result["language_match_score"] == 1.0

@@ -1869,8 +1869,9 @@ def test_default_output_filename_builder_for_all_eval_sets():
 
 
 def test_run_evals_print_results_skips_file_export():
-    """When --print-results is set, output is printed and only the HTML report
-    is written, not the CSV files.
+    """--print-results prints output and writes only the HTML report.
+
+    The CSV files are not written in this mode.
     """
     runner = CliRunner()
     fake_result = MagicMock()

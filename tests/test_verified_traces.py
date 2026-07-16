@@ -19,11 +19,15 @@ Usage:
 
 from unittest.mock import MagicMock, patch
 
+from fixtures.agent_states import BRAZIL_TCL_2020_2023
+
 from gnw_evals.evaluators.chart_type_evaluator import evaluate_chart_type
-from gnw_evals.evaluators.data_pull_evaluator import evaluate_data_pull, evaluate_date_selection
+from gnw_evals.evaluators.data_pull_evaluator import (
+    evaluate_data_pull,
+    evaluate_date_selection,
+)
 from gnw_evals.evaluators.insight_quality_evaluator import evaluate_insight_quality
 from gnw_evals.evaluators.parameter_evaluator import evaluate_parameters
-from fixtures.agent_states import BRAZIL_TCL_2020_2023
 
 
 def _mock_haiku_score(score: int, explanation: str = ""):
@@ -68,7 +72,7 @@ class TestBrazilTCL2020to2023VerifiedTrace:
         )
 
     def test_data_pull_scores_1(self):
-        """statistics carries a source_url entry → 1.0. Matches eval run."""
+        """Statistics carries a source_url entry → 1.0. Matches eval run."""
         result = evaluate_data_pull(BRAZIL_TCL_2020_2023, expects_data_pull=True)
         assert result["data_pull_exists_score"] == 1.0, (
             f"Expected 1.0, got {result['data_pull_exists_score']}. "
@@ -134,10 +138,13 @@ class TestBrazilTCL2020to2023VerifiedTrace:
         This is a real quirk: the agent stores the dataset name in context_layer
         for non-intersection queries. Intersection evaluator should not match this.
         """
-        result = evaluate_parameters(BRAZIL_TCL_2020_2023, expected_intersections="driver")
-        assert result["intersections_match_score"] == 0.0, (
-            "context_layer='Tree cover loss' should not match expected 'driver'"
+        result = evaluate_parameters(
+            BRAZIL_TCL_2020_2023,
+            expected_intersections="driver",
         )
+        assert (
+            result["intersections_match_score"] == 0.0
+        ), "context_layer='Tree cover loss' should not match expected 'driver'"
 
     def test_no_forest_filter_applied(self):
         """forest_filter=None in state when no filter expected → None (not applicable)."""
