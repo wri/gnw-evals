@@ -205,15 +205,21 @@ three build the analytics query, and the last two are scored by the base harness
 
 ## Running
 
+Cases live in per-cell files under `cases/` (e.g.
+`cases/tree_cover_loss__quantification.csv`), generated and reviewed via the
+`generation/` workflow (see `generation/README.md`). The original
+`ground_truth_tcl_poc.csv` was split into these files.
+
 ```bash
 # dev loop: one case, printed to screen
 uv run gnw_evals --api-base-url <api> --api-token <token> \
-  --test-file ground_truth_tcl_poc.csv --test-id gt-quant-01 --print-results
+  --test-file cases/tree_cover_loss__quantification.csv \
+  --test-id gt-quant-01 --print-results
 
-# full run: CSVs + HTML report in outputs/
+# full run for one cell: CSVs + HTML report in outputs/
 uv run gnw_evals --api-base-url <api> --api-token <token> \
-  --test-file ground_truth_tcl_poc.csv --num-workers 5 \
-  --output-filename ground_truth_tcl_poc
+  --test-file cases/tree_cover_loss__quantification.csv --num-workers 5 \
+  --output-filename tcl_quantification
 
 # robustness: mean + stdev over N trials
 uv run gnw_evals ... --num-trials 3
