@@ -326,7 +326,9 @@ def resolve_case_evaluators(
     case_raw = expected_data.evaluators
     if case_raw:
         case_names = _parse_names(case_raw)
-        _validate_names(case_names, f"case {expected_data.test_id or '?'} evaluators column")
+        _validate_names(
+            case_names, f"case {expected_data.test_id or '?'} evaluators column"
+        )
         enabled = frozenset(enabled & case_names)
     return frozenset(enabled)
 
@@ -345,8 +347,7 @@ def compute_stage_scores(evaluations: dict[str, Any]) -> dict[str, float | None]
         values = [
             value
             for field, field_bucket in SCORE_FIELD_BUCKETS.items()
-            if field_bucket == bucket
-            and (value := evaluations.get(field)) is not None
+            if field_bucket == bucket and (value := evaluations.get(field)) is not None
         ]
         if not values:
             return None
@@ -355,9 +356,7 @@ def compute_stage_scores(evaluations: dict[str, Any]) -> dict[str, float | None]
     retrieval = bucket_outcome(RETRIEVAL)
     analysis = None if retrieval == 0.0 else bucket_outcome(ANALYSIS)
     explanation = (
-        None
-        if retrieval == 0.0 or analysis == 0.0
-        else bucket_outcome(EXPLANATION)
+        None if retrieval == 0.0 or analysis == 0.0 else bucket_outcome(EXPLANATION)
     )
 
     stages = (retrieval, analysis, explanation)

@@ -5,6 +5,7 @@ Usage:
 """
 
 import pytest
+from fixtures.agent_states import BRAZIL_TCL_2020_2023
 
 from gnw_evals.evaluators.chart_type_evaluator import evaluate_chart_type
 from gnw_evals.evaluators.data_pull_evaluator import evaluate_date_selection
@@ -19,7 +20,6 @@ from gnw_evals.evaluators.registry import (
 )
 from gnw_evals.runners.api import APITestRunner
 from gnw_evals.utils.eval_types import ExpectedData, TestResult
-from fixtures.agent_states import BRAZIL_TCL_2020_2023
 
 
 def _runner(enabled: frozenset[str] | None = None) -> APITestRunner:
@@ -314,8 +314,7 @@ class TestLegacyOverallScore:
             expected_chart_type="bar",
         )
         assert (
-            _runner()._calculate_overall_score(evaluations, expected_with_chart)
-            == 0.5
+            _runner()._calculate_overall_score(evaluations, expected_with_chart) == 0.5
         )
 
     def test_error_result_has_e2e_zero(self):

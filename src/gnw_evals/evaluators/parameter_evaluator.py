@@ -100,32 +100,71 @@ def evaluate_parameters(
 # ---------------------------------------------------------------------------
 
 
+_DEFAULT_CANOPY_COVER = "30"
+
+
+def _canopy_from_dataset_parameters(agent_state: dict[str, Any]) -> str:
+    """Read the canopy threshold from ``dataset.parameters`` (current state shape)."""
+    dataset = agent_state.get("dataset") or {}
+    for param in dataset.get("parameters") or []:
+        if isinstance(param, dict) and param.get("name") == "canopy_cover":
+            values = param.get("values") or []
+            if values:
+                return str(values[0])
+            break
+    return ""
+
+
 def _evaluate_canopy_cover(
     agent_state: dict[str, Any],
     expected_canopy_cover: str,
 ) -> dict[str, Any]:
-    """Evaluate canopy density threshold."""
+    """Evaluate the effective canopy density threshold.
+
+    The agent only writes a canopy value to state when the user overrides the
+    30% product default, so an absent value means the default was applied
+    (same convention as the ground-truth evaluator's reporting). Expected
+    "30" therefore matches an absent value; expected "50" against an absent
+    value fails.
+    """
     actual = _extract_from_state(
         agent_state,
         "canopy_density",
         "canopy_cover",
         "canopy_threshold",
-    )
+    ) or _canopy_from_dataset_parameters(agent_state)
+    effective = actual or _DEFAULT_CANOPY_COVER
+
     result: dict[str, Any] = {
-        "actual_canopy_cover": actual or None,
+        "actual_canopy_cover": actual or f"{_DEFAULT_CANOPY_COVER} (default)",
         "canopy_cover_match_score": None,
     }
 
     expected_str = normalize_value(expected_canopy_cover)
     if not expected_str:
+        # Keep reporting minimal when the check is not requested.
+        result["actual_canopy_cover"] = actual or None
         return result
 
-    if not actual:
-        result["canopy_cover_match_score"] = 0.0
-        return result
-
-    result["canopy_cover_match_score"] = 1.0 if actual == expected_str else 0.0
+    result["canopy_cover_match_score"] = 1.0 if effective == expected_str else 0.0
     return result
+
+
+# dataset.context_layer doubles as the applied forest layer for TCL cases
+# (the top-level forest_filter state field is usually unset), but it also
+# carries intersections and sometimes the dataset name, so only these values
+# count as forest filters.
+_FOREST_LAYER_VALUES = frozenset(
+    {"primary_forest", "intact_forest", "intact_forest_landscape"},
+)
+
+
+def _forest_filter_from_context_layer(agent_state: dict[str, Any]) -> str:
+    dataset = agent_state.get("dataset") or {}
+    context_layer = str(dataset.get("context_layer") or "").strip()
+    if context_layer.lower() in _FOREST_LAYER_VALUES:
+        return context_layer
+    return ""
 
 
 def _evaluate_forest_filter(
@@ -138,7 +177,7 @@ def _evaluate_forest_filter(
         "forest_filter",
         "primary_forest",
         "forest_type",
-    )
+    ) or _forest_filter_from_context_layer(agent_state)
     result: dict[str, Any] = {
         "actual_forest_filter": actual or None,
         "forest_filter_match_score": None,

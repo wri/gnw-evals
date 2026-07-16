@@ -192,11 +192,25 @@ class TestCanopyCoverRealState:
         result = evaluate_parameters(INDONESIA_TCL_CANOPY_50, expected_canopy_cover="")
         assert result["canopy_cover_match_score"] is None
 
-    def test_null_canopy_in_state_scores_zero(self):
-        """State with canopy_density=None when cover expected → 0.0."""
+    def test_null_canopy_matches_default_30(self):
+        """canopy_density=None means the 30% product default was applied.
+
+        The agent only writes a canopy value when the user overrides the
+        default, so expected '30' matches an absent value (default-aware,
+        aligned with the ground-truth evaluator's reporting).
+        """
         result = evaluate_parameters(
             NIGERIA_AGRICULTURAL_LAND,
             expected_canopy_cover="30",
+        )
+        assert result["canopy_cover_match_score"] == 1.0
+        assert result["actual_canopy_cover"] == "30 (default)"
+
+    def test_null_canopy_fails_explicit_threshold(self):
+        """Absent canopy value fails when an explicit override was expected."""
+        result = evaluate_parameters(
+            NIGERIA_AGRICULTURAL_LAND,
+            expected_canopy_cover="50",
         )
         assert result["canopy_cover_match_score"] == 0.0
 

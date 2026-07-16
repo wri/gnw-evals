@@ -130,10 +130,16 @@ class TestCanopyCover:
         result = evaluate_parameters(state, expected_canopy_cover="")
         assert result["canopy_cover_match_score"] is None
 
-    def test_missing_actual_returns_zero(self):
-        """No canopy density in state when expected returns 0.0."""
+    def test_missing_actual_matches_default_30(self):
+        """No canopy value in state means the 30% product default applied."""
         state = _state_with_params(canopy_density="")
         result = evaluate_parameters(state, expected_canopy_cover="30")
+        assert result["canopy_cover_match_score"] == 1.0
+
+    def test_missing_actual_fails_explicit_override(self):
+        """No canopy value in state fails an explicit non-default expectation."""
+        state = _state_with_params(canopy_density="")
+        result = evaluate_parameters(state, expected_canopy_cover="50")
         assert result["canopy_cover_match_score"] == 0.0
 
 

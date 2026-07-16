@@ -92,19 +92,25 @@ class TestBrazilTCL2020to2023VerifiedTrace:
             f"actual={result['actual_start_date']}/{result['actual_end_date']}"
         )
 
-    def test_canopy_cover_scores_0(self):
-        """canopy_density=None in state, expected '30' → 0.0.
+    def test_canopy_cover_default_aware(self):
+        """canopy_density=None in state, expected '30' → 1.0 (default-aware).
 
         The agent does NOT set canopy_density for the default 30% threshold —
-        it only stores this field when the user explicitly overrides it.
-        Eval run confirmed this scores 0.0.
+        it only stores this field when the user explicitly overrides it. The
+        March eval run scored this 0.0 with the pre-wiring evaluator; the
+        wired evaluator treats an absent value as the 30% product default
+        (matching ground-truth reporting), so expected '30' passes and an
+        explicit override expectation still fails.
         """
         result = evaluate_parameters(BRAZIL_TCL_2020_2023, expected_canopy_cover="30")
-        assert result["canopy_cover_match_score"] == 0.0, (
-            f"Expected 0.0, got {result['canopy_cover_match_score']}. "
+        assert result["canopy_cover_match_score"] == 1.0, (
+            f"Expected 1.0, got {result['canopy_cover_match_score']}. "
             f"actual_canopy_cover={result['actual_canopy_cover']}"
         )
-        assert result["actual_canopy_cover"] is None
+        assert result["actual_canopy_cover"] == "30 (default)"
+
+        result = evaluate_parameters(BRAZIL_TCL_2020_2023, expected_canopy_cover="75")
+        assert result["canopy_cover_match_score"] == 0.0
 
     def test_insight_quality_scores_0_wrong_date_range(self):
         """Insight reports 2001-2024 but query asked for 2020-2023 → judge scores 0.
