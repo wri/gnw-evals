@@ -30,6 +30,10 @@ _COMPARISONS: list[tuple[str, str, str | None]] = [
         "actual_clarification_requested",
         "clarification_requested_score",
     ),
+    ("expected_chart_type", "actual_chart_type", "chart_type_match_score"),
+    ("expected_canopy_cover", "actual_canopy_cover", "canopy_cover_match_score"),
+    ("expected_forest_filter", "actual_forest_filter", "forest_filter_match_score"),
+    ("expected_intersections", "actual_intersections", "intersections_match_score"),
 ]
 
 _REASON_BY_SCORE: dict[str, str] = {

@@ -33,6 +33,11 @@ logger = logging.getLogger(__name__)
 _FIDELITY_RELATIVE_TOLERANCE = 0.001
 _FIDELITY_ABSOLUTE_TOLERANCE_HA = 1.0
 
+# NOTE: deliberately no actual_canopy_cover/actual_forest_filter keys here.
+# The no-op path must not clobber the parameter evaluator's extraction when
+# both run on a non-intent case; _selected_parameters() adds them for intent
+# cases (ground_truth merges after "parameters" in the registry, so its
+# version wins there).
 _EMPTY_RESULT: dict[str, Any] = {
     "data_fidelity_score": None,
     "data_fidelity_missing": None,
@@ -41,8 +46,6 @@ _EMPTY_RESULT: dict[str, Any] = {
     "number_usage_failure_comment": None,
     "unquantified": None,
     "ground_truth_json": None,
-    "actual_canopy_cover": None,
-    "actual_forest_filter": None,
 }
 
 

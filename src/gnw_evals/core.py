@@ -8,6 +8,7 @@ import dotenv
 
 from gnw_evals.data_handlers import CSVLoader, ResultExporter
 from gnw_evals.data_handlers.html_reporter import write_html_report
+from gnw_evals.evaluators.registry import resolve_enabled
 from gnw_evals.runners import APITestRunner
 from gnw_evals.utils.analytics_client import enrich_with_ground_truth
 from gnw_evals.utils.eval_types import ExpectedData, TestResult
@@ -191,6 +192,16 @@ _SCORE_FIELDS = [
     "dashboard_widgets_valid_score",
     "data_fidelity_score",
     "number_usage_score",
+    "chart_type_match_score",
+    "canopy_cover_match_score",
+    "forest_filter_match_score",
+    "intersections_match_score",
+    "crop_type_match_score",
+    "gas_type_match_score",
+    "retrieval_score",
+    "analysis_score",
+    "explanation_score",
+    "e2e_score",
 ]
 
 
@@ -262,6 +273,7 @@ async def run_csv_tests(config) -> list[TestResult]:
         api_base_url=config.api_base_url,
         api_token=config.api_token,
         ff=getattr(config, "ff", None),
+        enabled_evaluators=getattr(config, "enabled_evaluators", None),
     )
     print(f"Using API endpoint: {config.api_base_url}")
 
@@ -422,6 +434,12 @@ def _print_csv_summary(
     print(_metric_line("Clarification Requested", "clarification_requested_score"))
 
     print(_metric_line("Suggested Datasets", "suggested_datasets_match_score"))
+    print(_metric_line("Chart Type Match", "chart_type_match_score"))
+    print(_metric_line("Canopy Cover Match", "canopy_cover_match_score"))
+    print(_metric_line("Forest Filter Match", "forest_filter_match_score"))
+    print(_metric_line("Intersections Match", "intersections_match_score"))
+    print(_metric_line("Crop Type Match", "crop_type_match_score"))
+    print(_metric_line("Gas Type Match", "gas_type_match_score"))
 
     print()
     print(_metric_line("Dashboard Created", "dashboard_created_score"))
@@ -430,6 +448,15 @@ def _print_csv_summary(
     print(_metric_line("Dashboard Widgets Valid", "dashboard_widgets_valid_score"))
 
     _print_ground_truth_summary(results, multi_trial, num_trials)
+
+    # Staged gate: retrieval gates analysis gates explanation; bucket rates
+    # count only cases that reached the stage, e2e is the headline pass rate.
+    print()
+    print("Staged gate (retrieval -> analysis -> explanation)")
+    print(_metric_line("  Retrieval", "retrieval_score"))
+    print(_metric_line("  Analysis", "analysis_score"))
+    print(_metric_line("  Explanation", "explanation_score"))
+    print(_metric_line("  End-to-end", "e2e_score"))
 
     # Experimental section
     print()
@@ -537,6 +564,19 @@ def _print_csv_summary(
     envvar="FF",
     help="Feature flag selecting the agent tool profile, sent as the 'ff' field in the chat payload. Must be a lowercase slug (letters, digits, hyphens; max 64 chars). Requires an admin/machine token (can also be set via FF env var)",
 )
+@click.option(
+    "--evaluators",
+    "evaluators_only",
+    default=None,
+    envvar="EVALUATORS",
+    help="Run only these evaluators (comma-separated registry names, e.g. 'aoi,dataset,ground_truth'). Unknown names fail the run (can also be set via EVALUATORS env var)",
+)
+@click.option(
+    "--skip-evaluators",
+    default=None,
+    envvar="SKIP_EVALUATORS",
+    help="Skip these evaluators (comma-separated registry names). Applied after --evaluators (can also be set via SKIP_EVALUATORS env var)",
+)
 def run_evals(
     api_base_url: str,
     api_token: str | None,
@@ -553,6 +593,8 @@ def run_evals(
     offset: int,
     num_trials: int,
     ff: str | None,
+    evaluators_only: str | None,
+    skip_evaluators: str | None,
 ):
     """Run main E2E test function for CSV based evaluation."""
     # Validate API token
@@ -560,6 +602,13 @@ def run_evals(
         raise click.BadParameter(
             "API token is required. Provide --api-token or set API_TOKEN environment variable.",
         )
+
+    # Resolve evaluator toggles against the registry; typos must fail here,
+    # not silently score everything.
+    try:
+        enabled_evaluators = resolve_enabled(evaluators_only, skip_evaluators)
+    except ValueError as e:
+        raise click.BadParameter(str(e)) from e
 
     # Validate: user cannot specify both --eval-set (non-default) and --test-file (custom)
     if test_file and eval_set != "gold":
@@ -585,6 +634,7 @@ def run_evals(
             offset=offset,
             num_trials=num_trials,
             ff=ff,
+            enabled_evaluators=enabled_evaluators,
         )
         return
 
@@ -618,6 +668,7 @@ def run_evals(
             offset=offset,
             num_trials=num_trials,
             ff=ff,
+            enabled_evaluators=enabled_evaluators,
         )
 
         # Tag results with eval_set and accumulate
@@ -659,6 +710,7 @@ def _run_custom_test_file(
     offset: int,
     num_trials: int = 1,
     ff: str | None = None,
+    enabled_evaluators: frozenset[str] | None = None,
 ) -> None:
     """Run evals with a custom test file (not from standard eval sets).
 
@@ -683,6 +735,7 @@ def _run_custom_test_file(
         offset=offset,
         num_trials=num_trials,
         ff=ff,
+        enabled_evaluators=enabled_evaluators,
     )
 
     # Tag results with eval_set = "custom"
@@ -725,6 +778,7 @@ def _run_single_eval_set(
     offset: int,
     num_trials: int = 1,
     ff: str | None = None,
+    enabled_evaluators: frozenset[str] | None = None,
 ) -> list[TestResult]:
     """Run evals for a single eval set. Internal helper function.
 
@@ -761,6 +815,7 @@ EVALUATION CONFIGURATION
   Random Seed:       {random_seed}
   Offset:            {offset}
   Feature Flag:      {ff or "None"}
+  Evaluators:        {", ".join(sorted(enabled_evaluators)) if enabled_evaluators is not None else "all"}
 ========================
 """,
     )
@@ -792,6 +847,7 @@ EVALUATION CONFIGURATION
             self.offset = offset
             self.num_trials = num_trials
             self.ff = ff
+            self.enabled_evaluators = enabled_evaluators
 
     config = Config()
     try:

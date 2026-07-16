@@ -111,6 +111,26 @@ class TestResult(BaseModel):
     unquantified: bool | None = None
     ground_truth_json: str | None = None
 
+    # Chart type evaluation fields
+    chart_type_match_score: float | None = None
+    actual_chart_type: str | None = None
+
+    # Parameter evaluation fields (canopy/filter/intersections deterministic;
+    # crop/gas judged against the presented insight)
+    canopy_cover_match_score: float | None = None
+    forest_filter_match_score: float | None = None
+    intersections_match_score: float | None = None
+    actual_intersections: str | None = None
+    crop_type_match_score: float | None = None
+    gas_type_match_score: float | None = None
+
+    # Staged-gate bucket scores (see evaluators/registry.py): retrieval gates
+    # analysis gates explanation; e2e_score is the public cell metric.
+    retrieval_score: float | None = None
+    analysis_score: float | None = None
+    explanation_score: float | None = None
+    e2e_score: float | None = None
+
     # Dashboard evaluation fields
     dashboard_created_score: float | None = None
     actual_dashboard_created: bool | None = None
@@ -138,6 +158,12 @@ class TestResult(BaseModel):
     expected_suggested_datasets: list[str] = []
     expected_dashboard_created: bool | None = None
     expected_dashboard_widgets: list[str] | None = None
+    expected_chart_type: str = ""
+    expected_crop_types: str = ""
+    expected_gas_types: str = ""
+    expected_canopy_cover: str = ""
+    expected_forest_filter: str = ""
+    expected_intersections: str = ""
     test_group: str = "unknown"
     status: str = "ready"
 
@@ -166,6 +192,16 @@ class TestResult(BaseModel):
     dashboard_aoi_match_score_std: float | None = None
     dashboard_widgets_match_score_std: float | None = None
     dashboard_widgets_valid_score_std: float | None = None
+    chart_type_match_score_std: float | None = None
+    canopy_cover_match_score_std: float | None = None
+    forest_filter_match_score_std: float | None = None
+    intersections_match_score_std: float | None = None
+    crop_type_match_score_std: float | None = None
+    gas_type_match_score_std: float | None = None
+    retrieval_score_std: float | None = None
+    analysis_score_std: float | None = None
+    explanation_score_std: float | None = None
+    e2e_score_std: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for CSV export."""
@@ -206,6 +242,17 @@ class ExpectedData(BaseModel):
     expected_forest_filter: str = ""
     expected_intersections: str = ""
     ground_truth: dict[str, Any] | None = None
+
+    # Chart type and parameter-focus expectations (semicolon-separated
+    # alternatives where multiple values are acceptable).
+    expected_chart_type: str = ""
+    expected_crop_types: str = ""
+    expected_gas_types: str = ""
+
+    # Per-case evaluator toggle: a non-empty comma/semicolon-separated list
+    # means only these evaluators apply to this case (intersected with any
+    # run-level --evaluators/--skip-evaluators selection).
+    evaluators: str = ""
 
     @field_validator("intent")
     @classmethod

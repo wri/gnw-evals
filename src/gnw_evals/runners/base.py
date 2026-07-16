@@ -4,24 +4,19 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any
 
-from gnw_evals.evaluators import (
-    evaluate_aoi_selection,
-    evaluate_clarification,
-    evaluate_dashboard_aoi,
-    evaluate_dashboard_created,
-    evaluate_dashboard_widgets,
-    evaluate_data_pull,
-    evaluate_dataset_selection,
-    evaluate_date_selection,
-    evaluate_final_answer,
-    evaluate_ground_truth,
-    evaluate_suggested_datasets,
+from gnw_evals.evaluators.registry import (
+    EVALUATORS,
+    compute_stage_scores,
+    resolve_case_evaluators,
 )
 from gnw_evals.utils.eval_types import ExpectedData, TestResult
 
 
 class BaseTestRunner(ABC):
     """Abstract base class for test runners."""
+
+    # Run-level evaluator toggle; None means all registered evaluators.
+    enabled_evaluators: frozenset[str] | None = None
 
     @abstractmethod
     async def run_test(
@@ -119,6 +114,21 @@ class BaseTestRunner(ABC):
             dashboard_widgets_match_score=None,
             actual_dashboard_widget_types=None,
             dashboard_widgets_valid_score=None,
+            # Chart type / parameter evaluation fields
+            chart_type_match_score=None,
+            actual_chart_type=None,
+            canopy_cover_match_score=None,
+            forest_filter_match_score=None,
+            intersections_match_score=None,
+            actual_intersections=None,
+            crop_type_match_score=None,
+            gas_type_match_score=None,
+            # Staged-gate fields: a run error is an end-to-end failure with
+            # no stage evaluated.
+            retrieval_score=None,
+            analysis_score=None,
+            explanation_score=None,
+            e2e_score=0.0,
             # Expected data
             **kwargs,
             # Error
@@ -132,83 +142,23 @@ class BaseTestRunner(ABC):
         query: str = "",
         dashboard: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Run all evaluation functions on agent state.
+        """Run enabled evaluators from the registry and merge their results.
 
-        Clarification is checked once at the beginning, then all other
-        evaluations run independently regardless of clarification status.
+        Registry order defines merge order (ground_truth last so its
+        selected-parameter reporting wins for intent cases). Staged-gate
+        bucket scores are derived from the merged per-check scores; gating
+        never changes which evaluators run or their individual scores.
         """
-        # Check clarification ONCE centrally
-        clarification_eval = evaluate_clarification(
-            agent_state,
-            expected_data.expected_clarification,
-            query,
-        )
+        enabled = resolve_case_evaluators(self.enabled_evaluators, expected_data)
 
-        # Run all other evaluations (they no longer check for clarification)
-        aoi_eval = evaluate_aoi_selection(
-            agent_state,
-            expected_data.expected_aoi_ids,
-            query,
-        )
-        dataset_eval = evaluate_dataset_selection(
-            agent_state,
-            expected_data.expected_dataset_id,
-            expected_data.expected_dataset_parameters,
-            expected_data.expected_context_layer,
-            query,
-        )
-        date_eval = evaluate_date_selection(
-            agent_state,
-            expected_start_date=expected_data.expected_start_date,
-            expected_end_date=expected_data.expected_end_date,
-        )
-        data_eval = evaluate_data_pull(
-            agent_state,
-            expects_data_pull=expected_data.expects_data_pull(),
-            query=query,
-        )
-        answer_eval = evaluate_final_answer(
-            agent_state,
-            expected_data.expected_answer,
-            expected_data.expected_text,
-            query,
-        )
-        suggested_datasets_eval = evaluate_suggested_datasets(
-            agent_state,
-            expected_data.expected_suggested_datasets,
-        )
-        dashboard_created_eval = evaluate_dashboard_created(
-            agent_state,
-            expected_data.expected_dashboard_created,
-        )
-        dashboard_aoi_eval = evaluate_dashboard_aoi(
-            dashboard,
-            expected_data.expected_aoi_ids,
-            expected_data.expected_aoi_source,
-        )
-        dashboard_widgets_eval = evaluate_dashboard_widgets(
-            dashboard,
-            expected_data.expected_dashboard_widgets,
-        )
-        ground_truth_eval = evaluate_ground_truth(
-            agent_state,
-            expected_data,
-            query,
-        )
+        evaluations: dict[str, Any] = {}
+        for spec in EVALUATORS:
+            if spec.name not in enabled:
+                continue
+            evaluations.update(spec.run(agent_state, expected_data, query, dashboard))
 
-        return {
-            **clarification_eval,
-            **aoi_eval,
-            **dataset_eval,
-            **date_eval,
-            **data_eval,
-            **answer_eval,
-            **suggested_datasets_eval,
-            **dashboard_created_eval,
-            **dashboard_aoi_eval,
-            **dashboard_widgets_eval,
-            **ground_truth_eval,
-        }
+        evaluations.update(compute_stage_scores(evaluations))
+        return evaluations
 
     def _calculate_overall_score(
         self,
@@ -269,6 +219,23 @@ class BaseTestRunner(ABC):
             scores.append(evaluations.get("agent_answer_score"))
         if expected_data.expected_text:
             scores.append(evaluations.get("expected_text_match_score"))
+
+        # Chart type check
+        if expected_data.expected_chart_type:
+            scores.append(evaluations.get("chart_type_match_score"))
+
+        # Parameter checks (canopy/filter/intersections deterministic,
+        # crop/gas judged on the presented insight)
+        if expected_data.expected_canopy_cover:
+            scores.append(evaluations.get("canopy_cover_match_score"))
+        if expected_data.expected_forest_filter:
+            scores.append(evaluations.get("forest_filter_match_score"))
+        if expected_data.expected_intersections:
+            scores.append(evaluations.get("intersections_match_score"))
+        if expected_data.expected_crop_types:
+            scores.append(evaluations.get("crop_type_match_score"))
+        if expected_data.expected_gas_types:
+            scores.append(evaluations.get("gas_type_match_score"))
 
         # Ground-truth checks (intent cases with runtime-fetched ground truth)
         if expected_data.intent and expected_data.ground_truth:

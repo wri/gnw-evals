@@ -21,11 +21,13 @@ class APITestRunner(BaseTestRunner):
         api_base_url: str,
         api_token: str | None = None,
         ff: str | None = None,
+        enabled_evaluators: frozenset[str] | None = None,
     ):
         """Initialize with API configuration."""
         self.api_base_url = api_base_url
         self.api_token = api_token
         self.ff = ff
+        self.enabled_evaluators = enabled_evaluators
 
     @staticmethod
     def _build_app_thread_url(api_base_url: str, thread_id: str) -> str:
