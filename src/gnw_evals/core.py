@@ -5,9 +5,11 @@ from datetime import UTC, datetime
 
 import click
 import dotenv
+import httpx
 
 from gnw_evals.data_handlers import CSVLoader, ResultExporter
 from gnw_evals.data_handlers.html_reporter import write_html_report
+from gnw_evals.data_handlers.run_summary import build_run_summary, write_run_summary
 from gnw_evals.evaluators.registry import resolve_enabled
 from gnw_evals.runners import APITestRunner
 from gnw_evals.utils.analytics_client import enrich_with_ground_truth
@@ -577,6 +579,14 @@ def _print_csv_summary(
     envvar="SKIP_EVALUATORS",
     help="Skip these evaluators (comma-separated registry names). Applied after --evaluators (can also be set via SKIP_EVALUATORS env var)",
 )
+@click.option(
+    "--run-summary",
+    "run_summary_flag",
+    is_flag=True,
+    default=False,
+    envvar="RUN_SUMMARY",
+    help="Write the committed run-summary JSON artefact to runs/ (official scorecard runs)",
+)
 def run_evals(
     api_base_url: str,
     api_token: str | None,
@@ -595,6 +605,7 @@ def run_evals(
     ff: str | None,
     evaluators_only: str | None,
     skip_evaluators: str | None,
+    run_summary_flag: bool,
 ):
     """Run main E2E test function for CSV based evaluation."""
     # Validate API token
@@ -635,6 +646,7 @@ def run_evals(
             num_trials=num_trials,
             ff=ff,
             enabled_evaluators=enabled_evaluators,
+            run_summary_flag=run_summary_flag,
         )
         return
 
@@ -693,6 +705,34 @@ def run_evals(
             "num_trials": num_trials,
         },
     )
+    if run_summary_flag and all_results:
+        _write_run_summary_artifact(all_results, api_base_url, ff, num_trials)
+
+
+def _write_run_summary_artifact(
+    results: list[TestResult],
+    api_base_url: str,
+    ff: str | None,
+    num_trials: int,
+) -> None:
+    """Build and write the committed run-summary JSON (official runs)."""
+    api_metadata = None
+    try:
+        response = httpx.get(f"{api_base_url.rstrip('/')}/api/metadata", timeout=10.0)
+        response.raise_for_status()
+        api_metadata = response.json()
+    except Exception as exc:
+        print(f"Warning: run summary proceeding without API metadata: {exc}")
+
+    summary = build_run_summary(
+        results,
+        api_base_url=api_base_url,
+        ff=ff,
+        num_trials=num_trials,
+        api_metadata=api_metadata,
+    )
+    path = write_run_summary(summary)
+    print(f"Run summary written to: {path}")
 
 
 def _run_custom_test_file(
@@ -711,6 +751,7 @@ def _run_custom_test_file(
     num_trials: int = 1,
     ff: str | None = None,
     enabled_evaluators: frozenset[str] | None = None,
+    run_summary_flag: bool = False,
 ) -> None:
     """Run evals with a custom test file (not from standard eval sets).
 
@@ -758,6 +799,8 @@ def _run_custom_test_file(
             "num_trials": num_trials,
         },
     )
+    if run_summary_flag and results:
+        _write_run_summary_artifact(results, api_base_url, ff, num_trials)
     if results and not print_results:
         print(f"\n✓ Results saved: {len(results)} tests")
 

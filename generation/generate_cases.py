@@ -106,14 +106,20 @@ def _row_brief(row: dict) -> str:
         f"- window: {row['start_year']} to {row['end_year']}"
         + (" (single year)" if row["start_year"] == row["end_year"] else ""),
         f"- canopy threshold: {row['canopy_cover'] or '30'}"
-        + (" (default: do NOT mention it)" if (row["canopy_cover"] or "30") == "30" else " (MUST be stated)"),
+        + (
+            " (default: do NOT mention it)"
+            if (row["canopy_cover"] or "30") == "30"
+            else " (MUST be stated)"
+        ),
         f"- forest filter: {row['forest_filter'] or 'none (plain tree cover loss; opt out of forest-type filters explicitly)'}",
         f"- intersections: {row['intersections'] or 'none'}",
         f"- phrasing style: {row['phrasing']}",
         f"- language: {row['expected_language'] or 'en'}",
     ]
     if row.get("judge_note"):
-        lines.append(f"- scoring context (do not quote in the prompt): {row['judge_note']}")
+        lines.append(
+            f"- scoring context (do not quote in the prompt): {row['judge_note']}",
+        )
     if row.get("notes"):
         lines.append(f"- notes: {row['notes']}")
     return "\n".join(lines)
@@ -184,7 +190,11 @@ def _case_from_wording(row: dict, wording: str, variant_index: int) -> dict:
 )
 @click.option("--model", default="claude-sonnet-5", show_default=True)
 @click.option("--limit", type=int, default=0, help="Only process N manifest rows")
-@click.option("--dry-run", is_flag=True, help="Print prompts instead of calling the LLM")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Print prompts instead of calling the LLM",
+)
 def main(intent: str, model: str, limit: int, dry_run: bool) -> None:
     """Generate candidate cases for one intent cell."""
     dotenv.load_dotenv(REPO_ROOT / ".env")
@@ -213,7 +223,11 @@ def main(intent: str, model: str, limit: int, dry_run: bool) -> None:
 
     print(f"{len(todo)} manifest rows need wordings ({sum(n for _, n in todo)} total)")
 
-    llm = None if dry_run else ChatAnthropic(model=model, temperature=1.0, max_tokens=2048)
+    llm = (
+        None
+        if dry_run
+        else ChatAnthropic(model=model, temperature=1.0, max_tokens=2048)
+    )
 
     candidates: list[dict] = []
     for row, needed in todo:

@@ -21,6 +21,7 @@ dependencies = [
 
 [project.scripts]
 gnw_evals = "gnw_evals.core:run_evals"
+gnw_scorecard = "gnw_evals.data_handlers.scorecard:main"
 
 [dependency-groups]
 dev = [
