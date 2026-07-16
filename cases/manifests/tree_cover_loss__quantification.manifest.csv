@@ -1,21 +1,21 @@
-manifest_id,intent,eval_subtype,aoi_ids,start_year,end_year,canopy_cover,forest_filter,intersections,date_expression,expected_language,phrasing,n_cases,judge_note,notes
-m-tcl-quant-01,quantification,single_year,BRA,2023,2023,30,,,absolute_year,en,direct,2,"The user asked for all tree cover including plantations, so no forest-type filter should be applied.",
-m-tcl-quant-02,quantification,single_year,COD,2022,2022,30,,,absolute_year,en,direct,1,"The user asked for all forest types, so no forest-type filter should be applied.",
-m-tcl-quant-03,quantification,multi_year_total,IDN,2015,2020,30,,,absolute_range,en,direct,2,"The user asked for all forest types, so no forest-type filter should be applied.",
-m-tcl-quant-04,quantification,multi_year_total,CRI,2001,2023,30,,,absolute_range,en,direct,1,"The user asked for all forest types, so no forest-type filter should be applied. The window crosses the 2011 methodology break; a caution caveat is acceptable.",break_crossing
-m-tcl-quant-05,quantification,canopy_threshold,BRA,2022,2022,75,,,absolute_year,en,direct,1,,
-m-tcl-quant-06,quantification,canopy_threshold,IDN,2021,2021,50,,,absolute_year,en,direct,1,,
-m-tcl-quant-07,quantification,primary_forest,COD,2023,2023,30,primary_forest,,absolute_year,en,direct,2,,
-m-tcl-quant-08,quantification,driver_share,BRA,2001,2025,30,,driver,absolute_range,en,direct,1,"The analytics API aggregates drivers across the whole year range; do not require per-year driver figures.",
-m-tcl-quant-09,quantification,deforestation_default,BRA,2023,2023,30,primary_forest,,absolute_year,en,direct,1,"The prompt says deforestation, so per the catalog the primary-forest context layer is the expected default within its extent.",
-m-tcl-quant-10,quantification,intact_forest,COD,2023,2023,30,intact_forest,,absolute_year,en,direct,1,,
-m-tcl-quant-11,quantification,fires_split,IDN,2020,2020,30,,fire,absolute_year,en,direct,1,"The fire intersection splits loss into fire and non-fire components; the answer should reflect the fire-driven share.",
-m-tcl-quant-12,quantification,canopy_threshold,IDN,2022,2022,10,,,absolute_year,en,direct,2,,completes canopy axis
-m-tcl-quant-13,quantification,canopy_threshold,BRA,2023,2023,15,,,absolute_year,en,conversational,2,,completes canopy axis
-m-tcl-quant-14,quantification,canopy_threshold,COD,2021,2021,20,,,absolute_year,en,direct,2,,completes canopy axis
-m-tcl-quant-15,quantification,canopy_threshold,CRI,2001,2023,25,,,absolute_range,en,direct,2,"The window crosses the 2011 methodology break; a caution caveat is acceptable.",completes canopy axis; break_crossing
-m-tcl-quant-16,quantification,single_year,CRI,2021,2021,30,,,absolute_year,en,conversational,2,"The user asked for all tree cover, so no forest-type filter should be applied.",
-m-tcl-quant-17,quantification,single_year,GBR,2023,2023,30,,,absolute_year,en,imprecise,2,"The user asked for all tree cover, so no forest-type filter should be applied. Values are small; honest rounding in sensible units passes.",near-zero AOI
-m-tcl-quant-18,quantification,emissions,BRA,2023,2023,30,,,absolute_year,en,direct,2,"The question asks for GHG emissions from tree cover loss; the headline figure is the carbon_emissions_MgCO2e column, in MgCO2e or honest conversions.",
-m-tcl-quant-19,quantification,emissions,IDN,2015,2020,30,,,absolute_range,en,conversational,2,"The question asks for GHG emissions from tree cover loss; the headline figure is the carbon_emissions_MgCO2e column, in MgCO2e or honest conversions.",
-m-tcl-quant-20,quantification,primary_forest,IDN,2022,2022,30,primary_forest,,absolute_year,en,imprecise,2,,
+manifest_id,intent,eval_subtype,aoi_ids,start_year,end_year,canopy_cover,forest_filter,intersections,date_expression,expected_language,phrasing,n_cases,judge_note,notes,evaluators
+m-tcl-quant-01,quantification,single_year,BRA,2023,2023,30,,,absolute_year,en,direct,2,"The user asked for all tree cover including plantations, so no forest-type filter should be applied.",,
+m-tcl-quant-02,quantification,single_year,COD,2022,2022,30,,,absolute_year,en,direct,1,"The user asked for all forest types, so no forest-type filter should be applied.",,
+m-tcl-quant-03,quantification,multi_year_total,IDN,2015,2020,30,,,absolute_range,en,direct,2,"The user asked for all forest types, so no forest-type filter should be applied.",,
+m-tcl-quant-04,quantification,multi_year_total,CRI,2001,2023,30,,,absolute_range,en,direct,1,"The user asked for all forest types, so no forest-type filter should be applied. The window crosses the 2011 methodology break; a caution caveat is acceptable.",break_crossing,
+m-tcl-quant-05,quantification,canopy_threshold,BRA,2022,2022,75,,,absolute_year,en,direct,1,,,
+m-tcl-quant-06,quantification,canopy_threshold,IDN,2021,2021,50,,,absolute_year,en,direct,1,,,
+m-tcl-quant-07,quantification,primary_forest,COD,2023,2023,30,primary_forest,,absolute_year,en,direct,2,,,
+m-tcl-quant-08,quantification,driver_share,BRA,2001,2025,30,,driver,absolute_range,en,direct,1,The analytics API aggregates drivers across the whole year range; do not require per-year driver figures.,,
+m-tcl-quant-09,quantification,deforestation_default,BRA,2023,2023,30,primary_forest,,absolute_year,en,direct,1,"The prompt says deforestation, so per the catalog the primary-forest context layer is the expected default within its extent.",,
+m-tcl-quant-10,quantification,intact_forest,COD,2023,2023,30,intact_forest,,absolute_year,en,direct,1,,,
+m-tcl-quant-11,quantification,fires_split,IDN,2020,2020,30,,fire,absolute_year,en,direct,1,The fire intersection splits loss into fire and non-fire components; the answer should reflect the fire-driven share.,,clarification;aoi;dataset;date;data_pull;answer;chart_type;ground_truth
+m-tcl-quant-12,quantification,canopy_threshold,IDN,2022,2022,10,,,absolute_year,en,direct,2,,completes canopy axis,
+m-tcl-quant-13,quantification,canopy_threshold,BRA,2023,2023,15,,,absolute_year,en,conversational,2,,completes canopy axis,
+m-tcl-quant-14,quantification,canopy_threshold,COD,2021,2021,20,,,absolute_year,en,direct,2,,completes canopy axis,
+m-tcl-quant-15,quantification,canopy_threshold,CRI,2001,2023,25,,,absolute_range,en,direct,2,The window crosses the 2011 methodology break; a caution caveat is acceptable.,completes canopy axis; break_crossing,
+m-tcl-quant-16,quantification,single_year,CRI,2021,2021,30,,,absolute_year,en,conversational,2,"The user asked for all tree cover, so no forest-type filter should be applied.",,
+m-tcl-quant-17,quantification,single_year,GBR,2023,2023,30,,,absolute_year,en,imprecise,2,"The user asked for all tree cover, so no forest-type filter should be applied. Values are small; honest rounding in sensible units passes.",near-zero AOI,
+m-tcl-quant-18,quantification,emissions,BRA,2023,2023,30,,,absolute_year,en,direct,2,"The question asks for GHG emissions from tree cover loss; the headline figure is the carbon_emissions_MgCO2e column, in MgCO2e or honest conversions.",,
+m-tcl-quant-19,quantification,emissions,IDN,2015,2020,30,,,absolute_range,en,conversational,2,"The question asks for GHG emissions from tree cover loss; the headline figure is the carbon_emissions_MgCO2e column, in MgCO2e or honest conversions.",,
+m-tcl-quant-20,quantification,primary_forest,IDN,2022,2022,30,primary_forest,,absolute_year,en,imprecise,2,,,

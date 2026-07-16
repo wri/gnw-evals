@@ -55,9 +55,14 @@ class TestBuildRunSummary:
     def test_groups_results_into_cells(self):
         results = [
             _result(test_id="a", intent="quantification"),
-            _result(test_id="b", intent="quantification", e2e_score=0.0,
-                    retrieval_score=0.0, analysis_score=None,
-                    explanation_score=None),
+            _result(
+                test_id="b",
+                intent="quantification",
+                e2e_score=0.0,
+                retrieval_score=0.0,
+                analysis_score=None,
+                explanation_score=None,
+            ),
             _result(test_id="c", intent="trend"),
         ]
         summary = build_run_summary(
@@ -88,10 +93,16 @@ class TestBuildRunSummary:
         assert failing["failed_stage"] == "retrieval"
 
     def test_non_intent_results_are_counted_not_celled(self):
-        results = [_result(), TestResult(
-            thread_id="t", query="gold row", overall_score=1.0,
-            execution_time="now", intent="",
-        )]
+        results = [
+            _result(),
+            TestResult(
+                thread_id="t",
+                query="gold row",
+                overall_score=1.0,
+                execution_time="now",
+                intent="",
+            ),
+        ]
         summary = build_run_summary(
             results,
             api_base_url="http://localhost:8000",
@@ -127,8 +138,12 @@ class TestBuildRunSummary:
 class TestScorecard:
     def _summary(self, e2e: float, methodology: str = METHODOLOGY_VERSION) -> dict:
         results = [
-            _result(e2e_score=e2e, retrieval_score=e2e,
-                    analysis_score=None, explanation_score=None),
+            _result(
+                e2e_score=e2e,
+                retrieval_score=e2e,
+                analysis_score=None,
+                explanation_score=None,
+            ),
         ]
         summary = build_run_summary(
             results,

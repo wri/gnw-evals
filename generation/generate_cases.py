@@ -60,6 +60,7 @@ CASE_COLUMNS = [
     "intent",
     "eval_subtype",
     "manifest_id",
+    "evaluators",
 ]
 
 COUNTRY_NAMES = {
@@ -179,6 +180,9 @@ def _case_from_wording(row: dict, wording: str, variant_index: int) -> dict:
         "intent": row["intent"],
         "eval_subtype": row["eval_subtype"],
         "manifest_id": row["manifest_id"],
+        # Per-case evaluator whitelist (e.g. two_period rows exclude the
+        # date check: any sub-window of the compared span is defensible).
+        "evaluators": row.get("evaluators", ""),
     }
 
 

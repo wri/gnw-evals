@@ -118,7 +118,9 @@ GHG emissions in tonnes CO2e):
 {ground_truth_table}
 
 DERIVED FACTS (computed deterministically from the table above; trust these \
-over your own arithmetic):
+over your own arithmetic; where an "accept X to Y" range is given, a claimed \
+figure inside that range PASSES - never compute percentage deviations \
+yourself):
 {derived_facts}
 
 AGENT ANSWER:
@@ -127,7 +129,11 @@ AGENT ANSWER:
 RUBRIC FOR THIS INTENT: {rubric}
 {judge_instruction_line}
 TOLERANCE AND UNITS: a figure passes if it is within 5% relative of ground \
-truth in any reasonable unit. 1 Mha = 1,000,000 ha; 1 kha = 1,000 ha; \
+truth in any reasonable unit. This tolerance is BINDING in both directions: \
+you MUST pass any figure whose relative deviation from ground truth is 5% \
+or less, however precise the rest of the answer is, and you MUST fail a \
+requested headline figure deviating by more than 5%. Do not describe a \
+within-tolerance figure as an error. 1 Mha = 1,000,000 ha; 1 kha = 1,000 ha; \
 1 km2 = 100 ha; Mg CO2e = tonnes CO2e; 1 Gt CO2e = 1,000,000,000 Mg CO2e. \
 Accept honest rounding ("about 2.8 million hectares" for 2,805,359 ha).
 The platform reports GHG emissions alongside loss area by design; if the \
@@ -149,10 +155,14 @@ contradicts
 
 
 class _NumberUsageJudgement(BaseModel):
-    score: int = Field(description="1 pass, 0 fail")
+    # Field order matters: the model generates fields in schema order, so
+    # reasoning comes first and the score is committed only after it.
+    # (Observed haiku failure mode: score emitted first contradicted the
+    # subsequent reasoning on within-tolerance figures.)
     reasoning: str
     failure_comment: str = ""
     unquantified: bool = False
+    score: int = Field(description="1 pass, 0 fail; must follow the reasoning")
 
 
 def _iter_numeric_values(data: Any) -> list[float]:
@@ -286,6 +296,11 @@ def _format_ground_truth_table(rows: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def _with_range(value: float) -> str:
+    """Format a value with its ±5% acceptance range, precomputed for the judge."""
+    return f"{value:,.2f} (accept {value * 0.95:,.2f} to {value * 1.05:,.2f})"
+
+
 def _derive_facts(rows: list[dict[str, Any]]) -> str:
     """Pre-compute the aggregates the judge would otherwise have to derive."""
     facts: list[str] = []
@@ -300,7 +315,21 @@ def _derive_facts(rows: list[dict[str, Any]]) -> str:
             continue
         total = sum(float(r["area_ha"]) for r in numeric)
         totals[aoi_id] = total
-        facts.append(f"{aoi_id}: total area_ha over all rows = {total:,.2f}")
+        facts.append(
+            f"{aoi_id}: total area_ha over all rows = {_with_range(total)}",
+        )
+
+        carbon_rows = [
+            r
+            for r in aoi_rows
+            if isinstance(r.get("carbon_emissions_MgCO2e"), int | float)
+        ]
+        if carbon_rows:
+            carbon_total = sum(float(r["carbon_emissions_MgCO2e"]) for r in carbon_rows)
+            facts.append(
+                f"{aoi_id}: total carbon_emissions_MgCO2e over all rows = "
+                f"{_with_range(carbon_total)}",
+            )
 
         yearly = sorted(
             (r for r in numeric if "tree_cover_loss_year" in r),
@@ -317,11 +346,12 @@ def _derive_facts(rows: list[dict[str, Any]]) -> str:
             )
             facts.append(
                 f"{aoi_id}: first year {first['tree_cover_loss_year']} = "
-                f"{float(first['area_ha']):,.2f} ha; last year "
+                f"{_with_range(float(first['area_ha']))} ha; last year "
                 f"{last['tree_cover_loss_year']} = "
-                f"{float(last['area_ha']):,.2f} ha; change = {change:,.2f} ha "
+                f"{_with_range(float(last['area_ha']))} ha; "
+                f"change = {change:,.2f} ha "
                 f"({pct:+.1f}%); peak year = {peak['tree_cover_loss_year']} "
-                f"({float(peak['area_ha']):,.2f} ha)",
+                f"({_with_range(float(peak['area_ha']))} ha)",
             )
 
         drivers = [r for r in numeric if "tree_cover_loss_driver" in r]
