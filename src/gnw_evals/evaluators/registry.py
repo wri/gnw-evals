@@ -327,7 +327,8 @@ def resolve_case_evaluators(
     if case_raw:
         case_names = _parse_names(case_raw)
         _validate_names(
-            case_names, f"case {expected_data.test_id or '?'} evaluators column"
+            case_names,
+            f"case {expected_data.test_id or '?'} evaluators column",
         )
         enabled = frozenset(enabled & case_names)
     return frozenset(enabled)

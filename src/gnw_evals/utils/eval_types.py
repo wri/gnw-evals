@@ -164,6 +164,8 @@ class TestResult(BaseModel):
     expected_canopy_cover: str = ""
     expected_forest_filter: str = ""
     expected_intersections: str = ""
+    manifest_id: str = ""
+    expected_language: str = ""
     test_group: str = "unknown"
     status: str = "ready"
 
@@ -253,6 +255,11 @@ class ExpectedData(BaseModel):
     # means only these evaluators apply to this case (intersected with any
     # run-level --evaluators/--skip-evaluators selection).
     evaluators: str = ""
+
+    # Coverage bookkeeping: which permutation-manifest row this case covers
+    # (see the generation/ tooling) and the query's language (empty = en).
+    manifest_id: str = ""
+    expected_language: str = ""
 
     @field_validator("intent")
     @classmethod
