@@ -21,11 +21,13 @@ class APITestRunner(BaseTestRunner):
         api_base_url: str,
         api_token: str | None = None,
         ff: str | None = None,
+        verbose: bool = False,
     ):
         """Initialize with API configuration."""
         self.api_base_url = api_base_url
         self.api_token = api_token
         self.ff = ff
+        self.verbose = verbose
 
     @staticmethod
     def _build_app_thread_url(api_base_url: str, thread_id: str) -> str:
@@ -141,6 +143,25 @@ class APITestRunner(BaseTestRunner):
                             f"{dashboard_error}",
                         )
                         dashboard = None
+
+            # Print full trace in verbose mode
+            if self.verbose:
+                print("\n" + "=" * 70)
+                print("FULL TRACE")
+                print("=" * 70)
+                print(f"Query: {query}")
+                print(f"Thread ID: {thread_id}")
+                print(f"Trace ID: {trace_id}")
+                print(f"Trace URL: {trace_url}")
+                print("\n--- Streamed Responses ---")
+                for i, resp in enumerate(responses):
+                    print(f"[{i}] {json.dumps(resp, indent=2)}")
+                print("\n--- Agent State ---")
+                print(json.dumps(agent_state, indent=2, default=str))
+                if dashboard:
+                    print("\n--- Dashboard ---")
+                    print(json.dumps(dashboard, indent=2, default=str))
+                print("=" * 70 + "\n")
 
             # Run evaluations
             evaluations = self._run_evaluations(
