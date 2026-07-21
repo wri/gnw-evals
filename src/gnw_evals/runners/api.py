@@ -1,5 +1,6 @@
 """API test runner for E2E testing framework."""
 
+import base64
 import json
 from datetime import datetime
 from typing import Any
@@ -144,25 +145,6 @@ class APITestRunner(BaseTestRunner):
                         )
                         dashboard = None
 
-            # Print full trace in verbose mode
-            if self.verbose:
-                print("\n" + "=" * 70)
-                print("FULL TRACE")
-                print("=" * 70)
-                print(f"Query: {query}")
-                print(f"Thread ID: {thread_id}")
-                print(f"Trace ID: {trace_id}")
-                print(f"Trace URL: {trace_url}")
-                print("\n--- Streamed Responses ---")
-                for i, resp in enumerate(responses):
-                    print(f"[{i}] {json.dumps(resp, indent=2)}")
-                print("\n--- Agent State ---")
-                print(json.dumps(agent_state, indent=2, default=str))
-                if dashboard:
-                    print("\n--- Dashboard ---")
-                    print(json.dumps(dashboard, indent=2, default=str))
-                print("=" * 70 + "\n")
-
             # Run evaluations
             evaluations = self._run_evaluations(
                 agent_state,
@@ -171,6 +153,19 @@ class APITestRunner(BaseTestRunner):
                 dashboard,
             )
             overall_score = self._calculate_overall_score(evaluations, expected_data)
+
+            # Print tool trace in verbose mode
+            if self.verbose:
+                print(
+                    self._format_tool_trace(
+                        query,
+                        thread_id,
+                        trace_id,
+                        trace_url,
+                        agent_state,
+                        overall_score,
+                    ),
+                )
 
             kwargs = expected_data.to_dict()
             kwargs.update(evaluations)
@@ -202,3 +197,114 @@ class APITestRunner(BaseTestRunner):
                 expected_data,
                 str(e),
             )
+
+    @staticmethod
+    def _indent(text: str, prefix: str) -> str:
+        """Add prefix to each line of text."""
+        return "\n".join(f"{prefix}{line}" for line in text.split("\n"))
+
+    def _truncate(self, text: str, limit: int = 2000) -> str:
+        """Truncate long text with an ellipsis indicator."""
+        if len(text) <= limit:
+            return text
+        return text[:limit] + "\n... (truncated)"
+
+    def _format_tool_trace(
+        self,
+        query: str,
+        thread_id: str,
+        trace_id: str | None,
+        trace_url: str | None,
+        agent_state: dict[str, Any],
+        overall_score: float,
+    ) -> str:
+        """Format a human-readable tool trace for verbose output.
+
+        Extracts tool calls from messages (tool_call/tool_message pairs)
+        and decoded codeact_parts (code blocks and execution output),
+        presenting them in a step-by-step chronological format.
+        """
+        lines: list[str] = []
+        lines.append("=" * 70)
+        lines.append("TOOL TRACE")
+        lines.append("=" * 70)
+        lines.append(f"Query:     {query}")
+        lines.append(f"Thread ID: {thread_id}")
+        if trace_id:
+            lines.append(f"Trace ID:  {trace_id}")
+        if trace_url:
+            lines.append(f"Trace URL: {trace_url}")
+        lines.append(f"Score:     {overall_score}")
+
+        messages = agent_state.get("messages", [])
+        raw_parts = agent_state.get("codeact_parts", [])
+
+        # Extract tool call / tool message pairs from messages
+        tool_calls: list[dict[str, Any]] = []
+        for msg in messages:
+            if hasattr(msg, "tool_calls") and msg.tool_calls:
+                for tc in msg.tool_calls:
+                    if isinstance(tc, dict):
+                        tool_calls.append(
+                            {
+                                "name": tc.get("name", "unknown"),
+                                "args": tc.get("args", {}),
+                                "id": tc.get("id", ""),
+                            },
+                        )
+
+        # Match tool messages back to their calls
+        for msg in messages:
+            if hasattr(msg, "tool_call_id") and hasattr(msg, "content"):
+                tid = msg.tool_call_id
+                for tc in reversed(tool_calls):
+                    if tc["id"] == tid and "output" not in tc:
+                        tc["output"] = msg.content
+                        break
+
+        # Print tool calls from messages
+        if tool_calls:
+            lines.append("")
+            lines.append("--- Tool Calls ---")
+            for i, tc in enumerate(tool_calls, 1):
+                lines.append("")
+                lines.append(f"Tool {i}: {tc['name']}")
+                if tc["args"]:
+                    args_str = json.dumps(tc["args"], indent=2, default=str)
+                    lines.append(f"  Input:\n{self._indent(args_str, '    ')}")
+                if "output" in tc:
+                    output = str(tc["output"])
+                    output = self._truncate(output, 3000)
+                    lines.append(f"  Output:\n{self._indent(output, '    ')}")
+
+        # Decode and print codeact_parts
+        if raw_parts:
+            lines.append("")
+            lines.append("--- Execution Trace ---")
+            type_labels = {
+                "code_block": "CODE",
+                "text_output": "LLM",
+                "execution_output": "OUTPUT",
+            }
+            step = 0
+            for part in raw_parts:
+                part_type = part.get("type", "unknown")
+                try:
+                    content = base64.b64decode(
+                        part.get("content", ""),
+                    ).decode("utf-8")
+                except Exception:
+                    content = part.get("content", "")
+                label = type_labels.get(part_type, part_type.upper())
+                step += 1
+                content = self._truncate(content, 4000)
+                lines.append("")
+                lines.append(f"Step {step} [{label}]")
+                lines.append(self._indent(content, "    "))
+
+        if not tool_calls and not raw_parts:
+            lines.append("")
+            lines.append("(no tool trace available)")
+
+        lines.append("=" * 70)
+        return "\n".join(lines)

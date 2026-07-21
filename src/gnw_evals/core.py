@@ -22,7 +22,9 @@ dotenv.load_dotenv()
 
 _OVERALL_SCORE_FIELD = "overall_score"
 _REASON_BY_SCORE = {
+    "charts_answer_score": "chart_answer_score_reason",
     "agent_answer_score": "agent_answer_score_reason",
+    "expected_text_match_score": "expected_text_match_score_reason",
 }
 
 
@@ -488,7 +490,7 @@ def _print_csv_summary(
     is_flag=True,
     default=False,
     envvar="VERBOSE",
-    help="Print full API trace (streamed responses and agent state) for each test (can also be set via VERBOSE env var)",
+    help="Print tool inputs and outputs for each test (can also be set via VERBOSE env var)",
 )
 def run_evals(
     api_base_url: str,
