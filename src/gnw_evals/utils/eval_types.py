@@ -86,6 +86,7 @@ class TestResult(BaseModel):
     actual_charts_answer: str | None = None
     actual_charts_json: str | None = None
     actual_agent_answer: str | None = None
+    actual_codeact_summary: str | None = None
 
     # Clarification evaluation fields
     actual_clarification_requested: bool | None = None

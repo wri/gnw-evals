@@ -205,58 +205,93 @@ def llm_judge_chart(
     query: str,
     expected_answer: str,
     chart_json: str,
+    codeact_summary: str = "",
     include_reason: bool = False,
 ) -> int | dict[str, int | str]:
-    """Judge whether chart JSON is appropriate and supports the expected answer."""
+    """Judge whether chart JSON is appropriate and supports the expected answer.
+
+    Uses both the chart specification and the agent's code-act reasoning
+    (code blocks, execution output, analysis text) to evaluate whether
+    the chart is actually correct and answers the query.
+    """
 
     class ChartScore(BaseModel):
         reason: str
         score: int
 
+    codeact_section = ""
+    codeact_instruction = ""
+    if codeact_summary:
+        codeact_section = """
+
+CODEACT REASONING:
+{codeact_summary}
+
+This shows the code the agent executed, the intermediate results, and its
+analytical reasoning that led to the chart above."""
+        codeact_instruction = """
+
+If codeact reasoning is provided, use it to cross-check the chart data.
+If the code shows correct data processing but the chart specification has
+wrong metrics, filters, or structure, score 0 because the chart itself is
+flawed. If the code reveals incorrect analysis (e.g., wrong aggregation,
+wrong data source) even if the chart specification looks plausible on its
+own, also score 0.
+
+"""
+
+    full_prompt = (
+        """You are evaluating whether a chart specification is useful and correct for answering a user query.
+
+USER QUERY:
+{query}
+
+EXPECTED ANSWER:
+{expected_answer}
+
+CHART JSON:
+{chart_json}"""
+        + codeact_section
+        + """
+
+Score 1 if the chart JSON appears appropriate for the query and its encoded
+data, chart type, labels, dimensions, measures, filters, and time range would
+help a user verify or understand the expected answer.
+
+Score 0 if the chart is missing important data, uses the wrong
+metric/location/date range, has an unsuitable chart type for the comparison,
+contradicts the expected answer, or is too incomplete to judge.
+
+Do not score based on any prose insight or narrative answer. Focus on the
+chart specification, encoded data, labels, fields, and visual structure.
+
+"""
+        + codeact_instruction
+        + """Return:
+- score: 1 or 0
+- reason: one concise sentence explaining why you gave that score"""
+    )
+
     JUDGE_PROMPT = ChatPromptTemplate.from_messages(
         [
             (
                 "user",
-                """
-                You are evaluating whether a chart specification is useful and correct for answering a user query.
-
-                USER QUERY:
-                {query}
-
-                EXPECTED ANSWER:
-                {expected_answer}
-
-                CHART JSON:
-                {chart_json}
-
-                Score 1 if the chart JSON appears appropriate for the query and its encoded data, chart type,
-                labels, dimensions, measures, filters, and time range would help a user verify or understand the
-                expected answer.
-
-                Score 0 if the chart is missing important data, uses the wrong metric/location/date range,
-                has an unsuitable chart type for the comparison, contradicts the expected answer, or is too
-                incomplete to judge.
-
-                Do not score based on any prose insight or narrative answer. Focus on the chart specification,
-                encoded data, labels, fields, and visual structure.
-
-                Return:
-                - score: 1 or 0
-                - reason: one concise sentence explaining why you gave that score
-                """,
+                full_prompt,
             ),
         ],
     )
 
     judge_chain = JUDGE_PROMPT | HAIKU.with_structured_output(ChartScore)
 
-    llm_judgement = judge_chain.invoke(
-        {
-            "query": query,
-            "expected_answer": expected_answer,
-            "chart_json": chart_json,
-        },
-    )
+    invoke_kwargs = {
+        "query": query,
+        "expected_answer": expected_answer,
+        "chart_json": chart_json,
+    }
+    if codeact_summary:
+        invoke_kwargs["codeact_summary"] = codeact_summary
+
+    llm_judgement = judge_chain.invoke(invoke_kwargs)
 
     if include_reason:
         return {

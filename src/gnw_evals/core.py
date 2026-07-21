@@ -22,7 +22,9 @@ dotenv.load_dotenv()
 
 _OVERALL_SCORE_FIELD = "overall_score"
 _REASON_BY_SCORE = {
+    "charts_answer_score": "chart_answer_score_reason",
     "agent_answer_score": "agent_answer_score_reason",
+    "expected_text_match_score": "expected_text_match_score_reason",
 }
 
 
@@ -245,6 +247,7 @@ async def run_csv_tests(config) -> list[TestResult]:
         api_base_url=config.api_base_url,
         api_token=config.api_token,
         ff=getattr(config, "ff", None),
+        verbose=getattr(config, "verbose", False),
     )
     print(f"Using API endpoint: {config.api_base_url}")
 
@@ -482,6 +485,13 @@ def _print_csv_summary(
     envvar="FF",
     help="Feature flag selecting the agent tool profile, sent as the 'ff' field in the chat payload. Must be a lowercase slug (letters, digits, hyphens; max 64 chars). Requires an admin/machine token (can also be set via FF env var)",
 )
+@click.option(
+    "--verbose",
+    is_flag=True,
+    default=False,
+    envvar="VERBOSE",
+    help="Print tool inputs and outputs for each test (can also be set via VERBOSE env var)",
+)
 def run_evals(
     api_base_url: str,
     api_token: str | None,
@@ -498,6 +508,7 @@ def run_evals(
     offset: int,
     num_trials: int,
     ff: str | None,
+    verbose: bool,
 ):
     """Run main E2E test function for CSV based evaluation."""
     # Validate API token
@@ -530,6 +541,7 @@ def run_evals(
             offset=offset,
             num_trials=num_trials,
             ff=ff,
+            verbose=verbose,
         )
         return
 
@@ -563,6 +575,7 @@ def run_evals(
             offset=offset,
             num_trials=num_trials,
             ff=ff,
+            verbose=verbose,
         )
 
         # Tag results with eval_set and accumulate
@@ -599,6 +612,7 @@ def _run_custom_test_file(
     offset: int,
     num_trials: int = 1,
     ff: str | None = None,
+    verbose: bool = False,
 ) -> None:
     """Run evals with a custom test file (not from standard eval sets).
 
@@ -623,6 +637,7 @@ def _run_custom_test_file(
         offset=offset,
         num_trials=num_trials,
         ff=ff,
+        verbose=verbose,
     )
 
     # Tag results with eval_set = "custom"
@@ -660,6 +675,7 @@ def _run_single_eval_set(
     offset: int,
     num_trials: int = 1,
     ff: str | None = None,
+    verbose: bool = False,
 ) -> list[TestResult]:
     """Run evals for a single eval set. Internal helper function.
 
@@ -696,6 +712,7 @@ EVALUATION CONFIGURATION
   Random Seed:       {random_seed}
   Offset:            {offset}
   Feature Flag:      {ff or "None"}
+  Verbose:           {verbose}
 ========================
 """,
     )
@@ -727,6 +744,7 @@ EVALUATION CONFIGURATION
             self.offset = offset
             self.num_trials = num_trials
             self.ff = ff
+            self.verbose = verbose
 
     config = Config()
     try:

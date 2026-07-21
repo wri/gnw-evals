@@ -1210,11 +1210,21 @@ def test_answer_evaluator_both_answers_present():
             ), "Should capture agent message"
 
             mock_chart_judge.assert_called_once()
+            mock_chart_judge.assert_called_with(
+                "Which country had more disturbed area, Brazil or Australia?",
+                "Brazil",
+                result["actual_charts_json"],
+                codeact_summary="",
+                include_reason=True,
+            )
             mock_judge.assert_called_once_with(
                 "Brazil",
                 "Based on the data, Australia has more.",
                 include_reason=True,
             )
+            assert (
+                result["actual_codeact_summary"] is None
+            ), "No codeact_parts should produce None summary"
 
 
 def test_answer_evaluator_no_charts_data():
@@ -1320,6 +1330,91 @@ def test_answer_evaluator_expected_text_match():
             agent_state["messages"][0].content,
             include_reason=True,
         )
+
+
+def test_answer_evaluator_with_codeact_parts():
+    """Test that codeact_parts are decoded and passed to the chart judge.
+
+    The codeact_parts from agent state are base64-encoded and contain
+    code blocks, execution output, and LLM reasoning. These should be
+    decoded and included in the chart evaluation so the judge can
+    cross-check the chart data against the agent's analysis.
+    """
+    import base64
+    from unittest.mock import patch
+
+    from gnw_evals.evaluators import evaluate_final_answer
+
+    code = base64.b64encode(b"print('total:', data['area'].sum())").decode()
+    output = base64.b64encode(b"total: 600.0").decode()
+    text = base64.b64encode(b"Summing disturbed area across countries.").decode()
+
+    agent_state = {
+        "charts_data": [
+            {
+                "insight": "Brazil has 500 hectares, Australia 100.",
+                "type": "bar",
+                "data": [
+                    {"country": "Brazil", "disturbed_area": 500},
+                    {"country": "Australia", "disturbed_area": 100},
+                ],
+                "encoding": {
+                    "x": {"field": "country"},
+                    "y": {"field": "disturbed_area"},
+                },
+            },
+        ],
+        "messages": [
+            type(
+                "obj",
+                (object,),
+                {"content": "Brazil has the most disturbed area."},
+            )(),
+        ],
+        "codeact_parts": [
+            {"type": "text_output", "content": text},
+            {"type": "code_block", "content": code},
+            {"type": "execution_output", "content": output},
+        ],
+    }
+
+    with patch("gnw_evals.evaluators.answer_evaluator.llm_judge") as mock_judge:
+        with patch(
+            "gnw_evals.evaluators.answer_evaluator.llm_judge_chart",
+        ) as mock_chart_judge:
+            mock_chart_judge.return_value = {
+                "score": 1.0,
+                "reason": "Chart and codeact reasoning both confirm the answer.",
+            }
+            mock_judge.return_value = {
+                "score": 1.0,
+                "reason": "The response identifies Brazil correctly.",
+            }
+
+            result = evaluate_final_answer(
+                agent_state=agent_state,
+                expected_answer="Brazil",
+                query="Which country had more disturbed area?",
+            )
+
+            assert result["charts_answer_score"] == 1.0
+            assert result["agent_answer_score"] == 1.0
+            assert result["actual_codeact_summary"] is not None
+            assert "## LLM REASONING" in result["actual_codeact_summary"]
+            assert "## CODE" in result["actual_codeact_summary"]
+            assert "## EXECUTION OUTPUT" in result["actual_codeact_summary"]
+            assert "Summing disturbed area" in result["actual_codeact_summary"]
+            assert "total: 600.0" in result["actual_codeact_summary"]
+
+            # Verify chart judge received the decoded codeact summary
+            mock_chart_judge.assert_called_once()
+            call_kwargs = mock_chart_judge.call_args
+            assert call_kwargs.kwargs.get("codeact_summary") or call_kwargs[1].get(
+                "codeact_summary",
+            )
+            codeact_passed = call_kwargs[1].get("codeact_summary", "")
+            assert "Summing disturbed area" in codeact_passed
+            assert "total: 600.0" in codeact_passed
 
 
 def test_overall_score_with_both_answer_scores():

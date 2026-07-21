@@ -1,3 +1,4 @@
+import base64
 import json
 from typing import Any
 
@@ -6,6 +7,44 @@ from gnw_evals.evaluators.llm_judges import (
     llm_judge_chart,
     llm_judge_expected_text,
 )
+
+
+def _decode_codeact_parts(raw_parts: list[dict[str, Any]]) -> str:
+    """Decode base64-encoded codeact parts into a readable summary string.
+
+    The codeact_parts from agent state are stored with base64-encoded content.
+    Parts have types: 'code_block' (Python code), 'text_output' (LLM reasoning),
+    'execution_output' (printed stats/results).
+
+    Returns a formatted string grouped by type, capped at a reasonable length.
+    """
+    if not raw_parts:
+        return ""
+
+    grouped: dict[str, list[str]] = {}
+    for part in raw_parts:
+        part_type = part.get("type", "unknown")
+        content_b64 = part.get("content", "")
+        try:
+            decoded = base64.b64decode(content_b64).decode("utf-8")
+        except Exception:
+            decoded = content_b64  # fallback: use raw content
+
+        grouped.setdefault(part_type, []).append(decoded)
+
+    sections = []
+    type_labels = {
+        "code_block": "CODE",
+        "text_output": "LLM REASONING",
+        "execution_output": "EXECUTION OUTPUT",
+    }
+    for part_type, contents in grouped.items():
+        label = type_labels.get(part_type, part_type.upper())
+        combined = "\n---\n".join(contents)
+        combined = combined[:8000]
+        sections.append(f"## {label}\n\n{combined}")
+
+    return "\n\n".join(sections)
 
 
 def _serialize_chart_json(chart: dict[str, Any]) -> str:
@@ -79,6 +118,10 @@ def evaluate_final_answer(
             # Fallback for any other format
             actual_agent_answer = str(content) if content else ""
 
+    # Extract codeact parts (base64-encoded code/output from agent reasoning)
+    raw_codeact_parts = agent_state.get("codeact_parts", [])
+    codeact_summary = _decode_codeact_parts(raw_codeact_parts)
+
     # Score chart JSON, not prose insight text.
     charts_answer_score = None
     charts_answer_score_reason = None
@@ -88,6 +131,7 @@ def evaluate_final_answer(
                 query,
                 expected_answer,
                 actual_charts_json,
+                codeact_summary=codeact_summary,
                 include_reason=True,
             ),
         )
@@ -128,4 +172,5 @@ def evaluate_final_answer(
         "actual_charts_answer": actual_charts_answer or None,
         "actual_charts_json": actual_charts_json or None,
         "actual_agent_answer": actual_agent_answer or None,
+        "actual_codeact_summary": codeact_summary or None,
     }
