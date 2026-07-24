@@ -28,8 +28,22 @@ MANIFEST_DIR = CASES_DIR / "manifests"
 METHODOLOGY_VERSION = "1.0.0"
 
 # dataset_id -> catalog slug, for joining results to case/manifest files.
-# Extend as cells for further datasets come online.
-DATASET_SLUGS = {"4": "tree_cover_loss"}
+# Mirrors project-zeno src/agent/datasets/catalog/*.yml (dataset_id fields);
+# insertion order is the scorecard's row order.
+DATASET_SLUGS = {
+    "0": "global_all_ecosystem_disturbance_alerts_dist_alert",
+    "1": "global_land_cover",
+    "2": "global_natural_semi_natural_grassland_extent",
+    "3": "sbtn_natural_lands_map",
+    "4": "tree_cover_loss",
+    "5": "tree_cover_gain",
+    "6": "forest_greenhouse_gas_net_flux",
+    "7": "tree_cover",
+    "8": "tree_cover_loss_by_dominant_driver",
+    "9": "deforestation_sluc_emission_factors_by_agricultural_crop",
+    "10": "tree_cover_loss_from_fires",
+    "11": "integrated_alerts",
+}
 
 # Surface coverage per the evaluator coverage roadmap (workspace
 # PRDs/evaluator-coverage-roadmap.md): checks wired and applicable to

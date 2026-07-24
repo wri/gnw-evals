@@ -7,6 +7,7 @@ Usage:
 import json
 
 from gnw_evals.data_handlers.run_summary import (
+    DATASET_SLUGS,
     METHODOLOGY_VERSION,
     build_run_summary,
     coverage_tier,
@@ -136,13 +137,19 @@ class TestBuildRunSummary:
 
 
 class TestScorecard:
-    def _summary(self, e2e: float, methodology: str = METHODOLOGY_VERSION) -> dict:
+    def _summary(
+        self,
+        e2e: float,
+        methodology: str = METHODOLOGY_VERSION,
+        intent: str = "quantification",
+    ) -> dict:
         results = [
             _result(
                 e2e_score=e2e,
                 retrieval_score=e2e,
                 analysis_score=None,
                 explanation_score=None,
+                intent=intent,
             ),
         ]
         summary = build_run_summary(
@@ -175,3 +182,64 @@ class TestScorecard:
         page = render_scorecard([older, newer])
         assert "methodology break" in page
         assert "+50%" not in page
+
+    def test_matrix_merges_cells_across_runs(self):
+        # Official runs cover one cell each; both must appear in the matrix.
+        quant = self._summary(0.5, intent="quantification")
+        quant["timestamp"] = "2026-07-15T00:00:00+00:00"
+        trend = self._summary(1.0, intent="trend")
+        trend["timestamp"] = "2026-07-16T00:00:00+00:00"
+
+        page = render_scorecard([quant, trend])
+        assert 'id="tree_cover_loss--quantification"' in page
+        assert 'id="tree_cover_loss--trend"' in page
+
+    def test_matrix_lists_every_catalog_dataset(self):
+        page = render_scorecard([self._summary(1.0)])
+        for slug in DATASET_SLUGS.values():
+            assert slug in page
+        assert "not yet" in page
+
+    def test_matrix_includes_extra_rows_and_legend(self):
+        page = render_scorecard([self._summary(1.0)])
+        for surface in ("guardrails", "clarification", "cross-dataset"):
+            assert surface in page
+        assert "How to read this matrix" in page
+        assert "surface coverage below 40%" in page  # minimal tier definition
+
+    def test_evaluator_scores_tagged_with_gate_bucket(self):
+        results = [
+            _result(
+                number_usage_score=0.5,  # explanation
+                data_fidelity_score=1.0,  # analysis
+                date_match_score=1.0,  # retrieval
+            ),
+        ]
+        summary = build_run_summary(
+            results,
+            api_base_url="https://api.globalnaturewatch.org",
+            ff=None,
+            num_trials=1,
+        )
+
+        page = render_scorecard([summary])
+        assert ">retrieval</span></td><td>date_match_score<" in page
+        assert ">analysis</span></td><td>data_fidelity_score<" in page
+        assert ">explanation</span></td><td>number_usage_score<" in page
+        # Rows are ordered by gate stage, not alphabetically.
+        assert (
+            page.index("date_match_score")
+            < page.index("data_fidelity_score")
+            < page.index("number_usage_score")
+        )
+
+    def test_legacy_numeric_slug_normalised_to_catalog_slug(self):
+        summary = self._summary(1.0)
+        cell = summary["cells"][0]
+        # Summaries written before the dataset joined DATASET_SLUGS carry
+        # the raw id as slug; the scorecard must land them on the same row.
+        cell["dataset_slug"] = "10"
+        cell["dataset_id"] = "10"
+
+        page = render_scorecard([summary])
+        assert 'id="tree_cover_loss_from_fires--quantification"' in page

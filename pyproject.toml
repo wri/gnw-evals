@@ -36,6 +36,8 @@ dev = [
 exclude = ["notebooks/"]
 
 [tool.ruff.lint]
+# Deliberate typography in generated HTML (scorecard, reports).
+allowed-confusables = ["×", "–"]
 select = [
     "COM",  # flake8-commas
     "D",    # pydocstyle
