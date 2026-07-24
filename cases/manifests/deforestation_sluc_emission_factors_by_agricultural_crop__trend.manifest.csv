@@ -1,0 +1,9 @@
+manifest_id,intent,eval_subtype,aoi_ids,start_year,end_year,start_date,end_date,canopy_cover,forest_filter,intersections,crop_types,gas_types,land_cover_classes,date_expression,expected_language,phrasing,n_cases,judge_note,notes,evaluators
+m-sluc-trend-01,trend,direction,BRA,2020,2024,,,,,,Soybean,CO2e,,absolute_range,en,direct,2,"Direction of the emission factor (emission_factor_tCO2e_per_tonne_production) across reporting years 2020-2024; tabular; tCO2e = MgCO2e.",,
+m-sluc-trend-02,trend,direction,IDN,2020,2024,,,,,,Oil Palm,CO2e,,absolute_range,en,conversational,1,"Direction of total sLUC emissions (emissions_tCO2e) across reporting years 2020-2024; tabular.",,
+m-sluc-trend-03,trend,change_over_period,COL,2020,2024,,,,,,Arabica Coffee,CO2e,,absolute_range,en,direct,2,"Compare the emission factor (emission_factor_tCO2e_per_tonne_production) between reporting years 2020 and 2024; tabular.",,
+m-sluc-trend-04,trend,peak_year,BRA,2020,2024,,,,,,Sugarcane,CO2e,,absolute_range,en,direct,1,"Peak year is the reporting year (2020-2024) with the highest total sLUC emissions (emissions_tCO2e); tabular.",,
+m-sluc-trend-05,trend,direction,IND,2020,2024,,,,,,Rice,,,absolute_range,en,direct,1,"Direction of crop production volume (production_tonnes) across reporting years 2020-2024; tabular.",,
+m-sluc-trend-06,trend,change_over_period,CIV,2020,2024,,,,,,Cocoa,CO2e,,absolute_range,en,conversational,1,"Compare total sLUC emissions (emissions_tCO2e) between reporting years 2020 and 2024; tabular.",,
+m-sluc-trend-07,trend,peak_year,MYS,2020,2024,,,,,,Oil Palm,CO2e,,absolute_range,en,direct,1,"Peak year is the reporting year (2020-2024) with the highest emission factor (emission_factor_tCO2e_per_tonne_production); tabular.",,
+m-sluc-trend-08,trend,direction,BRA,2021,2024,,,,,,Maize,CO2e,,absolute_range,en,imprecise,1,"Direction of the emission factor (emission_factor_tCO2e_per_tonne_production) across reporting years 2021-2024; tabular.",,

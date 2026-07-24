@@ -1,0 +1,11 @@
+manifest_id,intent,eval_subtype,aoi_ids,start_year,end_year,start_date,end_date,canopy_cover,forest_filter,intersections,crop_types,gas_types,land_cover_classes,date_expression,expected_language,phrasing,n_cases,judge_note,notes,evaluators
+m-ialert-trend-01,trend,direction,BRA,,,2024-01-01,2024-12-31,,,,,,,absolute_date_range,en,direct,2,"Direction of monthly alert area (area_ha) over 2024; expected as a line chart, optionally one line per confidence tier.",,
+m-ialert-trend-02,trend,monthly_trend,IDN,,,2024-01-01,2024-12-31,,,,,,,absolute_date_range,en,direct,1,"Month-by-month alert area (area_ha) over 2024; verify the shape and direction of the series; line chart.",,
+m-ialert-trend-03,trend,direction,COD,,,2024-03-01,2024-08-31,,,,,,,absolute_date_range,en,conversational,1,"Direction of monthly alert area (area_ha) for 1 Mar to 31 Aug 2024.",,
+m-ialert-trend-04,trend,monthly_trend,PER,,,2024-01-01,2024-06-30,,,,,,,absolute_date_range,en,direct,1,"Month-by-month alert area (area_ha) for 1 Jan to 30 Jun 2024; line chart.",,
+m-ialert-trend-05,trend,direction,COL,,,2024-01-01,2024-12-31,,,,,,,absolute_date_range,en,direct,1,"Direction of monthly alert area (area_ha) over 2024.",,
+m-ialert-trend-06,trend,monthly_trend,BRA,,,2025-01-01,2025-06-30,,,,,,,relative_recent,en,imprecise,1,"Relative 'last six months' resolved to 2025-01-01..2025-06-30; month-by-month alert area (area_ha); line chart.",recent window,
+m-ialert-trend-07,trend,direction,GBR,,,2024-01-01,2024-12-31,,,,,,,absolute_date_range,en,imprecise,1,"Direction of monthly alert area (area_ha) over 2024; magnitudes are small, a weak or noisy trend passes only if the series supports it.",near-zero AOI,
+m-ialert-trend-08,trend,monthly_trend,IND,,,2024-04-01,2024-12-31,,,,,,,absolute_date_range,en,conversational,1,"Month-by-month alert area (area_ha) for 1 Apr to 31 Dec 2024; line chart.",,
+m-ialert-trend-09,trend,direction,GHA,,,2024-01-01,2024-12-31,,,,,,,absolute_date_range,en,direct,1,"Direction of monthly alert area (area_ha) over 2024.",,
+m-ialert-trend-10,trend,monthly_trend,CIV,,,2024-01-01,2024-12-31,,,,,,,absolute_date_range,en,direct,1,"Month-by-month alert area (area_ha) over 2024; line chart.",,

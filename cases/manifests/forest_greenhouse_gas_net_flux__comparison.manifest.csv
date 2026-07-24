@@ -1,0 +1,9 @@
+manifest_id,intent,eval_subtype,aoi_ids,start_year,end_year,start_date,end_date,canopy_cover,forest_filter,intersections,crop_types,gas_types,land_cover_classes,date_expression,expected_language,phrasing,n_cases,judge_note,notes,evaluators
+m-flux-comp-01,comparison,two_country,BRA;IDN,,,,,,,,,CO2e,,fixed,en,direct,2,"Compare whole-period net GHG flux totals (2001-2025) in MgCO2e; direction must be correct; do not annualise; use net source/sink language per each country's sign.",,
+m-flux-comp-02,comparison,two_country,COD;COL,,,,,,,,,CO2e,,fixed,en,direct,1,"Compare whole-period net flux totals (2001-2025) in MgCO2e; direction correct; net source/sink per sign.",,
+m-flux-comp-03,comparison,two_country,PER;BOL,,,,,,,,,CO2e,,fixed,en,conversational,2,"Compare whole-period net flux totals (2001-2025) in MgCO2e; direction correct; net source/sink per sign.",,
+m-flux-comp-04,comparison,two_country,GBR;CRI,,,,,,,,,CO2e,,fixed,en,imprecise,1,"Compare whole-period net flux totals (2001-2025) in MgCO2e; both may be net sinks and magnitudes small, but the direction must be correct.",near-zero pair,
+m-flux-comp-05,comparison,two_country,MYS;IDN,,,,,,,,,CO2e,,fixed,en,direct,1,"Compare whole-period net flux totals (2001-2025) in MgCO2e; direction correct; net source/sink per sign.",,
+m-flux-comp-06,comparison,two_country,BRA;COD,,,,,50,,,,CO2e,,fixed,en,direct,2,"50% canopy density threshold applied to both. Compare whole-period net flux totals (2001-2025) in MgCO2e; direction correct; net source/sink per sign.",,
+m-flux-comp-07,comparison,two_country,GHA;CIV,,,,,,,,,CO2e,,fixed,en,conversational,1,"Compare whole-period net flux totals (2001-2025) in MgCO2e; direction correct; net source/sink per sign.",,
+m-flux-comp-08,comparison,two_country,IND;MEX,,,,,,,,,CO2e,,fixed,en,imprecise,1,"Compare whole-period net flux totals (2001-2025) in MgCO2e; direction correct; net source/sink per sign.",,

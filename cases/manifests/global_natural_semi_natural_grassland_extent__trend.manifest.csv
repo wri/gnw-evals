@@ -1,0 +1,9 @@
+manifest_id,intent,eval_subtype,aoi_ids,start_year,end_year,start_date,end_date,canopy_cover,forest_filter,intersections,crop_types,gas_types,land_cover_classes,date_expression,expected_language,phrasing,n_cases,judge_note,notes,evaluators
+m-grass-trend-01,trend,direction,BRA,2000,2022,,,,,,,,,absolute_range,en,direct,2,"Direction of natural/semi-natural grassland extent (area_ha) over the window; volunteered figures must match the annual series; exclude zero or missing years.",,
+m-grass-trend-02,trend,direction,MEX,2005,2020,,,,,,,,,absolute_range,en,conversational,1,"Direction of grassland extent over the window; exclude zero or missing years.",,
+m-grass-trend-03,trend,peak_year,BOL,2001,2022,,,,,,,,,absolute_range,en,direct,2,"Peak year is the year of highest annual grassland loss within the window (annual loss column); exclude zero or missing years.",,
+m-grass-trend-04,trend,peak_year,IND,2001,2022,,,,,,,,,absolute_range,en,conversational,1,"Peak year is the year of highest annual grassland loss within the window (annual loss column).",,
+m-grass-trend-05,trend,change_over_period,COL,2010,2022,,,,,,,,,absolute_range,en,direct,2,"Compare grassland extent (area_ha) at the start and end of the window; volunteered figures must match the series.",,
+m-grass-trend-06,trend,change_over_period,GHA,2000,2015,,,,,,,,,absolute_range,en,direct,1,"Compare grassland extent (area_ha) at the start and end of the window.",,
+m-grass-trend-07,trend,direction,CRI,2000,2022,,,,,,,,,absolute_range,en,imprecise,1,"Direction of grassland extent over the window; values are small, a weak or noisy trend passes only if the series supports it.",near-zero AOI,
+m-grass-trend-08,trend,direction,BRA,2008,2018,,,,,,,,,absolute_range,en,direct,1,"Direction of grassland extent over the window; exclude zero or missing years.",,
