@@ -31,12 +31,15 @@ phrasing style. It is the **prompt-coverage denominator**: coverage = rows
 with at least one promoted case / rows. `n_cases` sets the wording target
 per row (variants add robustness, not coverage).
 
-Manifests are curated by hand and validated against the dataset catalog
-YAML (legal canopy values, context layers, year range):
+Manifests are curated by hand. Each manifest's dataset is resolved from its
+filename via `generation/dataset_config.py`, and it is validated against that
+dataset's catalog YAML (legal canopy values, context layers, year range,
+plus per-dataset applicability — e.g. trend is rejected for snapshot
+datasets):
 
 ```bash
 uv run python generation/validate_manifest.py \
-  --catalog ../project-zeno/src/agent/datasets/catalog/tree_cover_loss.yml
+  --catalog-dir ../project-zeno/src/agent/datasets/catalog
 ```
 
 Axis values not yet represented (relative dates, unstated-date defaults,
@@ -47,15 +50,18 @@ than pretending the axis is covered.
 ## Generating cases
 
 ```bash
-uv run python generation/generate_cases.py --intent quantification [--dry-run]
+uv run python generation/generate_cases.py \
+  --dataset tree_cover_loss --intent quantification [--dry-run]
 ```
 
 For every manifest row below its `n_cases` target the script asks the LLM
 (default `claude-sonnet-5`) for the missing wordings, passing the
 instruction files plus the row's existing wordings (to force variety), and
 writes full case rows to `cases/candidates/`. Dates, AOI ids, dataset id,
-canopy, filters and judge instructions come from the manifest, never from
-the LLM.
+canopy, filters, crop/gas focus and judge instructions come from the
+manifest and the dataset's `dataset_config.py` entry, never from the LLM.
+`--dataset` accepts any slug in `dataset_config.py`; the script refuses an
+intent that config marks not applicable to the dataset.
 
 ## Spot-check and promotion (the review gate)
 

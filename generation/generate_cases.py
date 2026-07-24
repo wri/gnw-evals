@@ -6,13 +6,17 @@ target, this script asks an LLM to write the missing prompt wordings
 mechanically from the manifest parameters: the LLM only ever writes the
 query text, never expected values.
 
+Which ``expected_*`` fields a row produces, and how its dates are formed, is
+driven by the dataset's entry in ``generation/dataset_config.py`` - so the
+same script serves every catalog dataset, not just tree cover loss.
+
 Candidates land in ``cases/candidates/`` for human spot-checking; promotion
 (appending to the main ``cases/*.csv`` with status=ready) is deliberately
 manual. See generation/README.md for the workflow.
 
 Usage:
-    uv run python generation/generate_cases.py --intent quantification
-    uv run python generation/generate_cases.py --intent trend --dry-run
+    uv run python generation/generate_cases.py --dataset tree_cover_loss --intent quantification
+    uv run python generation/generate_cases.py --dataset grasslands --intent trend --dry-run
 """
 
 import csv
@@ -20,6 +24,7 @@ from pathlib import Path
 
 import click
 import dotenv
+from dataset_config import DATASET_CONFIGS, DatasetConfig
 from langchain_anthropic import ChatAnthropic
 from pydantic import BaseModel, Field
 
@@ -28,9 +33,6 @@ MANIFEST_DIR = REPO_ROOT / "cases" / "manifests"
 CASES_DIR = REPO_ROOT / "cases"
 CANDIDATES_DIR = CASES_DIR / "candidates"
 INSTRUCTIONS_DIR = Path(__file__).resolve().parent
-
-DATASET_SLUG = "tree_cover_loss"
-DATASET_ID = "4"
 
 # Mirrors the promoted case files (the original PoC column order plus
 # manifest_id); DictWriter fills unset columns with "".
@@ -63,12 +65,24 @@ CASE_COLUMNS = [
     "evaluators",
 ]
 
+# ISO3 → prose, for the row brief the LLM reads. Extend as manifests use more
+# AOIs; unknown codes fall through to the code itself.
 COUNTRY_NAMES = {
     "BRA": "Brazil",
     "IDN": "Indonesia",
     "COD": "the Democratic Republic of the Congo",
     "CRI": "Costa Rica",
     "GBR": "the United Kingdom",
+    "COL": "Colombia",
+    "PER": "Peru",
+    "MYS": "Malaysia",
+    "IND": "India",
+    "GHA": "Ghana",
+    "CIV": "Côte d'Ivoire",
+    "BOL": "Bolivia",
+    "MEX": "Mexico",
+    "AUS": "Australia",
+    "USA": "the United States",
 }
 
 
@@ -80,12 +94,12 @@ class Wordings(BaseModel):
     )
 
 
-def _existing_wordings(intent: str) -> dict[str, list[str]]:
+def _existing_wordings(slug: str, intent: str) -> dict[str, list[str]]:
     """Existing queries per manifest row (promoted cases plus candidates)."""
     wordings: dict[str, list[str]] = {}
     for path in (
-        CASES_DIR / f"{DATASET_SLUG}__{intent}.csv",
-        CANDIDATES_DIR / f"{DATASET_SLUG}__{intent}.candidates.csv",
+        CASES_DIR / f"{slug}__{intent}.csv",
+        CANDIDATES_DIR / f"{slug}__{intent}.candidates.csv",
     ):
         if not path.exists():
             continue
@@ -97,26 +111,60 @@ def _existing_wordings(intent: str) -> dict[str, list[str]]:
     return wordings
 
 
-def _row_brief(row: dict) -> str:
+def _date_brief(cfg: DatasetConfig, row: dict) -> str:
+    if cfg.date_mode == "dates":
+        return (
+            f"- window: {row['start_date']} to {row['end_date']} "
+            "(state the dates explicitly)"
+        )
+    if cfg.date_mode == "blank":
+        return (
+            "- window: this dataset ignores/fixes the reporting period; do NOT "
+            "state a specific year or range in the prompt"
+        )
+    single = row["start_year"] == row["end_year"]
+    return f"- window: {row['start_year']} to {row['end_year']}" + (
+        " (single year)" if single else ""
+    )
+
+
+def _row_brief(cfg: DatasetConfig, row: dict) -> str:
     countries = "; ".join(
         COUNTRY_NAMES.get(a, a) for a in row["aoi_ids"].split(";") if a
     )
     lines = [
         f"- intent: {row['intent']}, subtype: {row['eval_subtype']}",
         f"- country/countries: {countries}",
-        f"- window: {row['start_year']} to {row['end_year']}"
-        + (" (single year)" if row["start_year"] == row["end_year"] else ""),
-        f"- canopy threshold: {row['canopy_cover'] or '30'}"
-        + (
-            " (default: do NOT mention it)"
-            if (row["canopy_cover"] or "30") == "30"
-            else " (MUST be stated)"
-        ),
-        f"- forest filter: {row['forest_filter'] or 'none (plain tree cover loss; opt out of forest-type filters explicitly)'}",
-        f"- intersections: {row['intersections'] or 'none'}",
-        f"- phrasing style: {row['phrasing']}",
-        f"- language: {row['expected_language'] or 'en'}",
+        _date_brief(cfg, row),
     ]
+    if cfg.canopy_default is not None:
+        canopy = row.get("canopy_cover") or cfg.canopy_default
+        lines.append(
+            f"- canopy threshold: {canopy}"
+            + (
+                " (default: do NOT mention it)"
+                if canopy == cfg.canopy_default
+                else " (MUST be stated)"
+            ),
+        )
+    if cfg.forest_layers:
+        lines.append(
+            f"- forest filter: {row.get('forest_filter') or 'none (plain tree cover; opt out of forest-type filters explicitly)'}",
+        )
+    if "intersections" in cfg.params and not cfg.fixed_intersections:
+        lines.append(
+            f"- context layer / intersection: {row.get('intersections') or 'none'}",
+        )
+    if "crop_types" in cfg.params:
+        lines.append(f"- crop(s): {row.get('crop_types') or 'unspecified'}")
+    if "gas_types" in cfg.params:
+        lines.append(f"- gas(es): {row.get('gas_types') or 'unspecified'}")
+    if "land_cover_classes" in cfg.params:
+        lines.append(
+            f"- land-cover class(es): {row.get('land_cover_classes') or 'unspecified'}",
+        )
+    lines.append(f"- phrasing style: {row['phrasing']}")
+    lines.append(f"- language: {row.get('expected_language') or 'en'}")
     if row.get("judge_note"):
         lines.append(
             f"- scoring context (do not quote in the prompt): {row['judge_note']}",
@@ -127,6 +175,7 @@ def _row_brief(row: dict) -> str:
 
 
 def _generation_prompt(
+    cfg: DatasetConfig,
     row: dict,
     n_wordings: int,
     instructions: str,
@@ -149,7 +198,7 @@ INSTRUCTIONS (follow every rule):
 
 PERMUTATION TO EXPRESS:
 
-{_row_brief(row)}
+{_row_brief(cfg, row)}
 {existing_block}
 Write exactly {n_wordings} prompt wording(s) for this permutation. Every \
 parameter above must be unambiguously derivable from the wording alone \
@@ -157,21 +206,51 @@ parameter above must be unambiguously derivable from the wording alone \
 wordings."""
 
 
-def _case_from_wording(row: dict, wording: str, variant_index: int) -> dict:
+def _expected_dates(cfg: DatasetConfig, row: dict) -> tuple[str, str]:
+    if cfg.date_mode == "dates":
+        return row.get("start_date", ""), row.get("end_date", "")
+    if cfg.date_mode == "blank":
+        return "", ""
+    return f"{row['start_year']}-01-01", f"{row['end_year']}-12-31"
+
+
+def _case_from_wording(
+    cfg: DatasetConfig,
+    row: dict,
+    wording: str,
+    variant_index: int,
+) -> dict:
     variant = chr(ord("a") + variant_index)
     test_id = f"{row['manifest_id'].removeprefix('m-')}{variant}"
+    start_date, end_date = _expected_dates(cfg, row)
+    canopy = (
+        (row.get("canopy_cover") or cfg.canopy_default)
+        if cfg.canopy_default is not None
+        else ""
+    )
+    intersections = cfg.fixed_intersections or (
+        row.get("intersections", "") if "intersections" in cfg.params else ""
+    )
     return {
         "query": wording,
         "expected_aoi_ids": row["aoi_ids"],
-        "expected_subregion": "country",
-        "expected_aoi_source": "gadm",
-        "expected_dataset_id": DATASET_ID,
-        "expected_dataset_name": DATASET_SLUG,
-        "expected_start_date": f"{row['start_year']}-01-01",
-        "expected_end_date": f"{row['end_year']}-12-31",
-        "expected_canopy_cover": row["canopy_cover"] or "30",
-        "expected_forest_filter": row["forest_filter"],
-        "expected_intersections": row["intersections"],
+        "expected_subregion": cfg.aoi_subtype,
+        "expected_aoi_source": cfg.aoi_source,
+        "expected_dataset_id": cfg.dataset_id,
+        "expected_dataset_name": cfg.slug,
+        "expected_start_date": start_date,
+        "expected_end_date": end_date,
+        "expected_canopy_cover": canopy,
+        "expected_forest_filter": (
+            row.get("forest_filter", "") if cfg.forest_layers else ""
+        ),
+        "expected_intersections": intersections,
+        "expected_crop_types": (
+            row.get("crop_types", "") if "crop_types" in cfg.params else ""
+        ),
+        "expected_gas_types": (
+            row.get("gas_types", "") if "gas_types" in cfg.params else ""
+        ),
         "judge_instruction": row.get("judge_note", ""),
         "expected_language": row.get("expected_language", "en"),
         "test_group": f"GT-{row['intent'][:5].upper()}",
@@ -188,6 +267,13 @@ def _case_from_wording(row: dict, wording: str, variant_index: int) -> dict:
 
 @click.command()
 @click.option(
+    "--dataset",
+    "slug",
+    type=click.Choice(sorted(DATASET_CONFIGS)),
+    required=True,
+    help="Dataset catalog slug (see generation/datasets.py)",
+)
+@click.option(
     "--intent",
     type=click.Choice(["quantification", "comparison", "trend"]),
     required=True,
@@ -199,21 +285,30 @@ def _case_from_wording(row: dict, wording: str, variant_index: int) -> dict:
     is_flag=True,
     help="Print prompts instead of calling the LLM",
 )
-def main(intent: str, model: str, limit: int, dry_run: bool) -> None:
-    """Generate candidate cases for one intent cell."""
+def main(slug: str, intent: str, model: str, limit: int, dry_run: bool) -> None:
+    """Generate candidate cases for one intent x dataset cell."""
     dotenv.load_dotenv(REPO_ROOT / ".env")
 
-    manifest_path = MANIFEST_DIR / f"{DATASET_SLUG}__{intent}.manifest.csv"
+    cfg = DATASET_CONFIGS[slug]
+    if intent not in cfg.intents:
+        raise click.ClickException(
+            f"intent {intent!r} is not applicable to {slug} "
+            f"(applicable: {sorted(cfg.intents)})",
+        )
+
+    manifest_path = MANIFEST_DIR / f"{slug}__{intent}.manifest.csv"
+    if not manifest_path.exists():
+        raise click.ClickException(f"no manifest at {manifest_path}")
     with open(manifest_path, encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
 
     instructions = (
-        (INSTRUCTIONS_DIR / DATASET_SLUG / "_shared.md").read_text()
+        (INSTRUCTIONS_DIR / slug / "_shared.md").read_text()
         + "\n\n"
-        + (INSTRUCTIONS_DIR / DATASET_SLUG / f"{intent}.md").read_text()
+        + (INSTRUCTIONS_DIR / slug / f"{intent}.md").read_text()
     )
 
-    existing = _existing_wordings(intent)
+    existing = _existing_wordings(slug, intent)
     todo = [
         (row, int(row["n_cases"]) - len(existing.get(row["manifest_id"], [])))
         for row in rows
@@ -236,7 +331,7 @@ def main(intent: str, model: str, limit: int, dry_run: bool) -> None:
     candidates: list[dict] = []
     for row, needed in todo:
         prior = existing.get(row["manifest_id"], [])
-        prompt = _generation_prompt(row, needed, instructions, prior)
+        prompt = _generation_prompt(cfg, row, needed, instructions, prior)
         if dry_run:
             print(f"\n=== {row['manifest_id']} (needs {needed}) ===\n{prompt}")
             continue
@@ -247,14 +342,14 @@ def main(intent: str, model: str, limit: int, dry_run: bool) -> None:
                 f"got {len(result.wordings)}",
             )
         for i, wording in enumerate(result.wordings):
-            candidates.append(_case_from_wording(row, wording, len(prior) + i))
+            candidates.append(_case_from_wording(cfg, row, wording, len(prior) + i))
         print(f"  {row['manifest_id']}: {needed} wording(s) generated")
 
     if dry_run or not candidates:
         return
 
     CANDIDATES_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = CANDIDATES_DIR / f"{DATASET_SLUG}__{intent}.candidates.csv"
+    out_path = CANDIDATES_DIR / f"{slug}__{intent}.candidates.csv"
     exists = out_path.exists()
     with open(out_path, "a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=CASE_COLUMNS, extrasaction="ignore")
