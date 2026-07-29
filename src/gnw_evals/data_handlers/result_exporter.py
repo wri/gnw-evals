@@ -74,6 +74,8 @@ class ResultExporter:
             "clarification_requested_score_std",
             "suggested_datasets_match_score",
             "suggested_datasets_match_score_std",
+            "nudge_match_score",
+            "nudge_match_score_std",
             "dashboard_created_score",
             "dashboard_created_score_std",
             "dashboard_aoi_match_score",
@@ -180,6 +182,13 @@ class ResultExporter:
             "actual_suggested_datasets",
             "suggested_datasets_match_score",
             "suggested_datasets_match_score_std",
+            # Nudge: Expected vs Actual
+            "expected_nudge_type",
+            "actual_nudge_type",
+            "expected_nudge_options",
+            "actual_nudge_options",
+            "nudge_match_score",
+            "nudge_match_score_std",
             # Dashboard: Expected vs Actual
             "expected_dashboard_created",
             "actual_dashboard_created",

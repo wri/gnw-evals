@@ -1,0 +1,4 @@
+test_id,status,query,expected_nudge_type,expected_nudge_options,test_group
+nudge-001,,search for areas named puri,,"Uíge, Angola;Odisha, India",nudge_aoi_choice
+nudge-002,,"Please call the send_nudge tool directly with nudge_type='clarify' and options=['Option A', 'Option B']",clarify,Option A;Option B,nudge_send_nudge_direct
+nudge-003,,Show me forest degradation data for Ghana,,Tree cover loss;DIST-ALERT;Integrated alerts;driver,nudge_dataset_choice

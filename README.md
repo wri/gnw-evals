@@ -81,7 +81,8 @@ For the corresponding score to be computed, expected values must be provided. Th
 - `expected_clarification` - Boolean flag indicating whether agent should request clarification instead of completing the task (default: `False`)
 - `expected_dashboard_created` - Boolean flag indicating whether the agent should create a dashboard this turn. Leave empty for no expectation. Set to `false` on a plain analysis query as a guardrail against unprompted dashboard creation. The dashboard's AOI is checked against the existing `expected_aoi_ids`/`expected_aoi_source` columns (a dashboard must reference exactly one AOI, matching the one already under test in the row) - no separate column needed.
 - `expected_dashboard_widgets` - Expected widget types on the dashboard, semicolon-separated (e.g. `"insight;map"` or `"insight;insight;map"`). Compared as a multiset (order doesn't matter, counts do). Can be empty if not applicable.
-- `expected_`
+- `expected_nudge_type` - Expected nudge type from the agent's generic `nudge` state field (`{type, options}`), e.g. `aoi_choice` (pick_aoi disambiguation), `dataset_choice` (pick_dataset disambiguation), or `clarify` (a direct `send_nudge` call). Can be empty if not applicable.
+- `expected_nudge_options` - Expected nudge options, semicolon-separated. The agent must offer at least one of these and none outside this set (same subset logic as `expected_suggested_datasets`). Can be empty if not applicable.
 
 
 Other columns, optional:
@@ -200,6 +201,21 @@ Custom evals: Run eval tests in a local CSV  file
 ```bash
 # Run eval tests in a custom CSV  file
 uv run gnw_evals --api-token your_token --test-file data/my_tests.csv
+```
+
+### Testing nudges
+
+`nudge_eval_set.csv` contains example tests for the generic `nudge` state
+field (`{type, options}`) from wri/project-zeno#770 - `send_nudge` and the
+`pick_aoi`/`pick_dataset` nudge migrations (`aoi_choice`, `dataset_choice`).
+These rows use `expected_nudge_type`/`expected_nudge_options` instead of
+`expected_clarification`, since the nudge is read directly off agent state
+rather than inferred from prose by an LLM judge.
+
+```bash
+# aoi_choice / dataset_choice nudges fire in any profile (core tools),
+# but a direct send_nudge call requires the experimental profile
+uv run gnw_evals --api-token your_token --test-file nudge_eval_set.csv --ff experimental
 ```
 
 ## Output Files

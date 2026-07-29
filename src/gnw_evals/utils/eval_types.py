@@ -96,6 +96,11 @@ class TestResult(BaseModel):
     suggested_datasets_match_score: float | None = None
     actual_suggested_datasets: str | None = None
 
+    # Nudge evaluation fields
+    nudge_match_score: float | None = None
+    actual_nudge_type: str | None = None
+    actual_nudge_options: str | None = None
+
     # Dashboard evaluation fields
     dashboard_created_score: float | None = None
     actual_dashboard_created: bool | None = None
@@ -123,6 +128,8 @@ class TestResult(BaseModel):
     expected_suggested_datasets: list[str] = []
     expected_dashboard_created: bool | None = None
     expected_dashboard_widgets: list[str] | None = None
+    expected_nudge_type: str = ""
+    expected_nudge_options: list[str] = []
     test_group: str = "unknown"
     status: str = "ready"
 
@@ -149,6 +156,7 @@ class TestResult(BaseModel):
     dashboard_aoi_match_score_std: float | None = None
     dashboard_widgets_match_score_std: float | None = None
     dashboard_widgets_valid_score_std: float | None = None
+    nudge_match_score_std: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for CSV export."""
@@ -174,6 +182,8 @@ class ExpectedData(BaseModel):
     expected_suggested_datasets: list[str] = []
     expected_dashboard_created: bool | None = None
     expected_dashboard_widgets: list[str] | None = None
+    expected_nudge_type: str = ""
+    expected_nudge_options: list[str] = []
     test_id: str = ""
     test_group: str = "unknown"
     status: str = "ready"
@@ -212,6 +222,18 @@ class ExpectedData(BaseModel):
             return v
         if isinstance(v, str):
             # Split by comma and strip whitespace, filter out empty strings
+            return [item.strip() for item in v.split(";") if item.strip()]
+        return []
+
+    @field_validator("expected_nudge_options", mode="before")
+    @classmethod
+    def split_nudge_options(cls, v: str | list[str]) -> list[str]:
+        """Split semicolon-separated string input into a list of strings."""
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            if v.strip() in ("", "[]"):
+                return []
             return [item.strip() for item in v.split(";") if item.strip()]
         return []
 
