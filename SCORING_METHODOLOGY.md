@@ -15,6 +15,8 @@ The following comparisons (i.e. between expected and actual values) are performe
 * Answer quality evaluation (`charts_answer_score`, `agent_answer_score`)
 * Clarification detection (`clarification_requested_score`)
 
+All LLM-as-a-Judge checks run on **Claude Haiku 4.5** (`claude-haiku-4-5`, via LangChain's `ChatAnthropic`), as configured in `src/gnw_evals/utils/models.py`.
+
 ## Individual Score Components
 
 ### AOI (Area of Interest) Selection
@@ -120,7 +122,7 @@ overall_score = sum(valid_scores) / count(valid_scores)
 - **Strings:** Lowercases and strips whitespace
 
 ### LLM-as-a-Judge Details
-- **Model:** Claude 3.5 Haiku (via LangChain)
+- **Model:** Claude Haiku 4.5 (`claude-haiku-4-5`, via LangChain)
 - **Answer Type Detection:** Automatic classification as boolean, numeric, year, or named entity
 - **Numeric Tolerance:** Configurable percentage-based tolerance (currently 5%)
 - **Clarification Detection:** Pattern-based identification of uncertainty, questions, or requests for more information
