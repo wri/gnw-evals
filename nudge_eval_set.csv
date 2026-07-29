@@ -1,4 +1,4 @@
 test_id,status,query,expected_nudge_type,expected_nudge_options,test_group
-nudge-001,,search for areas named puri,,"Uíge, Angola;Odisha, India",nudge_aoi_choice
+nudge-001,,Select an area named Puri,,"Uíge, Angola;Odisha, India",nudge_aoi_choice
 nudge-002,,"Please call the send_nudge tool directly with nudge_type='clarify' and options=['Option A', 'Option B']",clarify,Option A;Option B,nudge_send_nudge_direct
-nudge-003,,"How much short vegetation in La Pampa, Argentina?",,Global land cover;SBTN;grassland,nudge_dataset_choice
+nudge-003,,"Pick a dataset showing urban land cover",,Global land cover;SBTN,nudge_dataset_choice
