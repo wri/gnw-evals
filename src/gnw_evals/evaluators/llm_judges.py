@@ -204,15 +204,18 @@ def llm_judge(
 def llm_judge_chart(
     query: str,
     expected_answer: str,
-    chart_json: str,
+    charts_json: str,
     codeact_summary: str = "",
     include_reason: bool = False,
 ) -> int | dict[str, int | str]:
-    """Judge whether chart JSON is appropriate and supports the expected answer.
+    """Judge whether chart JSON(s) are appropriate and support the expected answer.
 
-    Uses both the chart specification and the agent's code-act reasoning
+    Uses both the chart specification(s) and the agent's code-act reasoning
     (code blocks, execution output, analysis text) to evaluate whether
-    the chart is actually correct and answers the query.
+    the chart(s) are actually correct and answer the query.
+
+    Accepts a JSON array of chart objects; each chart is evaluated and the
+    overall score is 1 only if the set of charts together answers the query.
     """
 
     class ChartScore(BaseModel):
@@ -228,7 +231,7 @@ CODEACT REASONING:
 {codeact_summary}
 
 This shows the code the agent executed, the intermediate results, and its
-analytical reasoning that led to the chart above."""
+analytical reasoning that led to the chart(s) above."""
         codeact_instruction = """
 
 If codeact reasoning is provided, use it to cross-check the chart data.
@@ -241,7 +244,7 @@ own, also score 0.
 """
 
     full_prompt = (
-        """You are evaluating whether a chart specification is useful and correct for answering a user query.
+        """You are evaluating whether one or more chart specifications are useful and correct for answering a user query.
 
 USER QUERY:
 {query}
@@ -249,21 +252,24 @@ USER QUERY:
 EXPECTED ANSWER:
 {expected_answer}
 
-CHART JSON:
-{chart_json}"""
+CHART JSON (JSON array of chart objects):
+{charts_json}"""
         + codeact_section
         + """
 
-Score 1 if the chart JSON appears appropriate for the query and its encoded
-data, chart type, labels, dimensions, measures, filters, and time range would
-help a user verify or understand the expected answer.
+The input is a JSON array of chart objects. There may be one chart or multiple.
+Evaluate whether the set of charts together answers the user's query.
 
-Score 0 if the chart is missing important data, uses the wrong
-metric/location/date range, has an unsuitable chart type for the comparison,
-contradicts the expected answer, or is too incomplete to judge.
+Score 1 if the chart(s) together appear appropriate for the query and their
+encoded data, chart types, labels, dimensions, measures, filters, and time
+ranges would help a user verify or understand the expected answer.
+
+Score 0 if the chart(s) are missing important data, use the wrong
+metric/location/date range, have unsuitable chart types for the comparison,
+contradict the expected answer, or are too incomplete to judge.
 
 Do not score based on any prose insight or narrative answer. Focus on the
-chart specification, encoded data, labels, fields, and visual structure.
+chart specifications, encoded data, labels, fields, and visual structures.
 
 """
         + codeact_instruction
@@ -286,7 +292,7 @@ chart specification, encoded data, labels, fields, and visual structure.
     invoke_kwargs = {
         "query": query,
         "expected_answer": expected_answer,
-        "chart_json": chart_json,
+        "charts_json": charts_json,
     }
     if codeact_summary:
         invoke_kwargs["codeact_summary"] = codeact_summary

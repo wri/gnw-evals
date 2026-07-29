@@ -47,13 +47,19 @@ def _decode_codeact_parts(raw_parts: list[dict[str, Any]]) -> str:
     return "\n\n".join(sections)
 
 
-def _serialize_chart_json(chart: dict[str, Any]) -> str:
-    """Serialize chart JSON without prose-only insight text."""
-    chart_json = {key: value for key, value in chart.items() if key != "insight"}
-    if not chart_json:
+def _serialize_charts_json(charts: list[dict[str, Any]]) -> str:
+    """Serialize all chart JSONs without prose-only insight text."""
+    if not charts:
         return ""
-    serialized = json.dumps(chart_json, ensure_ascii=False, default=str)
-    return serialized[:50000]
+    chart_jsons = []
+    for chart in charts:
+        cleaned = {key: value for key, value in chart.items() if key != "insight"}
+        if cleaned:
+            chart_jsons.append(cleaned)
+    if not chart_jsons:
+        return ""
+    serialized = json.dumps(chart_jsons, ensure_ascii=False, default=str)
+    return serialized[:80000]
 
 
 def _score_and_reason(result: Any) -> tuple[float | None, str | None]:
@@ -92,10 +98,12 @@ def evaluate_final_answer(
         Dict with charts_answer_score, agent_answer_score, and actual values
 
     """
-    # Extract charts insight
+    # Extract charts data (all charts, not just the first)
     charts_data = agent_state.get("charts_data", [])
-    actual_charts_answer = charts_data[0].get("insight", "") if charts_data else ""
-    actual_charts_json = _serialize_chart_json(charts_data[0]) if charts_data else ""
+    actual_charts_answer = "; ".join(
+        chart.get("insight", "") for chart in charts_data if chart.get("insight")
+    )
+    actual_charts_json = _serialize_charts_json(charts_data)
 
     # Extract agent message
     messages = agent_state.get("messages", [])
