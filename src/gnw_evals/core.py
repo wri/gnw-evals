@@ -150,7 +150,6 @@ async def run_single_test(
     )
     result = await runner.run_test(test_case.query, expected_data)
     duration = time.time() - start_time
-    result.duration_seconds = duration
 
     if _all_checks_passed(result):
         _print_pass_progress()

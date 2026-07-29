@@ -106,4 +106,4 @@ def test_print_run_summary_header(capsys) -> None:
     assert "staging" in output
     assert "GNW code version:" in output
     assert "Eval judge LLM:" in output
-    assert "Test latency (s):" in output
+    assert "API latency (s):" in output

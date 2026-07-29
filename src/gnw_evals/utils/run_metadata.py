@@ -150,11 +150,11 @@ def print_run_summary_header(context: RunSummaryContext) -> None:
     if context.latency:
         latency = context.latency
         print(
-            "Test latency (s):      "
+            "API latency (s):       "
             f"avg={latency.avg:.1f}, std={latency.std:.1f}, "
             f"min={latency.min:.1f}, max={latency.max:.1f} "
             f"(n={latency.count})",
         )
     else:
-        print("Test latency (s):      n/a")
+        print("API latency (s):       n/a")
     print()
