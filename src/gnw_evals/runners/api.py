@@ -2,6 +2,7 @@
 
 import base64
 import json
+import time
 from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse, urlunparse
@@ -64,6 +65,7 @@ class APITestRunner(BaseTestRunner):
         thread_id = str(uuid4())
         trace_url = None
         app_thread_url = self._build_app_thread_url(self.api_base_url, thread_id)
+        start_time = time.time()
 
         try:
             # Collect all streaming responses to ensure conversation completes
@@ -145,6 +147,8 @@ class APITestRunner(BaseTestRunner):
                         )
                         dashboard = None
 
+            api_duration_seconds = time.time() - start_time
+
             # Run evaluations
             evaluations = self._run_evaluations(
                 agent_state,
@@ -184,6 +188,7 @@ class APITestRunner(BaseTestRunner):
                 query=query,
                 overall_score=overall_score,
                 execution_time=datetime.now().isoformat(),
+                duration_seconds=api_duration_seconds,
                 **kwargs,
             )
 
@@ -196,6 +201,7 @@ class APITestRunner(BaseTestRunner):
                 query,
                 expected_data,
                 str(e),
+                duration_seconds=time.time() - start_time,
             )
 
     @staticmethod

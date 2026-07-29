@@ -48,6 +48,7 @@ class BaseTestRunner(ABC):
         query: str,
         expected_data: ExpectedData,
         error: str,
+        duration_seconds: float | None = None,
     ) -> TestResult:
         """Create empty evaluation result for error cases."""
         kwargs = expected_data.to_dict()
@@ -67,6 +68,7 @@ class BaseTestRunner(ABC):
             query=query,
             overall_score=0.0,
             execution_time=datetime.now().isoformat(),
+            duration_seconds=duration_seconds,
             # AOI evaluation fields
             aoi_id_match_score=None,
             actual_id=None,
