@@ -30,6 +30,8 @@ _COMPARISONS: list[tuple[str, str, str | None]] = [
         "actual_clarification_requested",
         "clarification_requested_score",
     ),
+    ("expected_nudge_type", "actual_nudge_type", "nudge_match_score"),
+    ("expected_nudge_options", "actual_nudge_options", "nudge_match_score"),
 ]
 
 _REASON_BY_SCORE: dict[str, str] = {

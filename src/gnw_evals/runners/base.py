@@ -14,6 +14,7 @@ from gnw_evals.evaluators import (
     evaluate_dataset_selection,
     evaluate_date_selection,
     evaluate_final_answer,
+    evaluate_nudge,
     evaluate_suggested_datasets,
 )
 from gnw_evals.utils.eval_types import ExpectedData, TestResult
@@ -109,6 +110,10 @@ class BaseTestRunner(ABC):
             # Suggested datasets evaluation fields
             suggested_datasets_match_score=None,
             actual_suggested_datasets=None,
+            # Nudge evaluation fields
+            nudge_match_score=None,
+            actual_nudge_type=None,
+            actual_nudge_options=None,
             # Dashboard evaluation fields
             dashboard_created_score=None,
             actual_dashboard_created=None,
@@ -178,6 +183,11 @@ class BaseTestRunner(ABC):
             agent_state,
             expected_data.expected_suggested_datasets,
         )
+        nudge_eval = evaluate_nudge(
+            agent_state,
+            expected_data.expected_nudge_type,
+            expected_data.expected_nudge_options,
+        )
         dashboard_created_eval = evaluate_dashboard_created(
             agent_state,
             expected_data.expected_dashboard_created,
@@ -200,6 +210,7 @@ class BaseTestRunner(ABC):
             **data_eval,
             **answer_eval,
             **suggested_datasets_eval,
+            **nudge_eval,
             **dashboard_created_eval,
             **dashboard_aoi_eval,
             **dashboard_widgets_eval,
@@ -245,6 +256,10 @@ class BaseTestRunner(ABC):
         # Suggested datasets check
         if expected_data.expected_suggested_datasets:
             scores.append(evaluations.get("suggested_datasets_match_score"))
+
+        # Nudge check
+        if expected_data.expected_nudge_type or expected_data.expected_nudge_options:
+            scores.append(evaluations.get("nudge_match_score"))
 
         # Dashboard checks
         # NOTE: uses `is not None` (not truthy) so expected_dashboard_created=False

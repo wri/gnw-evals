@@ -92,6 +92,16 @@ All LLM-as-a-Judge checks run on **Claude Haiku 4.5** (`claude-haiku-4-5`, via L
   - `None` if agent did not request clarification
 - **Note:** When clarification is given, other scores (AOI, dataset, data pull) are set to `None` (not applicable)
 
+### Nudge Handling
+
+**10. Nudge Match Score** (`nudge_match_score`)
+- **Evaluated when:** `expected_nudge_type` and/or `expected_nudge_options` is provided
+- **Comparison:** Hard logic, read directly from the agent's `nudge` state field (`{type, options}`) - no LLM judge involved
+  - Type check (when `expected_nudge_type` is set): case-insensitive exact match
+  - Options check (when `expected_nudge_options` is set): actual options must include at least one expected option and none outside the expected set (same subset logic as `suggested_datasets_match_score`)
+- **Score:** 1 if both applicable checks pass, otherwise 0
+- **Note:** This is a deterministic substitute for `clarification_requested_score` whenever the expected clarification behavior is a specific nudge (`aoi_choice`, `dataset_choice`, or a direct `send_nudge` call) - prefer it over `expected_clarification` for those rows, since it checks exact agent state instead of an LLM's read of the response text.
+
 ## Overall Score Calculation
 
 The overall score is computed as the **simple average** of all applicable (non-None) scores:
