@@ -45,6 +45,8 @@ The E2E testing framework evaluates the complete agent workflow by testing four 
 3. **Data Pull** (`pull_data`) - Evaluates data retrieval success
 4. **Final Answer** (`generate_insights`) - Evaluates answer quality using LLM-as-a-judge
 
+LLM-as-a-judge checks run on **Claude Haiku 4.5** (`claude-haiku-4-5`).
+
 **For detailed scoring methodology and calculation details, see [SCORING_METHODOLOGY.md](SCORING_METHODOLOGY.md).**
 
 ## Test Dataset Structure
@@ -221,6 +223,8 @@ overall_score = sum(valid_scores) / count(valid_scores)
 Scores are only calculated when the corresponding `expected_*` value is provided in the test case.
 
 **Pass Threshold:** ≥ 0.7 (70%)
+
+**LLM-as-a-Judge Model:** Claude Haiku 4.5 (`claude-haiku-4-5`)
 
 **For complete details on score calculation, see [SCORING_METHODOLOGY.md](SCORING_METHODOLOGY.md).**
 
