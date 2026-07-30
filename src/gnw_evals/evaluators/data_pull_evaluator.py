@@ -119,15 +119,21 @@ def evaluate_date_extraction(
         return result
 
     for name, start, end in windows:
-        if (
-            normalize_start_date(start) == expected_start
-            and normalize_end_date(end) == expected_end
-        ):
+        # An omitted bound is an open-ended request ("from 2001 onwards"), which the
+        # agent does use - e.g. pull_data(start_date="2001-01-01") with no end. Only
+        # the bounds the agent actually supplied are checked; the other side is
+        # unconstrained and left to date_coverage. Requiring both would fail a
+        # legitimately open-ended pull.
+        start_ok = (
+            normalize_start_date(start) == expected_start if start.strip() else True
+        )
+        end_ok = normalize_end_date(end) == expected_end if end.strip() else True
+        if start_ok and end_ok:
             result.update(
                 {
                     "date_extraction_score": 1.0,
-                    "actual_extracted_start_date": start,
-                    "actual_extracted_end_date": end,
+                    "actual_extracted_start_date": start or None,
+                    "actual_extracted_end_date": end or None,
                     "date_extraction_source": name,
                 },
             )

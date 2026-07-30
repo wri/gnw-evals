@@ -144,6 +144,41 @@ def test_extraction_tolerates_date_formats():
     assert result["date_extraction_score"] == 1.0
 
 
+def test_extraction_accepts_an_open_ended_request():
+    """The agent omits end_date for "how much X in total" style queries.
+
+    Observed on gold 1-076 ("How much deforestation in Russia?"), where pull_data was
+    called with start_date only. Requiring both bounds failed a correct pull, so only
+    the bounds the agent supplied are checked.
+    """
+    result = evaluate_date_extraction(
+        _state(("pull_data", "2001-01-01", "")),
+        "2001-01-01",
+        "2025-12-31",
+    )
+    assert result["date_extraction_score"] == 1.0
+    assert result["actual_extracted_end_date"] is None
+
+
+def test_extraction_still_fails_an_open_ended_request_with_the_wrong_start():
+    """Open-endedness relaxes the end bound only - a wrong start still fails."""
+    result = evaluate_date_extraction(
+        _state(("pull_data", "2015-01-01", "")),
+        "2001-01-01",
+        "2025-12-31",
+    )
+    assert result["date_extraction_score"] == 0.0
+
+
+def test_extraction_accepts_an_end_only_request():
+    result = evaluate_date_extraction(
+        _state(("pull_data", "", "2022-12-31")),
+        "2022-01-01",
+        "2022-12-31",
+    )
+    assert result["date_extraction_score"] == 1.0
+
+
 def test_extraction_not_evaluated_on_unparseable_expectation():
     result = evaluate_date_extraction(
         _state(("pull_data", "2022-01-01", "2022-12-31")),
