@@ -268,8 +268,8 @@ async def test_run_csv_tests_with_mocked_data(
                         ), "Should have data_pull_exists_score field"
                         assert hasattr(
                             first_result,
-                            "date_match_score",
-                        ), "Should have date_match_score field"
+                            "date_coverage_score",
+                        ), "Should have date_coverage_score field"
                         assert hasattr(
                             first_result,
                             "charts_answer_score",
@@ -584,7 +584,7 @@ def test_dataset_evaluator_incorrect_expected_context_layer():
 
 
 def test_data_pull_evaluator_missing_expected_dates():
-    """Test that missing expected dates returns None for date_match_score.
+    """Test that missing expected dates returns None for date_coverage_score.
 
     Missing "Expected" values should result in None scores, not positive scores.
     """
@@ -620,7 +620,7 @@ def test_data_pull_evaluator_missing_expected_dates():
 
     assert data_result["data_pull_exists_score"] == 1.0, "Data pull should succeed"
     assert (
-        date_result["date_match_score"] is None
+        date_result["date_coverage_score"] is None
     ), "Date score should be None when expected dates are missing"
 
 
@@ -717,7 +717,7 @@ def test_overall_score_excludes_none_values():
         "dataset_parameter_match_score": None,  # Not evaluated (missing expected)
         "context_layer_match_score": None,  # Not evaluated (missing expected)
         "data_pull_exists_score": 1.0,
-        "date_match_score": None,  # Not evaluated (missing expected)
+        "date_coverage_score": None,  # Not evaluated (missing expected)
         "charts_answer_score": 0.0,
         "agent_answer_score": 1.0,
     }
@@ -885,7 +885,7 @@ def test_data_pull_evaluator_all_fields_present():
     )
 
     assert data_result["data_pull_exists_score"] == 1.0, "Data pull should succeed"
-    assert date_result["date_match_score"] == 1.0, "Dates should match"
+    assert date_result["date_coverage_score"] == 1.0, "Dates should match"
     assert date_result["date_success"] is True
 
 
@@ -1434,7 +1434,7 @@ def test_overall_score_with_both_answer_scores():
         "dataset_id_match_score": 1.0,
         "context_layer_match_score": None,  # Not evaluated (missing expected)
         "data_pull_exists_score": 1.0,
-        "date_match_score": None,  # Not evaluated (missing expected)
+        "date_coverage_score": None,  # Not evaluated (missing expected)
         "charts_answer_score": 1.0,  # Charts answer correct
         "agent_answer_score": 0.0,  # Agent answer wrong
         "expected_text_match_score": None,
@@ -1472,7 +1472,7 @@ def test_overall_score_with_expected_text_score():
         "dataset_id_match_score": None,
         "context_layer_match_score": None,
         "data_pull_exists_score": None,
-        "date_match_score": None,
+        "date_coverage_score": None,
         "charts_answer_score": None,
         "agent_answer_score": None,
         "expected_text_match_score": 1.0,
@@ -1659,7 +1659,7 @@ def test_date_selection_reads_dates_from_statistics():
         expected_end_date="12/31/2023",
     )
 
-    assert result["date_match_score"] == 1.0
+    assert result["date_coverage_score"] == 1.0
     assert result["date_success"] is True
 
 
@@ -1685,7 +1685,7 @@ def test_evaluate_data_pull_with_date_format_mismatch():
     )
 
     assert (
-        result_matching["date_match_score"] == 1.0
+        result_matching["date_coverage_score"] == 1.0
     ), "Dates should match despite format difference"
     assert result_matching["date_success"] is True
 
@@ -1703,8 +1703,8 @@ def test_evaluate_data_pull_with_date_format_mismatch():
     )
 
     assert (
-        result_different["date_match_score"] == 0.0
-    ), "Different dates should not match even after normalization"
+        result_different["date_coverage_score"] == 0.0
+    ), "A November-only window does not cover the requested full year"
     assert result_different["date_success"] is False
 
     # Test 3: Invalid expected dates -> should return None
@@ -1721,7 +1721,7 @@ def test_evaluate_data_pull_with_date_format_mismatch():
     )
 
     assert (
-        result_invalid["date_match_score"] is None
+        result_invalid["date_coverage_score"] is None
     ), "Invalid expected dates should result in None score (not evaluated)"
     assert result_invalid["date_success"] is None
 

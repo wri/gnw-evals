@@ -248,7 +248,7 @@ def test_overall_score_includes_nudge_match_score():
         "dataset_id_match_score": None,
         "context_layer_match_score": None,
         "data_pull_exists_score": None,
-        "date_match_score": None,
+        "date_coverage_score": None,
         "charts_answer_score": None,
         "agent_answer_score": None,
         "expected_text_match_score": None,

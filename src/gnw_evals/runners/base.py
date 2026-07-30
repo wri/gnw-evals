@@ -12,6 +12,7 @@ from gnw_evals.evaluators import (
     evaluate_dashboard_widgets,
     evaluate_data_pull,
     evaluate_dataset_selection,
+    evaluate_date_extraction,
     evaluate_date_selection,
     evaluate_final_answer,
     evaluate_nudge,
@@ -87,7 +88,12 @@ class BaseTestRunner(ABC):
             actual_context_layer=None,
             # Data pull evaluation fields
             data_pull_exists_score=None,
-            date_match_score=None,
+            date_coverage_score=None,
+            date_extraction_score=None,
+            actual_extracted_start_date=None,
+            actual_extracted_end_date=None,
+            date_extraction_source=None,
+            actual_extracted_windows=None,
             row_count=0,
             min_rows=1,
             data_pull_success=False,
@@ -168,6 +174,11 @@ class BaseTestRunner(ABC):
             expected_start_date=expected_data.expected_start_date,
             expected_end_date=expected_data.expected_end_date,
         )
+        date_extraction_eval = evaluate_date_extraction(
+            agent_state,
+            expected_start_date=expected_data.expected_start_date,
+            expected_end_date=expected_data.expected_end_date,
+        )
         data_eval = evaluate_data_pull(
             agent_state,
             expects_data_pull=expected_data.expects_data_pull(),
@@ -207,6 +218,7 @@ class BaseTestRunner(ABC):
             **aoi_eval,
             **dataset_eval,
             **date_eval,
+            **date_extraction_eval,
             **data_eval,
             **answer_eval,
             **suggested_datasets_eval,
@@ -250,8 +262,11 @@ class BaseTestRunner(ABC):
         # Data pull checks — only when the test expects an insight/answer
         if expected_data.expects_data_pull():
             scores.append(evaluations.get("data_pull_exists_score"))
+        # Date: only `date_extraction_score` counts. `date_coverage_score` is
+        # reported for diagnosis but excluded, because agent_state's recorded range
+        # is inconsistent (see data_pull_evaluator's module docstring).
         if expected_data.expected_start_date and expected_data.expected_end_date:
-            scores.append(evaluations.get("date_match_score"))
+            scores.append(evaluations.get("date_extraction_score"))
 
         # Suggested datasets check
         if expected_data.expected_suggested_datasets:

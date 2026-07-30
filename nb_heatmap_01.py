@@ -80,7 +80,9 @@ def _(results_simple):
         "aoi_id_match_score": "AOI GADM ID Match",
         "subregion_match_score": "AOI Subregion Match",
         "dataset_id_match_score": "Dataset ID Match",
-        "date_match_score": "Date Match",
+        "date_extraction_score": "Date Extraction",
+        "date_coverage_score": "Date Coverage",
+        "date_match_score": "Date Match (legacy)",
         "context_layer_match_score": "Context Layer Match",
         "data_pull_exists_score": "Data Pull Exists",
         "clarification_requested_score": "Clarification Requested",
@@ -433,12 +435,12 @@ def _(eval_results_dir, source_file_name_detailed):
 def _():
     # columns to show for each score
     score_to_columns = {
-        "date_match_score": [
+        "date_coverage_score": [
             "expected_start_date",
             "actual_start_date",
             "expected_end_date",
             "actual_end_date",
-            "date_match_score",
+            "date_coverage_score",
             "date_success",
         ],
         "aoi_id_match_score": [
