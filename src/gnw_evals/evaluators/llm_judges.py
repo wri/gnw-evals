@@ -3,6 +3,13 @@ from pydantic import BaseModel
 
 from gnw_evals.utils.models import HAIKU
 
+# Relative tolerance for numeric answers. Applied in code by `_numeric_verdict`, not
+# by the model - it is interpolated into the prompt so the two can never drift apart.
+NUMERIC_TOLERANCE = 0.05
+# Absorbs binary-float representation error at the tolerance boundary; far smaller than
+# any real difference between two reported figures.
+_FLOAT_SLACK = 1e-9
+
 
 def llm_judge_clarification(agent_state: dict, query: str) -> dict:
     """Use LLM to judge if the agent is asking for clarification instead of selecting an AOI."""
@@ -89,17 +96,67 @@ def llm_judge_clarification(agent_state: dict, query: str) -> dict:
         return {"is_clarification": False, "explanation": "LLM call failed"}
 
 
+def _numeric_verdict(
+    expected_value: float | None,
+    actual_value: float | None,
+    same_quantity: bool | None,
+) -> tuple[int, str] | None:
+    """Decide a numeric answer in code rather than trusting the judge's own maths.
+
+    Returns ``(score, explanation)``, or ``None`` when the comparison cannot be made
+    deterministically and the model's own score should stand.
+    """
+    if expected_value is None or actual_value is None:
+        return None
+    # A relative difference is undefined against zero; fall back to the model.
+    if expected_value == 0:
+        return None
+
+    # Two numbers can agree closely and still measure different things - e.g. tree
+    # cover loss vs primary forest loss. Tolerance cannot express that, so the
+    # quantity check gates it.
+    if same_quantity is False:
+        return 0, (
+            f"deterministic check: actual value {actual_value:g} does not measure the "
+            f"same quantity as the expected {expected_value:g}, so the "
+            f"{NUMERIC_TOLERANCE:.0%} tolerance does not apply"
+        )
+
+    difference = abs(actual_value - expected_value) / abs(expected_value)
+    # The boundary is inclusive, but binary floats make an exact 5% land just above it:
+    # (0.20 - 0.19) / 0.20 evaluates to 0.05000000000000004. The prompt documents that
+    # very case as a match, so absorb the representation error.
+    within = difference <= NUMERIC_TOLERANCE + _FLOAT_SLACK
+    return int(within), (
+        f"deterministic check: expected {expected_value:g} vs actual {actual_value:g} "
+        f"= {difference:.2%} difference, "
+        f"{'within' if within else 'exceeding'} the {NUMERIC_TOLERANCE:.0%} tolerance"
+    )
+
+
 def llm_judge(
     expected_answer: str,
     actual_answer: str,
     include_reason: bool = False,
 ):
-    """Use LLM to judge if an actual answer captures the essence of an expected answer."""
+    """Use LLM to judge if an actual answer captures the essence of an expected answer.
+
+    For numeric answers the model is used only to **extract** the two values and say
+    whether they measure the same quantity; the tolerance comparison itself is done in
+    Python by ``_numeric_verdict``. Asking a language model to both choose the numbers
+    and do the arithmetic makes the verdict unauditable, and the tolerance existed only
+    as prose inside the prompt. Boolean, year and named-entity answers still use the
+    model's own score.
+    """
 
     class Score(BaseModel):
         answer_eval_type: str  # "boolean", "numeric", "named_entity", "year"
         reason: str
         score: int
+        # Numeric answers only; left as None for other types or when extraction fails.
+        expected_value: float | None = None
+        actual_value: float | None = None
+        values_same_quantity: bool | None = None
 
     JUDGE_PROMPT = ChatPromptTemplate.from_messages(
         [
@@ -178,6 +235,27 @@ def llm_judge(
                    - answer_eval_type: one of "boolean", "numeric", "year", "named_entity"
 
                 Be strict with the rules above, especially for boolean, numeric, and year types.
+
+                ## Extra fields for NUMERIC answers only
+
+                When answer_eval_type is "numeric", also return the two numbers so the
+                tolerance can be verified independently. Leave these null for every other
+                type, and leave them null if you cannot confidently extract a value.
+
+                - expected_value: the expected number as a plain number, no units or
+                  separators (e.g. 198.4, 211000, 0.20)
+                - actual_value: the corresponding number from the actual insight,
+                  **converted into the same unit as expected_value** (e.g. if expected is
+                  "211 kha" and the actual says "220,000 hectares", return 220)
+                - values_same_quantity: true if both numbers measure the same thing;
+                  false if they measure different quantities. Set this to **false** when
+                  the actual insight reports a different metric from the one asked for -
+                  for example expected "tree cover loss" but the answer gives "primary
+                  forest loss", or expected a total but the answer gives an annual
+                  average. Closeness of the two numbers is irrelevant to this judgement.
+
+                Extract carefully: these values are compared numerically downstream, so a
+                misread number changes the verdict.
                 """,
             ),
         ],
@@ -192,13 +270,32 @@ def llm_judge(
         },
     )
 
-    if include_reason:
-        return {
-            "score": llm_judgement.score,
-            "reason": llm_judgement.reason,
-        }
+    score = llm_judgement.score
+    reason = llm_judgement.reason
 
-    return llm_judgement.score
+    # Numeric answers: recompute the verdict from the extracted values so the tolerance
+    # is enforced by code. The model's own arithmetic is kept in `reason` for audit.
+    if llm_judgement.answer_eval_type == "numeric":
+        verdict = _numeric_verdict(
+            llm_judgement.expected_value,
+            llm_judgement.actual_value,
+            llm_judgement.values_same_quantity,
+        )
+        if verdict is not None:
+            computed_score, explanation = verdict
+            if computed_score != score:
+                reason = (
+                    f"{explanation} — overriding the model's score of {score}. "
+                    f"Model said: {reason}"
+                )
+            else:
+                reason = f"{explanation}. {reason}"
+            score = computed_score
+
+    if include_reason:
+        return {"score": score, "reason": reason}
+
+    return score
 
 
 def llm_judge_chart(

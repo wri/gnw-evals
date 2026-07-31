@@ -93,7 +93,14 @@ All LLM-as-a-Judge checks run on **Claude Haiku 4.5** (`claude-haiku-4-5`, via L
 - **Evaluated when:** `expected_answer` is provided AND agent produced `charts_data[0]["insight"]`
 - **Comparison:** LLM-as-a-judge
   - Type-aware evaluation: boolean, numeric, year, or named entity
-  - Numeric answers: tolerance-based comparison (configurable, currently 5%)
+  - Numeric answers: **the tolerance is applied in code, not by the model.** The judge
+    extracts `expected_value`, `actual_value` (converted to the expected answer's unit)
+    and `values_same_quantity`; `_numeric_verdict` in `llm_judges.py` then computes the
+    relative difference against `NUMERIC_TOLERANCE` (5%) and overrides the model's score.
+    `values_same_quantity=false` fails the row regardless of how close the numbers are —
+    tree cover loss and primary forest loss can agree within 5% and still be the wrong
+    answer. If either value cannot be extracted, or the expected value is zero, the
+    model's own score stands.
   - Boolean/year answers: exact match required
   - Named entity answers: semantic similarity
 - **Score:** 1 if insight captures expected answer, otherwise 0
@@ -163,7 +170,9 @@ computed — see 6b above. Of the date checks, only `date_extraction_score` is s
 ### LLM-as-a-Judge Details
 - **Model:** Claude Haiku 4.5 (`claude-haiku-4-5`, via LangChain)
 - **Answer Type Detection:** Automatic classification as boolean, numeric, year, or named entity
-- **Numeric Tolerance:** Configurable percentage-based tolerance (currently 5%)
+- **Numeric Tolerance:** `NUMERIC_TOLERANCE` in `evaluators/llm_judges.py`, currently
+  `0.05`. Interpolated into the judge prompt from that constant so prompt and code
+  cannot drift apart. The boundary is inclusive.
 - **Clarification Detection:** Pattern-based identification of uncertainty, questions, or requests for more information
 
 ### Multiple Values Support
