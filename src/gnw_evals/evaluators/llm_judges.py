@@ -1,17 +1,18 @@
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel
 
+from gnw_evals.evaluators.chart_numeric import evaluate_numeric_support
 from gnw_evals.utils.models import HAIKU
 
 # Relative tolerance for numeric answers, as a fraction of the expected value.
 # Interpolated into the prompt so the threshold and its worked examples cannot drift.
 #
-# Applies to `llm_judge` (agent_answer) only. `llm_judge_chart` deliberately has no
-# tolerance rule: it does not reliably compute the comparison. Asked about a chart whose
-# 25 yearly values sum to 25.31 Mha, it reported that same chart as summing to 27.4 Mha
-# and to 26.0 Mha, each time "within tolerance" of whatever expected value it was given.
-# A prose tolerance there turns wrong-number failures into false passes, so the chart
-# judge needs the comparison done in code. See llm/TASKS.md.
+# `llm_judge` applies it from the prompt: that judge reliably does the arithmetic.
+# `llm_judge_chart` does not — asked about a chart whose 25 yearly values sum to 25.31 Mha
+# it reported that same chart as summing to 27.4 Mha and to 26.0 Mha, each "within
+# tolerance" of whatever expected value it was given. So for charts the same constant is
+# applied in code by `chart_numeric.evaluate_numeric_support`, against the chart's own
+# encoded data, and the prompt tells the model not to judge numbers at all.
 NUMERIC_TOLERANCE = 0.02
 _TOLERANCE_PCT = f"{NUMERIC_TOLERANCE:.0%}"
 
@@ -283,10 +284,19 @@ ranges would help a user verify or understand the expected answer.
 
 Score 0 if the chart(s) are missing important data, use the wrong
 metric/location/date range, have unsuitable chart types for the comparison,
-contradict the expected answer, or are too incomplete to judge.
+report a different quantity or category from the one asked for, or are too
+incomplete to judge.
 
 Do not score based on any prose insight or narrative answer. Focus on the
 chart specifications, encoded data, labels, fields, and visual structures.
+
+NUMERIC AGREEMENT IS NOT YOUR JOB. Whether the chart's figures match the
+expected answer's figures is checked separately, in code, against the chart's
+own data. Do not compute differences or percentages, do not judge how close two
+numbers are, and do not score 0 because a figure looks too high or too low.
+Judge the chart's structure and coverage: does it plot the right measure, for
+the right place and period, broken down the way the query needs? A chart that is
+structurally right is a 1 even if you suspect its numbers.
 
 """
         + codeact_instruction
@@ -316,13 +326,28 @@ chart specifications, encoded data, labels, fields, and visual structures.
 
     llm_judgement = judge_chain.invoke(invoke_kwargs)
 
-    if include_reason:
-        return {
-            "score": llm_judgement.score,
-            "reason": llm_judgement.reason,
-        }
+    score = llm_judgement.score
+    reason = llm_judgement.reason
 
-    return llm_judgement.score
+    # The model judged structure; the figures are compared here, against the chart's own
+    # data. A structurally sound chart whose numbers don't support the expected answer
+    # still fails, and a numeric gap inside tolerance can no longer fail one.
+    numeric = evaluate_numeric_support(expected_answer, charts_json, NUMERIC_TOLERANCE)
+    if numeric["support"] == "unsupported":
+        if score != 0:
+            reason = (
+                f"{numeric['explanation']} — overriding the judge, which said: {reason}"
+            )
+        else:
+            reason = f"{numeric['explanation']}. {reason}"
+        score = 0
+    elif numeric["support"] == "supported":
+        reason = f"{numeric['explanation']}. {reason}"
+
+    if include_reason:
+        return {"score": score, "reason": reason}
+
+    return score
 
 
 def llm_judge_expected_text(

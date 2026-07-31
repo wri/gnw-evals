@@ -91,12 +91,21 @@ All LLM-as-a-Judge checks run on **Claude Haiku 4.5** (`claude-haiku-4-5`, via L
 
 **7. Charts Answer Score** (`charts_answer_score`)
 - **Evaluated when:** `expected_answer` is provided AND agent produced `charts_data[0]["insight"]`
-- **Comparison:** LLM-as-a-judge
-  - Type-aware evaluation: boolean, numeric, year, or named entity
-  - Numeric answers: tolerance-based comparison (currently 2%, see LLM-as-a-Judge Details)
-  - Boolean/year answers: exact match required
-  - Named entity answers: semantic similarity
-- **Score:** 1 if insight captures expected answer, otherwise 0
+- **Comparison:** split between the judge and code
+  - **LLM-as-a-judge — structure and coverage only.** Does the chart plot the right measure,
+    for the right place and period, broken down the way the query needs? The prompt tells it
+    explicitly *not* to judge how close two numbers are.
+  - **Code — the figures.** `chart_numeric.evaluate_numeric_support` parses the figure out of
+    `expected_answer` and compares it against candidates computed from the chart's own
+    encoded data: leaf values, column totals, column maxima, and per-column shares when the
+    expectation is a percentage. Tolerance is `NUMERIC_TOLERANCE`.
+  - A row needs **both**: a structurally sound chart whose data doesn't support the expected
+    figure scores 0, and a numeric gap inside tolerance can no longer fail one.
+  - The comparison is skipped (deferring to the judge alone) when there is no numeric claim —
+    a year, a bare named entity, or a figure whose decimal separator is ambiguous
+    (`230.003` may be 230,003).
+- **Score:** 1 if both the structure and the figures hold up, otherwise 0. The reason column
+  records the arithmetic, so any verdict can be audited without re-running.
 
 **8. Agent Answer Score** (`agent_answer_score`)
 - **Evaluated when:** `expected_answer` is provided AND agent produced a final message
@@ -166,15 +175,18 @@ computed — see 6b above. Of the date checks, only `date_extraction_score` is s
 - **Numeric Tolerance:** `NUMERIC_TOLERANCE` in `evaluators/llm_judges.py`, currently **2%**
   (relative to the expected value, boundary inclusive). Interpolated into the prompt, so the
   threshold and its worked examples cannot drift apart.
-  - Applies to **`agent_answer_score` only.** Verified behaviour: 1.5% and an exact 2.0%
-    score 1; 4% and 20% score 0.
-  - **`charts_answer_score` has no numeric tolerance**, so a chart whose figure differs from
-    `expected_answer` by any margin can fail. This is deliberate: the chart judge does not
-    reliably perform the comparison. Given a chart whose 25 yearly values sum to 25.31 Mha,
-    it reported that same chart as summing to 27.4 Mha and to 26.0 Mha, each "within
-    tolerance" of whatever expected value it was handed. A prose tolerance there converts
-    wrong-number failures into false passes; the fix is to compare in code. See
-    `llm/TASKS.md`.
+  - **`agent_answer_score` applies it from the prompt.** That judge does the arithmetic
+    reliably. Verified: 1.5% and an exact 2.0% score 1; 4% and 20% score 0.
+  - **`charts_answer_score` applies it in code**, via
+    `chart_numeric.evaluate_numeric_support`, against the chart's own encoded data. The chart
+    judge cannot be trusted with the comparison: given a chart whose 25 yearly values sum to
+    25.31 Mha, it reported that same chart as summing to 27.4 Mha and to 26.0 Mha, each
+    "within tolerance" of whatever expected value it was handed. It also computed a 1.8%
+    difference correctly and then called it "exceeding the 2% tolerance". Both prompts read
+    the same constant, so the two judges cannot drift apart.
+  - **Units.** The parser resolves `Mha`/`kha`/`ha`/`hektar` and the written scales
+    `thousand`/`million`/`billion` into the unit the chart data is encoded in, so
+    "25.54 million hectares" and "25 Mha" compare correctly against raw hectare values.
 - **Clarification Detection:** Pattern-based identification of uncertainty, questions, or requests for more information
 
 ### Multiple Values Support

@@ -287,3 +287,70 @@ Created a bitmap style cheatsheet of results where each row is an eval row, and 
 * branch: `notebook`
 
 ---
+
+---
+
+## Task: Compare numbers in code for the chart judge
+
+**Branch:** `fix/chart-numeric-in-code` (stacked on `fix/numeric-tolerance-2pct`)
+
+**Priority:** High
+**Status:** [x]
+**Category:** Fix
+
+`llm_judge_chart` has no numeric tolerance, and it cannot be given one in prose: it does
+not compute the comparison, it asserts agreement with whatever expected value it is
+handed.
+
+Reproduced against gold 1-076's stored chart JSON, whose 25 yearly values sum to
+**25.31 Mha**:
+
+| Expected value given to the judge | True difference | Judge's claim |
+|---|---|---|
+| 27.4 Mha | 7.6% | "can be summed to derive the total ... 27.4 Mha ... within tolerance (0.15% difference)" |
+| 26.0 Mha | 2.7% | "actual sum: 25.99 Mha, difference: 0.04%" |
+
+Separately, on gold 1-088, it computed a difference of 1.8% correctly and then wrote
+"exceeding the 2% tolerance threshold" — the arithmetic is right, the comparison is not.
+
+Consequence today: chart rows can fail on a numeric difference well inside the tolerance
+the answer judge honours (four rows in the 2026-07-31 gold run: 1-002 at 1.54%, 1-006 at
+1.87%, 1-009 at 1.75%, 1-027 at 0.00%). Because `charts_answer` straddles Analysis and
+Output, each one damages two failure buckets.
+
+Also note the judge is *deterministic* per prompt — 5/5 identical verdicts on repeated
+calls — so any wording change is fully attributable, and any wording change to this prompt
+perturbs unrelated verdicts. Two rows (1-060, 1-076) flipped 1→0 on identical charts from
+an added paragraph that never mentioned them.
+
+Approach: have the model **extract** (`expected_value`, `actual_value`,
+`values_same_quantity`) and compare in Python against `NUMERIC_TOLERANCE`, as drafted in
+closed PR #40 for the answer judge. For charts the extracted `actual_value` must come from
+the chart's own encoded data, which is available to the evaluator — so it can be summed in
+Python rather than trusted from the model.
+
+### Resolution
+
+`chart_numeric.evaluate_numeric_support` parses the expected figure and compares it against
+candidates computed from the chart's own encoded data — leaf values, column totals, column
+maxima, and per-column shares for percentage expectations. `llm_judge_chart`'s prompt now
+states that numeric agreement is not its job; the model judges structure and coverage, and
+code supplies the numeric verdict. A row needs both.
+
+Measured by replaying all 59 chart rows of the 2026-07-31 staging run through both judges
+(chart JSON held constant, so every difference is attributable): **56 unchanged, 3 changed.**
+
+- 1-034 `1 → 0`. The judge had claimed the yearly values "sum to approximately 10,765.60 ha".
+  They sum to 13,359.47. A confabulated false pass, now caught.
+- 1-060 `1 → 0`. The structure-only prompt objects that no chart filters by permanent
+  agriculture and that `para_area_ha` is misaligned — the same substance as the original run's
+  verdict.
+- 1-053 `0 → 1`. A TRUE/FALSE row the old prompt failed partly on numeric grounds.
+
+End-to-end on staging with codeact, three of the motivating rows recovered (1-006, 1-027,
+1-088). 1-009 still fails on structure while its reason now records the number as within
+tolerance — the split working as intended.
+
+Written scales were worth catching: "25.54 million hectares" parsed as 25.54 reported
+differences of tens of millions of percent and failed three rows whose charts were correct
+(1-059, 1-079, 1-103). Covered by `tests/test_chart_numeric.py`.
