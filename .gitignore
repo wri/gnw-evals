@@ -218,3 +218,6 @@ uv.lock
 
 # debug and temp
 temp*
+
+# Local Claude
+.claude/*

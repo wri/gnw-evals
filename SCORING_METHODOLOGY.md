@@ -54,12 +54,38 @@ All LLM-as-a-Judge checks run on **Claude Haiku 4.5** (`claude-haiku-4-5`, via L
   - Checks if `row_count >= 1` (configurable minimum threshold)
 - **Score:** 1 if data was successfully retrieved, otherwise 0
 
-**6. Date Match Score** (`date_match_score`)
+**6. Date Extraction Score** (`date_extraction_score`)
 - **Evaluated when:** Both `expected_start_date` AND `expected_end_date` are provided
-- **Comparison:** Hard logic with date normalization
-  - Normalizes multiple date formats (M/D/YYYY, YYYY-MM-DD, YYYY)
-  - Compares start and end dates separately
-- **Score:** 1 if both start and end dates match expected, otherwise 0
+- **Source:** the `start_date`/`end_date` **arguments the agent passed to its own
+  tools** — `pull_data`, falling back to `pick_dataset` when `pull_data` carries no
+  dates. Read from `agent_state["messages"]` tool calls, not from recorded state.
+- **Comparison:** Hard logic with date normalization (M/D/YYYY, YYYY-MM-DD, YYYY)
+- **Score:** 1 if any dated tool call matches both expected dates, otherwise 0.
+  A row that pulls more than once passes if any call matches. `None` if no dates were
+  expected, or the expected dates are unparseable. `0` if dates were expected but the
+  agent never scoped a period at all.
+- **Also reported:** `actual_extracted_start_date`, `actual_extracted_end_date`,
+  `date_extraction_source` (which tool supplied them), `actual_extracted_windows`
+  (every window observed, for diagnosis)
+
+**6b. Date Coverage Score** (`date_coverage_score`) — *informational, not scored*
+- **Evaluated when:** Both expected dates are provided
+- **Source:** `agent_state["start_date"]`/`["end_date"]`, falling back to the latest
+  `statistics` entry
+- **Comparison:** **containment**, not equality — passes when the recorded range
+  *contains* the requested range
+- **Score:** 1 if the recorded range covers the request, otherwise 0
+- **Excluded from `overall_score` by design.** The recorded range is inconsistent
+  about what it holds: for the same query it has been observed recording the
+  requested window, the dataset's full coverage extent (e.g. 2001–2025 for Hansen),
+  and a rolling window ending today. The agent legitimately pulls a wider range and
+  slices in code, so an exact-match check penalised correct behaviour — on one full
+  gold run, 8 of 9 date failures were rows that had extracted and answered the right
+  year. Containment is the only claim the recorded range can support, and it still
+  fails usefully when the pull genuinely misses part of the requested period.
+
+> **Renamed:** this check was `date_match_score` before 2026-07-30. Results CSVs
+> written prior to that use the old column name.
 
 ### Answer Quality
 
@@ -111,8 +137,11 @@ overall_score = sum(valid_scores) / count(valid_scores)
 ```
 
 **Example 1:** Test with all checks
-- AOI ID: 1, Subregion: 1, Dataset ID: 1, Context Layer: 1, Data Pull: 1, Date: 1, Charts Answer: 0, Agent Answer: 0
-- Overall: (1+1+1+1+1+1+0+0) / 8 = **0.75**
+- AOI ID: 1, Dataset ID: 1, Context Layer: 1, Data Pull: 1, Date Extraction: 1, Charts Answer: 0, Agent Answer: 0
+- Overall: (1+1+1+1+1+0+0) / 7 = **0.71**
+
+Note that `date_coverage_score` does **not** enter this average even when it is
+computed — see 6b above. Of the date checks, only `date_extraction_score` is scored.
 
 **Example 2:** Test with only answer check
 - AOI ID: None, Dataset ID: None, Data Pull: None, Charts Answer: 1, Agent Answer: 1

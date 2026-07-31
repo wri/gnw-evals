@@ -67,7 +67,12 @@ class TestResult(BaseModel):
 
     # Data pull evaluation fields - separate binary scores (0/1/None)
     data_pull_exists_score: float | None = None
-    date_match_score: float | None = None
+    date_coverage_score: float | None = None
+    date_extraction_score: float | None = None
+    actual_extracted_start_date: str | None = None
+    actual_extracted_end_date: str | None = None
+    date_extraction_source: str | None = None
+    actual_extracted_windows: str | None = None
     row_count: int = 0
     min_rows: int = 1
     data_pull_success: bool = False
@@ -146,7 +151,8 @@ class TestResult(BaseModel):
     dataset_parameter_match_score_std: float | None = None
     context_layer_match_score_std: float | None = None
     data_pull_exists_score_std: float | None = None
-    date_match_score_std: float | None = None
+    date_coverage_score_std: float | None = None
+    date_extraction_score_std: float | None = None
     charts_answer_score_std: float | None = None
     agent_answer_score_std: float | None = None
     expected_text_match_score_std: float | None = None

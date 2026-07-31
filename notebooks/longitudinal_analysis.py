@@ -148,7 +148,9 @@ def _(df_all):
         "aoi_id_match_score": "AOI GADM ID Match",
         "subregion_match_score": "AOI Subregion Match",
         "dataset_id_match_score": "Dataset ID Match",
-        "date_match_score": "Date Match",
+        "date_extraction_score": "Date Extraction",
+        "date_coverage_score": "Date Coverage",
+        "date_match_score": "Date Match (legacy)",
         "context_layer_match_score": "Context Layer Match",
         "data_pull_exists_score": "Data Pull Exists",
         "dataset_parameter_match_score": "Dataset Parameters Match",
@@ -197,7 +199,7 @@ def _():
             "expected_context_layer",
             "actual_context_layer",
         ],
-        "date_match_score": [
+        "date_coverage_score": [
             "expected_start_date",
             "actual_start_date",
             "expected_end_date",
@@ -254,7 +256,7 @@ def _(df_all, mo, score_cols, score_map):
         "agent_answer_score",
         "charts_answer_score",
         "dataset_id_match_score",
-        "date_match_score",
+        "date_coverage_score",
         "data_pull_exists_score",
     ]
     # options: label -> key so .value returns keys

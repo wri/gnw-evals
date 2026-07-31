@@ -166,7 +166,8 @@ _SCORE_FIELDS = [
     "dataset_parameter_match_score",
     "context_layer_match_score",
     "data_pull_exists_score",
-    "date_match_score",
+    "date_coverage_score",
+    "date_extraction_score",
     "charts_answer_score",
     "agent_answer_score",
     "expected_text_match_score",
@@ -234,7 +235,9 @@ async def run_csv_tests(config) -> list[TestResult]:
         config.random_seed,
         config.offset,
     )
-    effective_num_workers = min(config.num_workers, 5, len(test_cases))
+    # Honour --num-workers as given, bounded only by the number of tests. Previously
+    # this was also capped at 5, which silently ignored any higher value.
+    effective_num_workers = min(config.num_workers, len(test_cases))
     num_trials = getattr(config, "num_trials", 1)
     print(
         f"Running {len(test_cases)} tests with {effective_num_workers} workers"
@@ -366,7 +369,8 @@ def _print_csv_summary(
     print(_metric_line("Dataset Parameter Match", "dataset_parameter_match_score"))
     print(_metric_line("Context Layer Match", "context_layer_match_score"))
     print(_metric_line("Data Pull Exists", "data_pull_exists_score"))
-    print(_metric_line("Date Match", "date_match_score"))
+    print(_metric_line("Date Extraction", "date_extraction_score"))
+    print(_metric_line("Date Coverage (info)", "date_coverage_score"))
     print(_metric_line("Charts Answer", "charts_answer_score"))
     print(_metric_line("Expected Text Match", "expected_text_match_score"))
     print(_metric_line("Clarification Requested", "clarification_requested_score"))

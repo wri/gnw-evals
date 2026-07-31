@@ -29,7 +29,7 @@ EVAL_SET_PRIMARY_METRIC: dict[str, str] = {
     "analysis_results": "agent_answer_score",
     "analysis_interpretation": "agent_answer_score",
     "guardrail": "clarification_requested_score",
-    "date_selection": "date_match_score",
+    "date_selection": "date_extraction_score",
 }
 
 

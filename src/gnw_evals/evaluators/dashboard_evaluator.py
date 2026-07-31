@@ -112,6 +112,8 @@ def _widget_is_valid(widget: dict[str, Any]) -> bool:
     widget_type = widget.get("widget_type")
     if widget_type == "insight":
         return widget.get("insight") is not None
+    if widget_type == "text":
+        return widget.get("text") is not None
     if widget_type == "map":
         config = widget.get("config") or {}
         snapshot = config.get("dataset") or config.get("imagery") or {}
