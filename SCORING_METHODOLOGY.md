@@ -93,7 +93,7 @@ All LLM-as-a-Judge checks run on **Claude Haiku 4.5** (`claude-haiku-4-5`, via L
 - **Evaluated when:** `expected_answer` is provided AND agent produced `charts_data[0]["insight"]`
 - **Comparison:** LLM-as-a-judge
   - Type-aware evaluation: boolean, numeric, year, or named entity
-  - Numeric answers: tolerance-based comparison (configurable, currently 5%)
+  - Numeric answers: tolerance-based comparison (currently 2%, see LLM-as-a-Judge Details)
   - Boolean/year answers: exact match required
   - Named entity answers: semantic similarity
 - **Score:** 1 if insight captures expected answer, otherwise 0
@@ -163,7 +163,18 @@ computed — see 6b above. Of the date checks, only `date_extraction_score` is s
 ### LLM-as-a-Judge Details
 - **Model:** Claude Haiku 4.5 (`claude-haiku-4-5`, via LangChain)
 - **Answer Type Detection:** Automatic classification as boolean, numeric, year, or named entity
-- **Numeric Tolerance:** Configurable percentage-based tolerance (currently 5%)
+- **Numeric Tolerance:** `NUMERIC_TOLERANCE` in `evaluators/llm_judges.py`, currently **2%**
+  (relative to the expected value, boundary inclusive). Interpolated into the prompt, so the
+  threshold and its worked examples cannot drift apart.
+  - Applies to **`agent_answer_score` only.** Verified behaviour: 1.5% and an exact 2.0%
+    score 1; 4% and 20% score 0.
+  - **`charts_answer_score` has no numeric tolerance**, so a chart whose figure differs from
+    `expected_answer` by any margin can fail. This is deliberate: the chart judge does not
+    reliably perform the comparison. Given a chart whose 25 yearly values sum to 25.31 Mha,
+    it reported that same chart as summing to 27.4 Mha and to 26.0 Mha, each "within
+    tolerance" of whatever expected value it was handed. A prose tolerance there converts
+    wrong-number failures into false passes; the fix is to compare in code. See
+    `llm/TASKS.md`.
 - **Clarification Detection:** Pattern-based identification of uncertainty, questions, or requests for more information
 
 ### Multiple Values Support

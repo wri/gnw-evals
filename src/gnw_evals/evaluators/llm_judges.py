@@ -3,6 +3,103 @@ from pydantic import BaseModel
 
 from gnw_evals.utils.models import HAIKU
 
+# Relative tolerance for numeric answers, as a fraction of the expected value.
+# Interpolated into the prompt so the threshold and its worked examples cannot drift.
+#
+# Applies to `llm_judge` (agent_answer) only. `llm_judge_chart` deliberately has no
+# tolerance rule: it does not reliably compute the comparison. Asked about a chart whose
+# 25 yearly values sum to 25.31 Mha, it reported that same chart as summing to 27.4 Mha
+# and to 26.0 Mha, each time "within tolerance" of whatever expected value it was given.
+# A prose tolerance there turns wrong-number failures into false passes, so the chart
+# judge needs the comparison done in code. See llm/TASKS.md.
+NUMERIC_TOLERANCE = 0.02
+_TOLERANCE_PCT = f"{NUMERIC_TOLERANCE:.0%}"
+
+# Numeric scoring rules for the answer judge. Kept at module level, and free of `{}` so
+# it can be concatenated into a ChatPromptTemplate without being read as a placeholder —
+# and so tests can assert on it without an API call.
+_NUMERIC_RULES = f"""
+                **NUMERIC** (numbers with optional units):
+                - Expected answer contains numbers: "198.4 hectares", "0.20%", "211 kha", "924,000 km²"
+                - **Extraction rule**: Identify THE main answer number (usually stated as "total", "X hectares were", or the first/most prominent number directly answering the question)
+                - **Tolerance formula**: Calculate |actual - expected| / expected
+                  - If result <= {NUMERIC_TOLERANCE} ({_TOLERANCE_PCT}), then MATCH (1)
+                  - If result > {NUMERIC_TOLERANCE} ({_TOLERANCE_PCT}), then NO MATCH (0)
+                - Examples of MATCH (within {_TOLERANCE_PCT} tolerance):
+                  - Expected "198.4 hectares" vs Actual "200 hectares" → MATCH (1) [0.8% difference]
+                  - Expected "211 kha" vs Actual "215 kha" → MATCH (1) [1.9% difference]
+                  - Expected "100 hectares" vs Actual "102 hectares" → MATCH (1) [exactly {_TOLERANCE_PCT}, the boundary is inclusive]
+                  - Expected "200 kha" vs Actual "200,000 hectares" → MATCH (1) [same value, different units]
+                - Examples of NO MATCH (exceeds {_TOLERANCE_PCT} tolerance):
+                  - Expected "100 hectares" vs Actual "103 hectares" → NO MATCH (0) [3% difference]
+                  - Expected "0.20%" vs Actual "0.19%" → NO MATCH (0) [5% difference]
+                  - Expected "211 kha" vs Actual "235 kha" → NO MATCH (0) [11.4% difference]
+                  - Expected "198.4 hectares" vs Actual "232 hectares" → NO MATCH (0) [16.9% difference]
+                - For percentages, compare the percentage values directly
+                - **When multiple numbers present**: Use the number that directly answers the question, not breakdown/detail numbers
+                  - Example: "A total of 231.97 hectares were affected. Short vegetation had 176.36 ha..." → Use 231.97, not 176.36
+"""
+
+ANSWER_JUDGE_PROMPT = (
+    """
+                You are evaluating if an AI-generated insight captures the essence of an expected answer.
+
+                EXPECTED ANSWER: {expected_answer}
+
+                ACTUAL INSIGHT: {actual_answer}
+
+                Your task is to:
+                1. Detect the answer type
+                2. Apply the appropriate comparison logic
+                3. Return a score (0 or 1)
+
+                ## Answer Type Detection & Scoring Rules
+
+                **BOOLEAN** (true/false, yes/no questions):
+                - Expected answer contains: "TRUE", "FALSE", "True", "False", "true", "false", "yes", "no", "Yes", "No"
+                - Scoring: Exact semantic match required
+                - **First, extract the boolean value from the actual answer** (usually at the start: "True", "False", "yes", "no")
+                - **Then compare**: TRUE matches with yes/true/affirmative, FALSE matches with no/false/negative
+                - Examples:
+                  - Expected "TRUE" vs Actual "true" → MATCH (1)
+                  - Expected "TRUE" vs Actual "yes" → MATCH (1)
+                  - Expected "TRUE" vs Actual "False." → NO MATCH (0) [opposite values]
+                  - Expected "TRUE" vs Actual "no" → NO MATCH (0) [opposite values]
+                  - Expected "FALSE" vs Actual "TRUE" → NO MATCH (0) [opposite values]
+                  - Expected "FALSE" vs Actual "false" → MATCH (1)
+                  - Expected "TRUE" vs Actual "The statement is correct" → MATCH (1) [affirms without explicit FALSE]
+                - **CRITICAL**: If the actual answer contains "False", "false", "no", or "No", it CANNOT match "TRUE". Vice versa.
+"""
+    + _NUMERIC_RULES
+    + """
+                **YEAR** (4-digit years):
+                - Expected answer is a year: "2015", "2023"
+                - Scoring: Exact match required
+                - Examples:
+                  - Expected "2015" vs Actual "2015" → MATCH (1)
+                  - Expected "2015" vs Actual "2016" → NO MATCH (0)
+
+                **NAMED_ENTITY** (countries, regions, places, land cover types):
+                - Expected answer is a proper noun or descriptive term: "Brazil", "South Dakota"
+                - Scoring: Semantic similarity - the actual answer should clearly identify the same entity or category
+                - Examples:
+                  - Expected "Brazil" vs Actual "Brazil had the most" → MATCH (1)
+                  - Expected "South Dakota" vs Actual "S Dakota" → MATCH (1)
+                  - Expected "Brazil" vs Actual "Australia" → NO MATCH (0)
+
+                ## Instructions
+
+                1. First, identify which answer_eval_type the expected answer belongs to
+                2. Apply the appropriate scoring rule from above
+                3. Return:
+                   - score: 1 if it matches according to the rules, 0 if it does not
+                   - reason: one concise sentence explaining why you gave that score
+                   - answer_eval_type: one of "boolean", "numeric", "year", "named_entity"
+
+                Be strict with the rules above, especially for boolean, numeric, and year types.
+                """
+)
+
 
 def llm_judge_clarification(agent_state: dict, query: str) -> dict:
     """Use LLM to judge if the agent is asking for clarification instead of selecting an AOI."""
@@ -101,87 +198,7 @@ def llm_judge(
         reason: str
         score: int
 
-    JUDGE_PROMPT = ChatPromptTemplate.from_messages(
-        [
-            (
-                "user",
-                """
-                You are evaluating if an AI-generated insight captures the essence of an expected answer.
-
-                EXPECTED ANSWER: {expected_answer}
-
-                ACTUAL INSIGHT: {actual_answer}
-
-                Your task is to:
-                1. Detect the answer type
-                2. Apply the appropriate comparison logic
-                3. Return a score (0 or 1)
-
-                ## Answer Type Detection & Scoring Rules
-
-                **BOOLEAN** (true/false, yes/no questions):
-                - Expected answer contains: "TRUE", "FALSE", "True", "False", "true", "false", "yes", "no", "Yes", "No"
-                - Scoring: Exact semantic match required
-                - **First, extract the boolean value from the actual answer** (usually at the start: "True", "False", "yes", "no")
-                - **Then compare**: TRUE matches with yes/true/affirmative, FALSE matches with no/false/negative
-                - Examples:
-                  - Expected "TRUE" vs Actual "true" → MATCH (1)
-                  - Expected "TRUE" vs Actual "yes" → MATCH (1)
-                  - Expected "TRUE" vs Actual "False." → NO MATCH (0) [opposite values]
-                  - Expected "TRUE" vs Actual "no" → NO MATCH (0) [opposite values]
-                  - Expected "FALSE" vs Actual "TRUE" → NO MATCH (0) [opposite values]
-                  - Expected "FALSE" vs Actual "false" → MATCH (1)
-                  - Expected "TRUE" vs Actual "The statement is correct" → MATCH (1) [affirms without explicit FALSE]
-                - **CRITICAL**: If the actual answer contains "False", "false", "no", or "No", it CANNOT match "TRUE". Vice versa.
-
-                **NUMERIC** (numbers with optional units):
-                - Expected answer contains numbers: "198.4 hectares", "0.20%", "211 kha", "924,000 km²"
-                - **Extraction rule**: Identify THE main answer number (usually stated as "total", "X hectares were", or the first/most prominent number directly answering the question)
-                - **Tolerance formula**: Calculate |actual - expected| / expected
-                  - If result <= 0.05 (5%), then MATCH (1)
-                  - If result > 0.05 (5%), then NO MATCH (0)
-                - Examples of MATCH (within 5% tolerance):
-                  - Expected "198.4 hectares" vs Actual "200 hectares" → MATCH (1) [0.8% difference]
-                  - Expected "0.20%" vs Actual "0.19%" → MATCH (1) [5% difference]
-                  - Expected "211 kha" vs Actual "220 kha" → MATCH (1) [4.3% difference]
-                  - Expected "200 kha" vs Actual "200,000 hectares" → MATCH (1) [same value, different units]
-                - Examples of NO MATCH (exceeds 5% tolerance):
-                  - Expected "198.4 hectares" vs Actual "232 hectares" → NO MATCH (0) [16.9% difference]
-                  - Expected "211 kha" vs Actual "235 kha" → NO MATCH (0) [11.4% difference]
-                  - Expected "100 hectares" vs Actual "120 hectares" → NO MATCH (0) [20% difference]
-                - For percentages, compare the percentage values directly
-                - **When multiple numbers present**: Use the number that directly answers the question, not breakdown/detail numbers
-                  - Example: "A total of 231.97 hectares were affected. Short vegetation had 176.36 ha..." → Use 231.97, not 176.36
-
-                **YEAR** (4-digit years):
-                - Expected answer is a year: "2015", "2023"
-                - Scoring: Exact match required
-                - Examples:
-                  - Expected "2015" vs Actual "2015" → MATCH (1)
-                  - Expected "2015" vs Actual "2016" → NO MATCH (0)
-
-                **NAMED_ENTITY** (countries, regions, places, land cover types):
-                - Expected answer is a proper noun or descriptive term: "Brazil", "South Dakota"
-                - Scoring: Semantic similarity - the actual answer should clearly identify the same entity or category
-                - Examples:
-                  - Expected "Brazil" vs Actual "Brazil had the most" → MATCH (1)
-                  - Expected "South Dakota" vs Actual "S Dakota" → MATCH (1)
-                  - Expected "Brazil" vs Actual "Australia" → NO MATCH (0)
-
-                ## Instructions
-
-                1. First, identify which answer_eval_type the expected answer belongs to
-                2. Apply the appropriate scoring rule from above
-                3. Return:
-                   - score: 1 if it matches according to the rules, 0 if it does not
-                   - reason: one concise sentence explaining why you gave that score
-                   - answer_eval_type: one of "boolean", "numeric", "year", "named_entity"
-
-                Be strict with the rules above, especially for boolean, numeric, and year types.
-                """,
-            ),
-        ],
-    )
+    JUDGE_PROMPT = ChatPromptTemplate.from_messages([("user", ANSWER_JUDGE_PROMPT)])
 
     judge_chain = JUDGE_PROMPT | HAIKU.with_structured_output(Score)
 

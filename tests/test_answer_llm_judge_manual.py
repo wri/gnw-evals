@@ -31,22 +31,40 @@ test_cases = [
     },
     # NUMERIC tests
     {
-        "name": "Numeric - within 5% tolerance",
+        "name": "Numeric - within 2% tolerance",
         "expected": "198.4 hectares",
         "actual": "200 hectares",
         "should_match": True,
     },
     {
-        "name": "Numeric - exceeds 5% tolerance",
+        "name": "Numeric - exceeds 2% tolerance",
         "expected": "211 kha",
         "actual": "230 kha",
         "should_match": False,
     },
     {
-        "name": "Numeric - percentage match",
+        "name": "Numeric - on the 2% boundary (inclusive)",
+        "expected": "100 hectares",
+        "actual": "102 hectares",
+        "should_match": True,
+    },
+    {
+        "name": "Numeric - just outside 2%",
+        "expected": "100 hectares",
+        "actual": "103 hectares",
+        "should_match": False,
+    },
+    {
+        "name": "Numeric - percentage match within 2%",
+        "expected": "0.20%",
+        "actual": "0.199%",
+        "should_match": True,
+    },
+    {
+        "name": "Numeric - percentage 5% apart, no longer a match",
         "expected": "0.20%",
         "actual": "0.19%",
-        "should_match": True,
+        "should_match": False,
     },
     # YEAR tests
     {

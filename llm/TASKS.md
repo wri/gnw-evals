@@ -8,6 +8,43 @@
 
 ---
 
+### Task: Compare numbers in code for the chart judge
+
+**Priority:** High
+**Status:** [ ]
+**Category:** Fix
+
+`llm_judge_chart` has no numeric tolerance, and it cannot be given one in prose: it does
+not compute the comparison, it asserts agreement with whatever expected value it is
+handed.
+
+Reproduced against gold 1-076's stored chart JSON, whose 25 yearly values sum to
+**25.31 Mha**:
+
+| Expected value given to the judge | True difference | Judge's claim |
+|---|---|---|
+| 27.4 Mha | 7.6% | "can be summed to derive the total ... 27.4 Mha ... within tolerance (0.15% difference)" |
+| 26.0 Mha | 2.7% | "actual sum: 25.99 Mha, difference: 0.04%" |
+
+Separately, on gold 1-088, it computed a difference of 1.8% correctly and then wrote
+"exceeding the 2% tolerance threshold" — the arithmetic is right, the comparison is not.
+
+Consequence today: chart rows can fail on a numeric difference well inside the tolerance
+the answer judge honours (four rows in the 2026-07-31 gold run: 1-002 at 1.54%, 1-006 at
+1.87%, 1-009 at 1.75%, 1-027 at 0.00%). Because `charts_answer` straddles Analysis and
+Output, each one damages two failure buckets.
+
+Also note the judge is *deterministic* per prompt — 5/5 identical verdicts on repeated
+calls — so any wording change is fully attributable, and any wording change to this prompt
+perturbs unrelated verdicts. Two rows (1-060, 1-076) flipped 1→0 on identical charts from
+an added paragraph that never mentioned them.
+
+Approach: have the model **extract** (`expected_value`, `actual_value`,
+`values_same_quantity`) and compare in Python against `NUMERIC_TOLERANCE`, as drafted in
+closed PR #40 for the answer judge. For charts the extracted `actual_value` must come from
+the chart's own encoded data, which is available to the evaluator — so it can be summed in
+Python rather than trusted from the model.
+
 ### Task: Create a new Overall Score
 
 **Priority:** Low
